@@ -1,0 +1,146 @@
+#!/usr/bin/env bash
+# @file applications/community/episeerr/episeerr
+# @project KRATE
+# @description Episeerr — git clone, Python venv, Flask (.env auth + data under data_dir).
+# shellcheck disable=SC2154
+set -euo pipefail
+
+_add() {
+	zenfw::workspace::uv::install
+	rm -rf "${install_dir:?}" 2>/dev/null || true
+	mkdir -p "${install_dir}"
+	zenfw::git::clone "${app_repo}" "${install_dir}" "$(app::update_branch)"
+	_episeerr_provision_venv
+	_config
+}
+
+_config() {
+	local default_port secret_key script_name
+	mkdir -p "${data_dir}/logs" "${data_dir}/config" "${data_dir}/data" "${data_dir}/temp"
+	mkdir -p "$(dirname "${env_file}")"
+	[[ -f "${env_file}" ]] || : > "${env_file}"
+	zenfw::permission::read_exec::set "${data_dir}" "${username}" "${username}"
+	rm -rf "${install_dir}/config"
+	ln -sfn "${data_dir}/config" "${install_dir}/config"
+	default_port="${service_default_port}"
+	secret_key="${service_apikey}"
+	zenfw::fs::env::set "${env_file}" "REQUIRE_AUTH" "true"
+	zenfw::fs::env::set "${env_file}" "AUTH_USERNAME" "${username}"
+	zenfw::fs::env::set "${env_file}" "AUTH_PASSWORD" "${user_password}"
+	zenfw::fs::env::set "${env_file}" "SECRET_KEY" "${secret_key}"
+	zenfw::fs::env::set "${env_file}" "AUTH_BYPASS_LOCALHOST" "true"
+	zenfw::fs::env::set "${env_file}" "FLASK_DEBUG" "false"
+	zenfw::fs::env::set "${env_file}" "GUNICORN_CMD_ARGS" "--bind 127.0.0.1:${default_port}"
+	zenfw::fs::env::set "${env_file}" "LOG_DIR" "${data_dir}/logs"
+	zenfw::fs::env::set "${env_file}" "LOG_PATH" "${data_dir}/logs/app.log"
+	zenfw::fs::env::set "${env_file}" "MISSING_LOG_PATH" "${data_dir}/logs/missing.log"
+	zenfw::fs::env::set "${env_file}" "CLEANUP_LOG_PATH" "${data_dir}/logs/cleanup.log"
+	zenfw::fs::env::set "${env_file}" "CONFIG_PATH" "${data_dir}/config/config.json"
+	zenfw::fs::env::set "${env_file}" "SETTINGS_DB_PATH" "${data_dir}/data/settings.db"
+	script_name="${url_base%/}"
+	[[ -n "${script_name}" ]] || script_name="/"
+	zenfw::fs::env::set "${env_file}" "SCRIPT_NAME" "${script_name}"
+	_episeerr_patch_frontend_subpath
+	zenfw::service::generate "${app_name}" false false
+	zenfw::proxy::generate "${app_name}" "${default_port}" "${url_base}" true "${username}"
+	zenfw::service::manage start "${service_unit}"
+}
+
+_update() {
+	zenfw::service::manage stop "${service_unit}"
+	rm -rf "${install_dir:?}"/* "${install_dir:?}"/.[!.]* 2> /dev/null || true
+	zenfw::git::clone "${app_repo}" "${install_dir}" "$(app::update_branch)"
+	_episeerr_provision_venv
+	_config
+	zenfw::software::backup::create "${app_name}" "user" "${data_dir}" "${username}"
+}
+
+_episeerr_provision_venv() {
+	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
+	zenfw::workspace::venv::create "${install_dir}" "${username}" true
+	_episeerr_patch_reverse_proxy
+}
+
+# Flask url_for() and redirects need the Krate subpath (Caddy sets X-Forwarded-Prefix).
+_episeerr_patch_reverse_proxy() {
+	local py="${install_dir}/episeerr.py"
+	[[ -f "${py}" ]] || return 0
+	grep -q 'middleware.proxy_fix' "${py}" 2>/dev/null && return 0
+	EPISEERR_PY="${py}" python3 <<'PY'
+import os
+import sys
+
+path = os.environ["EPISEERR_PY"]
+with open(path, encoding="utf-8") as f:
+    text = f.read()
+if "ProxyFix" in text:
+    sys.exit(0)
+import_line = "from werkzeug.middleware.proxy_fix import ProxyFix\n"
+needle = "app = Flask(__name__)\n"
+if needle not in text:
+    sys.exit(0)
+text = text.replace(needle, needle + import_line, 1)
+anchor = "app.register_blueprint(radarr_webhooks_bp)\n"
+if anchor not in text:
+    sys.exit(0)
+insert = (
+    anchor
+    + "\n# Krate: honor X-Forwarded-Prefix from Caddy (/user/episeerr)\n"
+    + "app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)\n"
+)
+text = text.replace(anchor, insert, 1)
+with open(path, "w", encoding="utf-8") as f:
+    f.write(text)
+PY
+	zenfw::permission::read_exec::set "${py}" "${username}" "${username}"
+}
+
+# Inline JS uses absolute /api/... and /static/... (ignores Flask url_for); prefix for Krate subpath.
+_episeerr_patch_frontend_subpath() {
+	local base="${url_base%/}" tpl
+	[[ -n "${base}" && "${base}" != "/" ]] || return 0
+	tpl="${install_dir}/templates/base.html"
+	[[ -f "${tpl}" ]] || return 0
+	if ! grep -q 'EPISEERR_URL_BASE' "${tpl}" 2>/dev/null; then
+		EPISEERR_BASE="${base}" EPISEERR_TPL="${tpl}" python3 <<'PY'
+import os
+
+base = os.environ["EPISEERR_BASE"]
+path = os.environ["EPISEERR_TPL"]
+with open(path, encoding="utf-8") as f:
+    text = f.read()
+snippet = f"""    <script>
+    window.EPISEERR_URL_BASE = {base!r};
+    (function (b) {{
+      function episeerrUrl(p) {{
+        if (typeof p !== "string" || p.charAt(0) !== "/") return p;
+        if (b && p.indexOf(b + "/") === 0) return p;
+        return (b || "") + p;
+      }}
+      window.episeerrUrl = episeerrUrl;
+      const origFetch = window.fetch.bind(window);
+      window.fetch = function (input, init) {{
+        if (typeof input === "string") return origFetch(episeerrUrl(input), init);
+        return origFetch(input, init);
+      }};
+    }})(window.EPISEERR_URL_BASE);
+    </script>
+"""
+needle = "<head>\n"
+if needle not in text:
+    raise SystemExit(0)
+text = text.replace(needle, needle + snippet, 1)
+with open(path, "w", encoding="utf-8") as f:
+    f.write(text)
+PY
+	fi
+	while IFS= read -r -d '' f; do
+		sed -i \
+			-e "s|/static/placeholder.png|${base}/static/placeholder.png|g" \
+			-e "s|href=\"/setup\"|href=\"${base}/setup\"|g" \
+			-e "s|href=\"/episeerr\"|href=\"${base}/episeerr\"|g" \
+			-e "s|href=\"/api/|href=\"${base}/api/|g" \
+			"${f}"
+	done < <(find "${install_dir}/templates" -type f -name '*.html' -print0 2>/dev/null)
+	zenfw::permission::read_exec::set "${install_dir}/templates" "${username}" "${username}"
+}

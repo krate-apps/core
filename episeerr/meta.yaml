@@ -1,0 +1,24 @@
+id: episeerr
+name: Episeerr
+description: "Sends and removes Sonarr episodes/seasons one at a time as played."
+links:
+  homepage: https://github.com/Vansmak/episeerr
+  documentation: https://github.com/Vansmak/episeerr#readme
+  source: https://github.com/Vansmak/episeerr
+  krate_docs: https://krate.github.io/docs/software/official/episeerr
+tier: free
+category: tools
+install_mode: local
+password_constraints:
+  min_length: 8
+  max_length: 128
+  require_upper: false
+  require_digit: false
+autocomplete_options:
+  - -b
+  - -s
+ui_options:
+  subdomain: true
+  branches:
+    - main
+    - beta

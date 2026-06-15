@@ -1,0 +1,66 @@
+id: episeerr
+multi_user: true
+runtime:
+  kind: systemd
+  service_template: episeerr@.service
+dependencies:
+  apt:
+    common:
+      packages: git curl ca-certificates
+install:
+  release:
+    update_branch:
+      stable: main
+      prerelease: dev
+  layout:
+    backup_dir: /home/%i/.krate/backups/episeerr
+    data_dir: /home/%i/.config/episeerr
+    install_dir: /opt/%i/episeerr
+    temp_dir: /home/%i/tmp/episeerr
+  executable:
+    - /opt/%i/episeerr/.venv/bin/gunicorn
+systemd:
+  unit:
+    TimeoutStopSec: 20
+    Type: simple
+    Restart: on-failure
+    RestartSec: "10"
+    WorkingDirectory: /home/%i/.config/episeerr
+    # Upstream defaults to Docker paths (/app, /config, /data); bind user data dirs into the unit namespace.
+    BindPaths: /home/%i/.config/episeerr/logs:/app/logs:mkdir /home/%i/.config/episeerr/config:/app/config:mkdir /home/%i/.config/episeerr/data:/app/data:mkdir /home/%i/.config/episeerr/temp:/app/temp:mkdir /home/%i/.config/episeerr/config:/config:mkdir /home/%i/.config/episeerr/data:/data:mkdir
+  environment:
+    inline:
+      TMPDIR: /home/%i/tmp/episeerr
+      PYTHONUNBUFFERED: "1"
+      PYTHONPATH: /opt/%i/episeerr
+    file:
+      path: /home/%i/.krate/applications/episeerr.env
+      mode: "0600"
+  exec:
+    pre:
+      - /bin/mkdir -p /home/%i/tmp/episeerr /home/%i/.config/episeerr/logs /home/%i/.config/episeerr/config /home/%i/.config/episeerr/data /home/%i/.config/episeerr/temp
+    start:
+      - /opt/%i/episeerr/.venv/bin/gunicorn
+      - episeerr:app
+files:
+  service: /etc/systemd/system/episeerr@.service
+  config:
+    - /home/%i/.krate/applications/episeerr.env
+  proxy:
+    - /etc/caddy/softwares/%i.episeerr.caddy
+  binary:
+    - /opt/%i/episeerr/.venv/bin/python
+autogen:
+  - apikey
+  - default_port
+security:
+  network: true
+  filesystem:
+    read_write:
+      - /home/%i/.config/episeerr
+      - /home/%i/tmp/episeerr
+      - /home/%i/.krate/backups/episeerr
+      - /home/%i/.krate/applications
+      - /opt/%i/episeerr/.venv
+    read_only:
+      - /opt/%i/episeerr
