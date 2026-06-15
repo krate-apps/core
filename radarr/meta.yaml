@@ -1,0 +1,19 @@
+id: radarr
+name: Radarr
+description: Radarr
+links:
+  homepage: https://radarr.video/
+  documentation: https://wiki.servarr.com/Radarr
+  source: https://github.com/Radarr/Radarr
+  krate_docs: https://krate.github.io/docs/software/official/radarr
+tier: free
+category: media
+install_mode: local
+password_constraints:
+  min_length: 8
+  max_length: 128
+  require_upper: false
+  require_digit: false
+autocomplete_options:
+  - -b
+  - -s

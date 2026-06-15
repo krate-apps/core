@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+# @file software/official/radarr/radarr
+# @version 1.1.15
+# @project KRATE
+# @description Radarr handler
+# @author Krate Teamcdj71)
+# @author_contact contact@krate.io
+# @license BSD-3 Clause (Included in LICENSE)
+# @copyright Copyright (C) 2026, KRATE
+# shellcheck disable=SC2154
+set -euo pipefail
+
+# @function _add
+# @alias Install Radarr
+# @description Adds Radarr for a user: download release, systemd unit, config, hardening. (Base backup runs from lifecycle after add.)
+_add() {
+	zenfw::git::release::get "${install_dir}" "${app_repo}" "${is_prerelease}" "$(app::cfg install.release.asset)"
+	zenfw::service::generate "${app_name}" true false
+	_config
+	_secure
+}
+
+# @function _config
+# @internal
+# @description Creates data dir, writes radarr.env (lifecycle autogen + UI), generates Caddy fragment.
+_config() {
+	local apikey default_port ssl_port radarr_channel
+	mkdir -p "${data_dir}"
+	zenfw::permission::read_exec::set "${data_dir}" "${username}" "${username}"
+	apikey="${service_apikey}"
+	default_port="${service_default_port}"
+	ssl_port="${service_ssl_port}"
+	radarr_channel="$(app::update_branch)"
+	zenfw::fs::env::set "${env_file}" "RADARR__APP__INSTANCENAME" "${instance_name}"
+	zenfw::fs::env::set "${env_file}" "RADARR__AUTH__APIKEY" "${apikey}"
+	zenfw::fs::env::set "${env_file}" "RADARR__SERVER__PORT" "${default_port}"
+	zenfw::fs::env::set "${env_file}" "RADARR__SERVER__SSLPORT" "${ssl_port}"
+	zenfw::fs::env::set "${env_file}" "RADARR__SERVER__URLBASE" "${url_base}"
+	zenfw::fs::env::set "${env_file}" "RADARR__UPDATE__BRANCH" "${radarr_channel}"
+	zenfw::proxy::generate "${app_name}" "${default_port}" "${url_base}" true "${username}"
+	zenfw::service::manage restart "${service_unit}"
+}
+
+# @function _update
+# @alias Update Radarr
+# @description Stops service, refreshes release binary, restarts, user backup.
+_update() {
+	zenfw::service::manage stop "${service_unit}"
+	zenfw::git::release::get "${install_dir}" "${app_repo}" "${is_prerelease}" "$(app::cfg install.release.asset)"
+	zenfw::service::manage restart "${service_unit}"
+	zenfw::software::backup::create "${app_name}" "user" "${install_dir}" "${username}"
+}
+
+# @function _secure
+# @internal
+# @description Pushes auth and host settings to Radarr API (localhost). Reads radarr.env (after _config).
+_secure() {
+	local url api_url radarr_config json_payload api_key listen_port update_branch
+	api_key="$(zenfw::fs::env::get "${env_file}" "RADARR__AUTH__APIKEY")"
+	listen_port="$(zenfw::fs::env::get "${env_file}" "RADARR__SERVER__PORT")"
+	update_branch="$(zenfw::fs::env::get "${env_file}" "RADARR__UPDATE__BRANCH")"
+	url="http://localhost:${listen_port}/${username}/${app_name}/"
+	zenfw::request::wait::ping "${url}" 60 1000 true
+	api_url="${url}api/v3/config/host"
+	radarr_config="$(API_SERVICE_APIKEY="${api_key}" zenfw::request::app::get "${api_url}" true "X-API-KEY")"
+	json_payload="$(zenfw::json::merge "${radarr_config}" \
+		username "${username}" \
+		password "${user_password}" \
+		passwordConfirmation "${user_password}" \
+		authenticationMethod "forms" \
+		authenticationRequired "disabledForLocalAddresses" \
+		branch "${update_branch}" \
+		apiKey "${api_key}" \
+		urlBase "${url_base}" \
+		instanceName "${instance_name}")"
+	API_SERVICE_APIKEY="${api_key}" zenfw::request::app::save "${api_url}" "PUT" "${json_payload}"
+}
