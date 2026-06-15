@@ -1,0 +1,24 @@
+id: trailarr
+name: Trailarr
+description: "Downloads and manages trailers for Radarr and Sonarr libraries."
+links:
+  homepage: https://github.com/nandyalu/trailarr
+  documentation: https://github.com/nandyalu/trailarr#readme
+  source: https://github.com/nandyalu/trailarr
+  krate_docs: https://krate.github.io/docs/software/official/trailarr
+tier: free
+category: tools
+install_mode: local
+password_constraints:
+  min_length: 8
+  max_length: 128
+  require_upper: false
+  require_digit: false
+autocomplete_options:
+  - -b
+  - -s
+ui_options:
+  subdomain: true
+  branches:
+    - main
+    - beta

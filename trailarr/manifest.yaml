@@ -1,0 +1,73 @@
+id: trailarr
+multi_user: true
+runtime:
+  kind: systemd
+  service_template: trailarr@.service
+dependencies:
+  apt:
+    common:
+      packages: git curl ca-certificates ffmpeg
+install:
+  release:
+    asset: release.tar.gz
+    update_branch:
+      stable: main
+      prerelease: dev
+  layout:
+    backup_dir: /home/%i/.krate/backups/trailarr
+    data_dir: /home/%i/.config/trailarr
+    install_dir: /opt/%i/trailarr
+    temp_dir: /home/%i/tmp/trailarr
+  executable:
+    - /usr/local/bin/pnpm
+    - /opt/%i/trailarr/backend/.venv/bin/uvicorn
+systemd:
+  unit:
+    TimeoutStopSec: 30
+    Type: simple
+    Restart: on-failure
+    RestartSec: "10"
+    WorkingDirectory: /opt/%i/trailarr/backend
+  environment:
+    inline:
+      TMPDIR: /home/%i/tmp/trailarr
+      PYTHONUNBUFFERED: "1"
+      PYTHONPATH: /opt/%i/trailarr/backend
+    file:
+      path: /home/%i/.config/trailarr/.env
+  exec:
+    pre:
+      - /bin/mkdir -p /home/%i/tmp/trailarr /home/%i/.config/trailarr/backups
+    start:
+      - /opt/%i/trailarr/backend/.venv/bin/uvicorn
+      - main:trailarr_api
+      - --host
+      - "127.0.0.1"
+      - --port
+      - ${APP_PORT}
+files:
+  service: /etc/systemd/system/trailarr@.service
+  config:
+    - /home/%i/.config/trailarr/.env
+  database:
+    - /home/%i/.config/trailarr/trailarr.db
+  proxy:
+    - /etc/caddy/softwares/%i.trailarr.caddy
+  binary:
+    - /usr/local/bin/pnpm
+    - /opt/%i/trailarr/backend/.venv/bin/python
+    - /opt/%i/trailarr/backend/.venv/bin/uvicorn
+autogen:
+  - apikey
+  - default_port
+security:
+  network: true
+  filesystem:
+    read_write:
+      - /home/%i/.config/trailarr
+      - /home/%i/tmp/trailarr
+      - /home/%i/.krate/backups/trailarr
+      - /opt/%i/trailarr/backend/.venv
+      - /opt/%i/trailarr/frontend-build/browser
+    read_only:
+      - /opt/%i/trailarr

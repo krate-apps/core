@@ -1,0 +1,11 @@
+--- a/frontend/src/app/auth/login/login.component.ts
++++ b/frontend/src/app/auth/login/login.component.ts
+@@ -36,7 +36,7 @@
+       next: () => {
+         const params = new URLSearchParams(window.location.search);
+         const returnUrl = params.get('returnUrl') || '/home';
+-        window.location.href = returnUrl;
++        this.router.navigateByUrl(returnUrl);
+       },
+       error: () => {
+         this.isLoading.set(false);
