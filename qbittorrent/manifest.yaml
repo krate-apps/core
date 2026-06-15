@@ -1,0 +1,62 @@
+id: qbittorrent
+multi_user: true
+runtime:
+  kind: systemd
+  service_template: qbittorrent@.service
+dependencies:
+  apt:
+    common:
+      packages: curl wget ca-certificates
+install:
+  layout:
+    install_dir: /opt/%i/qbittorrent
+    backup_dir: /home/%i/.krate/backups/qbittorrent
+    config_dir: /home/%i/.config/qBittorrent
+    data_dir: /home/%i/download-clients/qbittorrent
+    downloads_dir: /home/%i/download-clients/qbittorrent/downloads
+    incomplete_dir: /home/%i/download-clients/qbittorrent/incomplete
+    logs_dir: /home/%i/download-clients/qbittorrent/logs
+  executable:
+    - /home/%i/.krate/active/qbittorrent-nox/usr/bin/qbittorrent-nox
+systemd:
+  unit:
+    Type: simple
+    Restart: always
+    RestartSec: "5"
+    WorkingDirectory: /home/%i
+  environment:
+    file:
+      path: /home/%i/.krate/applications/qbittorrent.env
+      mode: "0600"
+      variables:
+        PORT: "{default_port}"
+        QBT_PROFILE: /home/%i/.config/qBittorrent
+  exec:
+    start:
+      - /home/%i/.krate/active/qbittorrent-nox/usr/bin/qbittorrent-nox
+      - --confirm-legal-notice
+      - --profile=${QBT_PROFILE}
+      - --webui-port=${PORT}
+files:
+  service: /etc/systemd/system/qbittorrent@.service
+  config:
+    - /home/%i/.krate/applications/qbittorrent.env
+  proxy:
+    - /etc/caddy/softwares/%i.qbittorrent.caddy
+  binary:
+    - /home/%i/.krate/active/qbittorrent-nox/usr/bin/qbittorrent-nox
+autogen:
+  - default_port
+  - ssl_port
+security:
+  network: true
+  filesystem:
+    read_write:
+      - /home/%i/.config/qBittorrent
+      - /home/%i/download-clients/qbittorrent
+      - /home/%i/.krate/backups/qbittorrent
+      - /home/%i/.krate/applications
+    read_only:
+      - /home/%i/.krate/active/qbittorrent-nox
+      - /etc/caddy/auth/local/users.json
+      - /etc/caddy/auth/users.json

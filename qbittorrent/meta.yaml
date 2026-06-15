@@ -1,0 +1,21 @@
+id: qbittorrent
+name: qBittorrent
+description: "qBittorrent-nox vendor binary at /{user}/qbittorrent via Caddy. Branch main/beta selects qBittorrent version (stable=min, beta=max); libtorrent v2 (default) or v1 via -lt."
+links:
+  homepage: https://www.qbittorrent.org/
+  documentation: https://github.com/qbittorrent/qBittorrent/wiki
+  source: https://github.com/qbittorrent/qBittorrent
+  krate_docs: https://krate.github.io/docs/software/community/qbittorrent
+tier: free
+category: download
+install_mode: local
+autocomplete_options:
+  - -b
+  - -lt
+ui_options:
+  branches:
+    - main
+    - beta
+  libtorrent:
+    - v2
+    - v1
