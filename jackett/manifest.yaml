@@ -1,0 +1,55 @@
+id: jackett
+multi_user: true
+runtime:
+  kind: systemd
+  service_template: jackett@.service
+install:
+  layout:
+    backup_dir: /home/%i/.krate/backups/jackett
+    data_dir: /home/%i/.config/jackett
+    install_dir: /opt/%i/jackett
+    temp_dir: /home/%i/tmp/jackett
+  release:
+    asset: LinuxAMDx64.tar.gz
+  executable:
+    - /opt/%i/jackett/jackett
+systemd:
+  unit:
+    TimeoutStopSec: 20
+    Type: simple
+    WorkingDirectory: /opt/%i/jackett
+    SyslogIdentifier: jackett
+    Restart: always
+    RestartSec: 5
+  environment:
+    inline:
+      TMPDIR: /home/%i/tmp/jackett
+      XDG_CONFIG_HOME: /home/%i/.config/jackett
+  exec:
+    pre:
+      - /bin/mkdir -p /home/%i/tmp/jackett
+    start:
+      - /opt/%i/jackett/jackett
+      - --DataFolder
+      - /home/%i/.config/jackett
+      - --NoRestart
+files:
+  service: /etc/systemd/system/jackett@.service
+  config:
+    - /home/%i/.config/jackett/ServerConfig.json
+  proxy:
+    - /etc/caddy/softwares/%i.jackett.caddy
+  binary:
+    - /opt/%i/jackett/jackett
+autogen:
+  - apikey
+  - default_port
+security:
+  network: true
+  filesystem:
+    read_write:
+      - /home/%i/.config/jackett
+      - /home/%i/tmp/jackett
+      - /home/%i/.krate/backups/jackett
+    read_only:
+      - /opt/%i/jackett

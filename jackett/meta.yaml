@@ -1,0 +1,20 @@
+id: jackett
+name: Jackett
+description: Jackett application.
+links:
+  homepage: https://github.com/Jackett/Jackett
+  documentation: https://github.com/Jackett/Jackett/wiki
+  source: https://github.com/Jackett/Jackett
+  krate_docs: https://krate.github.io/docs/software/official/jackett
+tier: free
+category: indexers
+install_mode: local
+password_constraints:
+  min_length: 8
+  max_length: 128
+  require_upper: false
+  require_digit: false
+autocomplete_options:
+  - -s
+ui_options:
+  subdomain: true
