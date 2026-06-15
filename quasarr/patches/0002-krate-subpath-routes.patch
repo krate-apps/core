@@ -1,0 +1,617 @@
+--- a/quasarr/storage/setup/common.py	2026-06-06 20:54:59.000000000 +0200
++++ b/quasarr/storage/setup/common.py	2026-06-07 03:33:20.206579330 +0200
+@@ -39,12 +39,12 @@
+                 var attempts = 0;
+                 function attempt() {{
+                     attempts++;
+-                    fetch('/', {{ method: 'HEAD', cache: 'no-store' }})
++                    fetch(quasarrUrl('/'), {{ method: 'HEAD', cache: 'no-store' }})
+                     .then(function(response) {{
+                         if (response.ok) {{
+                             btn.innerText = 'Connected! Reloading...';
+                             btn.className = 'btn-primary';
+-                            setTimeout(function() {{ window.location.href = '/'; }}, 500);
++                            setTimeout(function() {{ window.location.href = quasarrUrl('/'); }}, 500);
+                         }} else {{
+                             scheduleRetry();
+                         }}
+--- a/quasarr/storage/setup/hostnames.py	2026-06-06 20:54:59.000000000 +0200
++++ b/quasarr/storage/setup/hostnames.py	2026-06-07 03:33:20.209577923 +0200
+@@ -434,11 +434,11 @@
+ 
+     function attempt() {{
+       attempts++;
+-      fetch('/', {{ method: 'HEAD', cache: 'no-store' }})
++      fetch(quasarrUrl('/'), {{ method: 'HEAD', cache: 'no-store' }})
+       .then(response => {{
+         if (response.ok) {{
+           statusEl.textContent = 'Connected! Reloading...';
+-          setTimeout(function() {{ window.location.href = '/'; }}, 500);
++          setTimeout(function() {{ window.location.href = quasarrUrl('/'); }}, 500);
+         }} else {{
+           scheduleRetry();
+         }}
+@@ -508,7 +508,7 @@
+                         <strong>⚠️ flaresolverr-go Required</strong><br>
+                         This site requires flaresolverr-go, but it was skipped. You must configure it first.
+                         <div style="margin-top: 0.5rem;">
+-                            <button class="btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" onclick="window.location.href='/flaresolverr'">Configure flaresolverr-go</button>
++                            <button class="btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" onclick="window.location.href=quasarrUrl('/flaresolverr')">Configure flaresolverr-go</button>
+                         </div>
+                     </div>
+                 `;
+@@ -967,7 +967,7 @@
+             quasarrApiFetch('/api/credentials/{shorthand}/skip', {{ method: 'POST' }})
+             .then(response => {{
+                 if (response.ok) {{
+-                    window.location.href = '/skip-success';
++                    window.location.href = quasarrUrl('/skip-success');
+                 }} else {{
+                     showModal('Error', 'Failed to skip login');
+                     formSubmitted = false;
+--- a/quasarr/storage/setup/radarr.py	2026-06-06 20:54:59.000000000 +0200
++++ b/quasarr/storage/setup/radarr.py	2026-06-07 03:33:20.210577455 +0200
+@@ -219,7 +219,7 @@
+         quasarrApiFetch('/api/radarr/skip', {{ method: 'POST' }})
+         .then(function(response) {{
+             if (response.ok) {{
+-                window.location.href = '/skip-success';
++                window.location.href = quasarrUrl('/skip-success');
+             }} else {{
+                 showModal('Error', 'Failed to skip Radarr setup');
+                 formSubmitted = false;
+--- a/quasarr/storage/setup/sonarr.py	2026-06-06 20:54:59.000000000 +0200
++++ b/quasarr/storage/setup/sonarr.py	2026-06-07 03:33:20.210577455 +0200
+@@ -219,7 +219,7 @@
+         quasarrApiFetch('/api/sonarr/skip', {{ method: 'POST' }})
+         .then(function(response) {{
+             if (response.ok) {{
+-                window.location.href = '/skip-success';
++                window.location.href = quasarrUrl('/skip-success');
+             }} else {{
+                 showModal('Error', 'Failed to skip Sonarr setup');
+                 formSubmitted = false;
+--- a/quasarr/storage/setup/flaresolverr.py	2026-06-06 20:54:59.000000000 +0200
++++ b/quasarr/storage/setup/flaresolverr.py	2026-06-07 03:33:20.211576986 +0200
+@@ -128,7 +128,7 @@
+             quasarrApiFetch('/api/flaresolverr/skip', { method: 'POST' })
+             .then(response => {
+                 if (response.ok) {
+-                    window.location.href = '/skip-success';
++                    window.location.href = quasarrUrl('/skip-success');
+                 } else {
+                     showModal('Error', 'Failed to skip flaresolverr-go setup');
+                     formSubmitted = false;
+@@ -191,7 +191,7 @@
+     """
+ 
+     if not is_setup:
+-        form_html += f"""<p>{render_button("Back", "secondary", {"onclick": "location.href='/'"})}</p>"""
++        form_html += f"""<p>{render_button("Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"})}</p>"""
+ 
+     return form_html
+ 
+--- a/quasarr/api/__init__.py	2026-06-06 20:54:59.000000000 +0200
++++ b/quasarr/api/__init__.py	2026-06-07 03:33:20.213576049 +0200
+@@ -161,7 +161,7 @@
+                     {"" if shared_state.values.get("helper_active") else '<br><a href="https://github.com/rix1337/Quasarr?tab=readme-ov-file#sponsorshelper" target="_blank">Sponsors get automated CAPTCHA solutions!</a>'}
+                 </div>
+                 <div class="alert-action">
+-                    {render_button(f"Solve CAPTCHA{plural}", "primary", {"onclick": "location.href='/captcha'"})}
++                    {render_button(f"Solve CAPTCHA{plural}", "primary", {"onclick": "location.href=quasarrUrl('/captcha')"})}
+                 </div>
+             </div>
+             """
+@@ -999,7 +999,7 @@
+                     'Regenerate API Key?', 
+                     'Are you sure you want to regenerate the API Key? This will invalidate the current key.', 
+                     `<button class="btn-secondary" onclick="closeModal()">Cancel</button>
+-                     <button class="btn-primary" onclick="location.href='/regenerate-api-key'">Regenerate</button>`
++                     <button class="btn-primary" onclick="location.href=quasarrUrl('/regenerate-api-key')">Regenerate</button>`
+                 );
+             }}
+             
+--- a/quasarr/api/config/__init__.py	2026-06-06 20:54:59.000000000 +0200
++++ b/quasarr/api/config/__init__.py	2026-06-07 03:33:20.214575580 +0200
+@@ -77,7 +77,7 @@
+             Use status buttons to change credentials and check for errors.
+         </p>"""
+         back_button = f"""<p>
+-                        {render_button("Back", "secondary", {"onclick": "location.href='/'"})}
++                        {render_button("Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"})}
+                     </p>"""
+         return render_form(
+             "Hostnames",
+@@ -615,7 +615,7 @@
+ 
+         {search_add_form_html}
+ 
+-        <p>{render_button("Back", "secondary", {"onclick": "location.href='/'"})}</p>
++        <p>{render_button("Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"})}</p>
+ 
+         <script>
+         const ALL_HOSTERS = {hosters_js};
+--- a/quasarr/api/statistics/__init__.py	2026-06-06 20:54:59.000000000 +0200
++++ b/quasarr/api/statistics/__init__.py	2026-06-07 03:33:20.215575111 +0200
+@@ -109,7 +109,7 @@
+         </div>
+ 
+         <p>
+-            {render_button("Back", "secondary", {"onclick": "location.href='/'"})}
++            {render_button("Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"})}
+         </p>
+ 
+         <style>
+--- a/quasarr/api/captcha/__init__.py	2026-06-06 20:54:59.000000000 +0200
++++ b/quasarr/api/captcha/__init__.py	2026-06-07 03:33:20.220572767 +0200
+@@ -46,7 +46,7 @@
+                 <h1><img src="{images.logo}" class="logo"/>Quasarr</h1>
+                 <p><b>Error:</b> Package not found or already solved.</p>
+                 <p>
+-                    {render_button("Back", "secondary", {"onclick": "location.href='/'"})}
++                    {render_button("Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"})}
+                 </p>
+             '''),
+             content_type="text/html",
+@@ -68,7 +68,7 @@
+             return render_centered_html(f'''<h1><img src="{images.logo}" type="image/webp" alt="Quasarr logo" class="logo"/>Quasarr</h1>
+             <p>No protected packages found! CAPTCHA not needed.</p>
+             <p>
+-                {render_button("Confirm", "secondary", {"onclick": "location.href='/'"})}
++                {render_button("Confirm", "secondary", {"onclick": "location.href=quasarrUrl('/')"})}
+             </p>''')
+         else:
+             # Check if a specific package_id was requested
+@@ -189,7 +189,7 @@
+             return render_centered_html(f'''<h1><img src="{images.logo}" type="image/webp" alt="Quasarr logo" class="logo"/>Quasarr</h1>
+             <p>Unexpected Error!</p>
+             <p>
+-                {render_button("Back", "secondary", {"onclick": "location.href='/'"})}
++                {render_button("Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"})}
+             </p>''')
+ 
+     def decode_payload():
+@@ -209,7 +209,7 @@
+             solve_button = render_button(
+                 "Solve another CAPTCHA",
+                 "primary",
+-                {"onclick": "location.href='/captcha'"},
++                {"onclick": "location.href=quasarrUrl('/captcha')"},
+             )
+         else:
+             solve_button = "<b>No more CAPTCHAs</b>"
+@@ -219,7 +219,7 @@
+         <p style="word-break: break-all;"><b>Package:</b> {title}</p>
+         <p>{link_count} link(s) processed.</p>
+         <p>{solve_button}</p>
+-        <p>{render_button("Back", "secondary", {"onclick": "location.href='/'"})}</p>
++        <p>{render_button("Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"})}</p>
+         <script>localStorage.removeItem('captcha_attempts_{package_id}');</script>''')
+ 
+     def render_filecrypt_loading_redirect(target_url, title, status_text):
+@@ -372,7 +372,7 @@
+                   window.handleProviderClick = function(url, storageKey, providerName, userscriptUrl) {{
+                     if (localStorage.getItem(storageKey) === 'true') {{
+                         if(typeof incrementCaptchaAttempts==='function') incrementCaptchaAttempts();
+-                        window.location.href = url;
++                        window.location.href = quasarrUrl(url);
+                         return;
+                     }}
+ 
+@@ -408,7 +408,7 @@
+                                 localStorage.setItem(storageKey, 'true');
+                                 closeModal();
+                                 if(typeof incrementCaptchaAttempts==='function') incrementCaptchaAttempts();
+-                                window.location.href = url;
++                                window.location.href = quasarrUrl(url);
+                             }};
+                         }} else {{
+                             btn.innerText = 'Wait ' + count + 's...';
+@@ -427,7 +427,7 @@
+             return render_centered_html(f'''<h1><img src="{images.logo}" type="image/webp" alt="Quasarr logo" class="logo"/>Quasarr</h1>
+             <p>{payload["error"]}</p>
+             <p>
+-                {render_button("Back", "secondary", {"onclick": "location.href='/'"})}
++                {render_button("Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"})}
+             </p>''')
+ 
+         package_id = payload.get("package_id")
+@@ -456,10 +456,10 @@
+                 {render_userscript_section(url, package_id, title, password, "hide")}
+             {source_button}
+             <p>
+-                {render_button("Delete Package", "secondary", {"onclick": f"location.href='/captcha/delete/{package_id}?title={quote(title)}'"})}
++                {render_button("Delete Package", "secondary", {"onclick": f"location.href=quasarrUrl('/captcha/delete/{package_id}?title={quote(title)}'"})}
+             </p>
+             <p>
+-                {render_button("Back", "secondary", {"onclick": "location.href='/'"})}
++                {render_button("Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"})}
+             </p>
+ 
+           </body>
+@@ -473,7 +473,7 @@
+             return render_centered_html(f'''<h1><img src="{images.logo}" type="image/webp" alt="Quasarr logo" class="logo"/>Quasarr</h1>
+             <p>{payload["error"]}</p>
+             <p>
+-                {render_button("Back", "secondary", {"onclick": "location.href='/'"})}
++                {render_button("Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"})}
+             </p>''')
+ 
+         package_id = payload.get("package_id")
+@@ -502,10 +502,10 @@
+                 {render_userscript_section(url, package_id, title, password, "junkies")}
+             {source_button}
+             <p>
+-                {render_button("Delete Package", "secondary", {"onclick": f"location.href='/captcha/delete/{package_id}?title={quote(title)}'"})}
++                {render_button("Delete Package", "secondary", {"onclick": f"location.href=quasarrUrl('/captcha/delete/{package_id}?title={quote(title)}'"})}
+             </p>
+             <p>
+-                {render_button("Back", "secondary", {"onclick": "location.href='/'"})}
++                {render_button("Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"})}
+             </p>
+ 
+           </body>
+@@ -519,7 +519,7 @@
+             return render_centered_html(f'''<h1><img src="{images.logo}" type="image/webp" alt="Quasarr logo" class="logo"/>Quasarr</h1>
+             <p>{payload["error"]}</p>
+             <p>
+-                {render_button("Back", "secondary", {"onclick": "location.href='/'"})}
++                {render_button("Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"})}
+             </p>''')
+ 
+         package_id = payload.get("package_id")
+@@ -549,10 +549,10 @@
+                 {render_userscript_section(url, package_id, title, password, "keeplinks")}
+             {source_button}
+             <p>
+-                {render_button("Delete Package", "secondary", {"onclick": f"location.href='/captcha/delete/{package_id}?title={quote(title)}'"})}
++                {render_button("Delete Package", "secondary", {"onclick": f"location.href=quasarrUrl('/captcha/delete/{package_id}?title={quote(title)}'"})}
+             </p>
+             <p>
+-                {render_button("Back", "secondary", {"onclick": "location.href='/'"})}
++                {render_button("Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"})}
+             </p>
+ 
+           </body>
+@@ -566,7 +566,7 @@
+             return render_centered_html(f'''<h1><img src="{images.logo}" type="image/webp" alt="Quasarr logo" class="logo"/>Quasarr</h1>
+             <p>{payload["error"]}</p>
+             <p>
+-                {render_button("Back", "secondary", {"onclick": "location.href='/'"})}
++                {render_button("Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"})}
+             </p>''')
+ 
+         package_id = payload.get("package_id")
+@@ -596,10 +596,10 @@
+                 {render_userscript_section(url, package_id, title, password, "tolink")}
+             {source_button}
+             <p>
+-                {render_button("Delete Package", "secondary", {"onclick": f"location.href='/captcha/delete/{package_id}?title={quote(title)}'"})}
++                {render_button("Delete Package", "secondary", {"onclick": f"location.href=quasarrUrl('/captcha/delete/{package_id}?title={quote(title)}'"})}
+             </p>
+             <p>
+-                {render_button("Back", "secondary", {"onclick": "location.href='/'"})}
++                {render_button("Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"})}
+             </p>
+ 
+           </body>
+@@ -733,7 +733,7 @@
+                   window.handleProviderClick = function(url, storageKey, providerName, userscriptUrl) {{
+                     if (localStorage.getItem(storageKey) === 'true') {{
+                         if(typeof incrementCaptchaAttempts==='function') incrementCaptchaAttempts();
+-                        window.location.href = url;
++                        window.location.href = quasarrUrl(url);
+                         return;
+                     }}
+ 
+@@ -769,7 +769,7 @@
+                                 localStorage.setItem(storageKey, 'true');
+                                 closeModal();
+                                 if(typeof incrementCaptchaAttempts==='function') incrementCaptchaAttempts();
+-                                window.location.href = url;
++                                window.location.href = quasarrUrl(url);
+                             }};
+                         }} else {{
+                             btn.innerText = 'Wait ' + count + 's...';
+@@ -992,7 +992,7 @@
+             return render_centered_html(f'''<h1><img src="{images.logo}" type="image/webp" alt="Quasarr logo" class="logo"/>Quasarr</h1>
+             <p>{payload["error"]}</p>
+             <p>
+-                {render_button("Back", "secondary", {"onclick": "location.href='/'"})}
++                {render_button("Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"})}
+             </p>''')
+ 
+         package_id = payload.get("package_id")
+@@ -1091,10 +1091,10 @@
+ 
+             {source_button}
+             <p>
+-                {render_button("Delete Package", "secondary", {"onclick": f"location.href='/captcha/delete/{package_id}?title={quote(title)}'"})}
++                {render_button("Delete Package", "secondary", {"onclick": f"location.href=quasarrUrl('/captcha/delete/{package_id}?title={quote(title)}'"})}
+             </p>
+             <p>
+-                {render_button("Back", "secondary", {"onclick": "location.href='/'"})}
++                {render_button("Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"})}
+             </p>
+ 
+             <script>
+@@ -1121,7 +1121,7 @@
+               window.handleProviderClick = function(url, storageKey, providerName, userscriptUrl) {{
+                 if (localStorage.getItem(storageKey) === 'true') {{
+                     if(typeof incrementCaptchaAttempts==='function') incrementCaptchaAttempts();
+-                    window.location.href = url;
++                    window.location.href = quasarrUrl(url);
+                     return;
+                 }}
+ 
+@@ -1157,7 +1157,7 @@
+                             localStorage.setItem(storageKey, 'true');
+                             closeModal();
+                             if(typeof incrementCaptchaAttempts==='function') incrementCaptchaAttempts();
+-                            window.location.href = url;
++                            window.location.href = quasarrUrl(url);
+                         }};
+                     }} else {{
+                         btn.innerText = 'Wait ' + count + 's...';
+@@ -1182,7 +1182,7 @@
+                 return render_centered_html(f'''<h1><img src="{images.logo}" type="image/webp" alt="Quasarr logo" class="logo"/>Quasarr</h1>
+                 <p><b>Error:</b> Missing parameters</p>
+                 <p>
+-                    {render_button("Back", "secondary", {"onclick": "location.href='/'"})}
++                    {render_button("Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"})}
+                 </p>''')
+ 
+             # Decode the compressed links using urlsafe_b64decode
+@@ -1198,7 +1198,7 @@
+                 return render_centered_html(f'''<h1><img src="{images.logo}" type="image/webp" alt="Quasarr logo" class="logo"/>Quasarr</h1>
+                 <p><b>Error:</b> Failed to decode data: {str(e)}</p>
+                 <p>
+-                    {render_button("Back", "secondary", {"onclick": "location.href='/'"})}
++                    {render_button("Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"})}
+                 </p>''')
+ 
+             # Decompress using zlib - use raw deflate format (no header)
+@@ -1216,7 +1216,7 @@
+                     return render_centered_html(f'''<h1><img src="{images.logo}" type="image/webp" alt="Quasarr logo" class="logo"/>Quasarr</h1>
+                     <p><b>Error:</b> Failed to decompress data: {str(e)}</p>
+                     <p>
+-                        {render_button("Back", "secondary", {"onclick": "location.href='/'"})}
++                        {render_button("Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"})}
+                     </p>''')
+ 
+             links_text = decompressed.decode("utf-8")
+@@ -1241,7 +1241,7 @@
+                 return render_centered_html(f'''<h1><img src="{images.logo}" type="image/webp" alt="Quasarr logo" class="logo"/>Quasarr</h1>
+                 <p><b>Error:</b> Package not found</p>
+                 <p>
+-                    {render_button("Back", "secondary", {"onclick": "location.href='/'"})}
++                    {render_button("Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"})}
+                 </p>''')
+ 
+             data = json.loads(raw_data)
+@@ -1275,12 +1275,12 @@
+                     <p><b>Package marked as failed.</b></p>
+                     <p>{submit_result["reason"]}</p>
+                     <p>
+-                        {render_button("Back", "secondary", {"onclick": "location.href='/'"})}
++                        {render_button("Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"})}
+                     </p>''')
+                 return render_centered_html(f'''<h1><img src="{images.logo}" type="image/webp" alt="Quasarr logo" class="logo"/>Quasarr</h1>
+                 <p><b>Error:</b> Failed to submit package to JDownloader</p>
+                 <p>
+-                    {render_button("Try Again", "secondary", {"onclick": "location.href='/captcha'"})}
++                    {render_button("Try Again", "secondary", {"onclick": "location.href=quasarrUrl('/captcha')"})}
+                 </p>''')
+ 
+         except Exception as e:
+@@ -1288,7 +1288,7 @@
+             return render_centered_html(f'''<h1><img src="{images.logo}" type="image/webp" alt="Quasarr logo" class="logo"/>Quasarr</h1>
+             <p><b>Error:</b> {str(e)}</p>
+             <p>
+-                {render_button("Back", "secondary", {"onclick": "location.href='/'"})}
++                {render_button("Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"})}
+             </p>''')
+ 
+     @app.get("/captcha/delete/<package_id>")
+@@ -1305,7 +1305,7 @@
+                 "Solve another CAPTCHA",
+                 "primary",
+                 {
+-                    "onclick": "location.href='/captcha'",
++                    "onclick": "location.href=quasarrUrl('/captcha')",
+                 },
+             )
+         else:
+@@ -1318,7 +1318,7 @@
+                 {solve_button}
+             </p>
+             <p>
+-                {render_button("Back", "secondary", {"onclick": "location.href='/'"})}
++                {render_button("Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"})}
+             </p>
+             <script>localStorage.removeItem('captcha_attempts_{package_id}');</script>''')
+         else:
+@@ -1328,7 +1328,7 @@
+                 {solve_button}
+             </p>
+             <p>
+-                {render_button("Back", "secondary", {"onclick": "location.href='/'"})}
++                {render_button("Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"})}
+             </p>''')
+ 
+     # The following routes are for FileCrypt challenge handling
+@@ -1371,7 +1371,7 @@
+             response.status = 400
+             return render_centered_html(f'''<h1><img src="{images.logo}" type="image/webp" alt="Quasarr logo" class="logo"/>Quasarr</h1>
+             <p><b>Error:</b> Missing Circle-Captcha parameters.</p>
+-            <p>{render_button("Back", "secondary", {"onclick": "location.href='/'"})}</p>''')
++            <p>{render_button("Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"})}</p>''')
+ 
+         check_package_exists(package_id)
+         package_data = json.loads(shared_state.get_db("protected").retrieve(package_id))
+@@ -1392,7 +1392,7 @@
+             info(f"Error preparing Filecrypt Circle-Captcha: {e}")
+             return render_centered_html(f'''<h1><img src="{images.logo}" type="image/webp" alt="Quasarr logo" class="logo"/>Quasarr</h1>
+             <p><b>Error:</b> Could not load Filecrypt Circle-Captcha.</p>
+-            <p>{render_button("Try Again", "secondary", {"onclick": "location.href='/captcha'"})}</p>''')
++            <p>{render_button("Try Again", "secondary", {"onclick": "location.href=quasarrUrl('/captcha')"})}</p>''')
+ 
+         image_data = b64encode(circle["image"]).decode("ascii")
+         with Image.open(BytesIO(circle["image"])) as captcha_image:
+@@ -1539,10 +1539,10 @@
+             </div>
+             {source_button}
+             <p>
+-                {render_button("Delete Package", "secondary", {"onclick": f"location.href='/captcha/delete/{package_id}?title={quote(title)}'"})}
++                {render_button("Delete Package", "secondary", {"onclick": f"location.href=quasarrUrl('/captcha/delete/{package_id}?title={quote(title)}'"})}
+             </p>
+             <p>
+-                {render_button("Back", "secondary", {"onclick": "location.href='/'"})}
++                {render_button("Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"})}
+             </p>
+             <div id="bypass-section">
+                 {bypass_section}
+@@ -1575,7 +1575,7 @@
+             response.status = 400
+             return render_centered_html(f'''<h1><img src="{images.logo}" type="image/webp" alt="Quasarr logo" class="logo"/>Quasarr</h1>
+             <p><b>Error:</b> Missing Circle-Captcha solution data.</p>
+-            <p>{render_button("Back", "secondary", {"onclick": "location.href='/'"})}</p>''')
++            <p>{render_button("Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"})}</p>''')
+ 
+         check_package_exists(package_id)
+         package_data = json.loads(shared_state.get_db("protected").retrieve(package_id))
+@@ -1665,7 +1665,7 @@
+             StatsHelper(shared_state).increment_failed_decryptions_manual()
+             return render_centered_html(f'''<h1><img src="{images.logo}" type="image/webp" alt="Quasarr logo" class="logo"/>Quasarr</h1>
+             <p><b>Error:</b> Circle-Captcha failed. Please try again.</p>
+-            <p>{render_button("Try Again", "secondary", {"onclick": "location.href='/captcha'"})}</p>''')
++            <p>{render_button("Try Again", "secondary", {"onclick": "location.href=quasarrUrl('/captcha')"})}</p>''')
+ 
+     @app.get("/captcha/filecrypt")
+     @app.get("/captcha/cutcaptcha")
+@@ -1676,7 +1676,7 @@
+             return render_centered_html(f'''<h1><img src="{images.logo}" type="image/webp" alt="Quasarr logo" class="logo"/>Quasarr</h1>
+             <p>{payload["error"]}</p>
+             <p>
+-                {render_button("Back", "secondary", {"onclick": "location.href='/'"})}
++                {render_button("Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"})}
+             </p>''')
+ 
+         package_id = payload.get("package_id")
+@@ -1697,10 +1697,10 @@
+                 <p style="max-width: 370px; word-wrap: break-word; overflow-wrap: break-word;"><b>Package:</b> {title}</p>
+                 <p><b>Error:</b> No download links available for this package.</p>
+                 <p>
+-                    {render_button("Delete Package", "secondary", {"onclick": f"location.href='/captcha/delete/{package_id}?title={quote(title)}'"})}
++                    {render_button("Delete Package", "secondary", {"onclick": f"location.href=quasarrUrl('/captcha/delete/{package_id}?title={quote(title)}'"})}
+                 </p>
+                 <p>
+-                    {render_button("Back", "secondary", {"onclick": "location.href='/'"})}
++                    {render_button("Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"})}
+                 </p>
+             ''')
+ 
+@@ -1742,10 +1742,10 @@
+ 
+         # Pre-render button HTML in Python
+         solve_another_html = render_button(
+-            "Solve another CAPTCHA", "primary", {"onclick": "location.href='/captcha'"}
++            "Solve another CAPTCHA", "primary", {"onclick": "location.href=quasarrUrl('/captcha')"}
+         )
+         back_button_html = render_button(
+-            "Back", "secondary", {"onclick": "location.href='/'"}
++            "Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"}
+         )
+ 
+         url = payload.get("link") or prioritized_links[0][0]
+@@ -2103,12 +2103,12 @@
+             + source_button_html
+             + f"""
+             <p>
+-                {render_button("Delete Package", "secondary", {"onclick": f"location.href='/captcha/delete/{package_id}?title={quote(title)}'"})}
++                {render_button("Delete Package", "secondary", {"onclick": f"location.href=quasarrUrl('/captcha/delete/{package_id}?title={quote(title)}'"})}
+             </p>
+             </div>
+             <div id="back-button-section">
+             <p>
+-                {render_button("Back", "secondary", {"onclick": "location.href='/'"})}
++                {render_button("Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"})}
+             </p>
+             </div>
+             <div id="bypass-section">
+@@ -2216,7 +2216,7 @@
+                 return render_centered_html(f'''<h1><img src="{images.logo}" type="image/webp" alt="Quasarr logo" class="logo"/>Quasarr</h1>
+                 <p><b>Error:</b> Missing package information.</p>
+                 <p>
+-                    {render_button("Back", "secondary", {"onclick": "location.href='/'"})}
++                    {render_button("Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"})}
+                 </p>''')
+ 
+             check_package_exists(package_id)
+@@ -2254,13 +2254,13 @@
+                     return render_centered_html(f'''<h1><img src="{images.logo}" type="image/webp" alt="Quasarr logo" class="logo"/>Quasarr</h1>
+                     <p><b>Error:</b> Failed to decrypt DLC file: {str(e)}</p>
+                     <p>
+-                        {render_button("Back", "secondary", {"onclick": "location.href='/'"})}
++                        {render_button("Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"})}
+                     </p>''')
+             else:
+                 return render_centered_html(f'''<h1><img src="{images.logo}" type="image/webp" alt="Quasarr logo" class="logo"/>Quasarr</h1>
+                 <p><b>Error:</b> Please provide either links or a DLC file.</p>
+                 <p>
+-                    {render_button("Back", "secondary", {"onclick": "location.href='/'"})}
++                    {render_button("Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"})}
+                 </p>''')
+ 
+             # Download the package
+@@ -2288,18 +2288,18 @@
+                         <p><b>Package marked as failed.</b></p>
+                         <p>{submit_result["reason"]}</p>
+                         <p>
+-                            {render_button("Back", "secondary", {"onclick": "location.href='/'"})}
++                            {render_button("Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"})}
+                         </p>''')
+                     return render_centered_html(f'''<h1><img src="{images.logo}" type="image/webp" alt="Quasarr logo" class="logo"/>Quasarr</h1>
+                     <p><b>Error:</b> Failed to submit package to JDownloader.</p>
+                     <p>
+-                        {render_button("Try Again", "secondary", {"onclick": "location.href='/captcha'"})}
++                        {render_button("Try Again", "secondary", {"onclick": "location.href=quasarrUrl('/captcha')"})}
+                     </p>''')
+             else:
+                 return render_centered_html(f'''<h1><img src="{images.logo}" type="image/webp" alt="Quasarr logo" class="logo"/>Quasarr</h1>
+                 <p><b>Error:</b> No valid links found.</p>
+                 <p>
+-                    {render_button("Back", "secondary", {"onclick": "location.href='/'"})}
++                    {render_button("Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"})}
+                 </p>''')
+ 
+         except Exception as e:
+@@ -2307,7 +2307,7 @@
+             return render_centered_html(f'''<h1><img src="{images.logo}" type="image/webp" alt="Quasarr logo" class="logo"/>Quasarr</h1>
+             <p><b>Error:</b> {str(e)}</p>
+             <p>
+-                {render_button("Back", "secondary", {"onclick": "location.href='/'"})}
++                {render_button("Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"})}
+             </p>''')
+ 
+     @app.post("/captcha/decrypt-filecrypt")
+--- a/quasarr/api/packages/__init__.py	2026-06-06 20:54:59.000000000 +0200
++++ b/quasarr/api/packages/__init__.py	2026-06-07 03:33:20.223571361 +0200
+@@ -398,7 +398,7 @@
+         # Get rendered packages content using shared helper
+         packages_content = _render_packages_content()
+ 
+-        back_btn = render_button("Back", "secondary", {"onclick": "location.href='/'"})
++        back_btn = render_button("Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"})
+ 
+         packages_html = f'''
+             <h1><img src="{images.logo}" type="image/webp" alt="Quasarr logo" class="logo"/>Quasarr</h1>
+@@ -689,7 +689,7 @@
+                     
+                     let captchaBtn = '';
+                     if (isCaptcha) {{
+-                        captchaBtn = `<button class="btn-small primary-thin" onclick="location.href='/captcha?package_id=${{id}}'">🔓 Solve CAPTCHA</button>`;
++                        captchaBtn = `<button class="btn-small primary-thin" onclick=\"location.href=quasarrUrl('/captcha?package_id=${{id}}')\">🔓 Solve CAPTCHA</button>`;
+                     }}
+                     
+                     const content = `

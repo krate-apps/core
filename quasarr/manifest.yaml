@@ -1,0 +1,63 @@
+id: quasarr
+multi_user: true
+require: flaresolverr
+runtime:
+  kind: systemd
+  service_template: quasarr@.service
+dependencies:
+  apt:
+    common:
+      packages: git curl ca-certificates
+install:
+  layout:
+    backup_dir: /home/%i/.krate/backups/quasarr
+    data_dir: /home/%i/.config/quasarr
+    install_dir: /opt/%i/quasarr
+    temp_dir: /home/%i/tmp/quasarr
+  executable:
+    - /opt/%i/quasarr/.venv/bin/quasarr
+systemd:
+  unit:
+    TimeoutStopSec: 20
+    Type: simple
+    Restart: on-failure
+    RestartSec: "10"
+    WorkingDirectory: /opt/%i/quasarr
+  environment:
+    inline:
+      TMPDIR: /home/%i/tmp/quasarr
+      PYTHONUNBUFFERED: "1"
+    file:
+      path: /home/%i/.krate/applications/quasarr.env
+      mode: "0600"
+      variables:
+        PORT: "{default_port}"
+        INTERNAL_ADDRESS: "http://127.0.0.1:{default_port}"
+        QUASARR_URL_BASE: "{url_base}"
+  exec:
+    pre:
+      - /bin/mkdir -p /home/%i/tmp/quasarr /home/%i/.config/quasarr
+    start:
+      - /opt/%i/quasarr/.venv/bin/quasarr
+files:
+  service: /etc/systemd/system/quasarr@.service
+  config:
+    - /home/%i/.krate/applications/quasarr.env
+    - /opt/%i/quasarr/Quasarr.conf
+  proxy:
+    - /etc/caddy/softwares/%i.quasarr.caddy
+  binary:
+    - /opt/%i/quasarr/.venv/bin/quasarr
+autogen:
+  - default_port
+security:
+  network: true
+  filesystem:
+    read_write:
+      - /home/%i/.config/quasarr
+      - /home/%i/tmp/quasarr
+      - /home/%i/.krate/backups/quasarr
+      - /home/%i/.krate/applications
+      - /opt/%i/quasarr/.venv
+    read_only:
+      - /opt/%i/quasarr

@@ -1,0 +1,18 @@
+id: quasarr
+name: Quasarr
+description: "Connects JDownloader with Radarr, Sonarr, Lidarr and LazyLibrarian. Requires FlareSolverr installed for the same user before install; configure its /v1 URL in the Quasarr setup UI. Subpath via QUASARR_URL_BASE patch + Caddy strip_prefix; subdomain recommended."
+links:
+  homepage: https://github.com/rix1337/Quasarr
+  documentation: https://github.com/rix1337/Quasarr#readme
+  source: https://github.com/rix1337/Quasarr
+  krate_docs: https://krate.github.io/docs/software/official/quasarr
+tier: free
+category: tools
+install_mode: local
+password_constraints:
+  min_length: 8
+  max_length: 128
+  require_upper: false
+  require_digit: false
+ui_options:
+  subdomain: true
