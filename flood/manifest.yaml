@@ -1,0 +1,70 @@
+id: flood
+multi_user: true
+runtime:
+  kind: systemd
+  service_template: flood@.service
+dependencies:
+  apt:
+    common:
+      packages: curl ca-certificates
+install:
+  layout:
+    install_dir: /opt/%i/flood
+    data_dir: /home/%i/.config/flood
+    backup_dir: /home/%i/.krate/backups/flood
+    temp_dir: /home/%i/tmp/flood
+  release:
+    asset: flood-linux-x64
+  executable:
+    - /opt/%i/flood/flood
+systemd:
+  unit:
+    KillMode: process
+    TimeoutStopSec: 20
+    Type: simple
+  environment:
+    inline:
+      TMPDIR: /home/%i/tmp/flood
+    file:
+      path: /home/%i/.krate/applications/flood.env
+      mode: "0600"
+      variables:
+        FLOOD_OPTION_host: 127.0.0.1
+        FLOOD_OPTION_port: "{default_port}"
+        FLOOD_OPTION_baseuri: "{url_base}"
+        FLOOD_OPTION_auth: default
+        FLOOD_OPTION_secret: "{apikey}"
+        FLOOD_OPTION_allowedpath: /home/%i
+        FLOOD_OPTION_rtsocket: /run/krate/user/%i.rtorrent.sock
+  exec:
+    pre:
+      - /bin/mkdir -p /home/%i/tmp/flood
+    start:
+      - /opt/%i/flood/flood
+      - --rundir
+      - /home/%i/.config/flood
+files:
+  service: /etc/systemd/system/flood@.service
+  config:
+    - /home/%i/.krate/applications/flood.env
+  database:
+    - /home/%i/.config/flood/db
+  proxy:
+    - /etc/caddy/softwares/%i.flood.caddy
+  binary:
+    - /opt/%i/flood/flood
+autogen:
+  - apikey
+  - default_port
+security:
+  network: true
+  filesystem:
+    read_write:
+      - /home/%i/.config/flood
+      - /home/%i/tmp/flood
+      - /home/%i/.krate/backups/flood
+      - /home/%i/.krate/applications
+    read_only:
+      - /opt/%i/flood
+      - /var/run/%i
+      - /run/%i

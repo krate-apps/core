@@ -1,0 +1,20 @@
+id: flood
+name: Flood
+description: Modern web UI for rTorrent (jesec/flood standalone binary, SCGI socket).
+links:
+  homepage: https://flood.js.org/
+  documentation: https://github.com/jesec/flood/wiki
+  source: https://github.com/jesec/flood
+  krate_docs: https://krate.github.io/docs/software/community/flood
+tier: free
+category: download
+install_mode: local
+password_constraints:
+  min_length: 8
+  max_length: 128
+  require_upper: false
+  require_digit: false
+autocomplete_options:
+  - -s
+ui_options:
+  subdomain: true
