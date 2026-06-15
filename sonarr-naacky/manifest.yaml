@@ -1,0 +1,75 @@
+id: sonarr-naacky
+multi_user: true
+runtime:
+  kind: systemd
+  service_template: sonarr-naacky@.service
+dependencies:
+  apt:
+    common:
+      packages: ca-certificates-mono mono-devel mediainfo sqlite3
+install:
+  layout:
+    backup_dir: /home/%i/.krate/backups/sonarr-naacky
+    data_dir: /home/%i/.config/sonarr-naacky
+    install_dir: /opt/%i/sonarr-naacky
+    temp_dir: /home/%i/tmp/sonarr-naacky
+  release:
+    asset: linux-x64.tar.gz
+    update_branch:
+      stable: develop
+      prerelease: develop
+  executable:
+    - /opt/%i/sonarr-naacky/Sonarr
+systemd:
+  unit:
+    TimeoutStopSec: 20
+    Type: simple
+  environment:
+    inline:
+      TMPDIR: /home/%i/tmp/sonarr-naacky
+    file:
+      path: /home/%i/.krate/applications/sonarr-naacky.env
+      mode: "0600"
+      variables:
+        SONARR__SERVER__BINDADDRESS: 127.0.0.1
+        SONARR__SERVER__PORT: "{default_port}"
+        SONARR__SERVER__URLBASE: "{url_base}"
+        SONARR__SERVER__ENABLESSL: "False"
+        SONARR__SERVER__SSLPORT: "{ssl_port}"
+        SONARR__AUTH__APIKEY: "{apikey}"
+        SONARR__UPDATE__BRANCH: "develop"
+        SONARR__APP__LAUNCHBROWSER: "False"
+        SONARR__APP__INSTANCENAME: "{instance_name}"
+        SONARR__LOG__ANALYTICSENABLED: "False"
+        SONARR__APP__THEME: dark
+  exec:
+    pre:
+      - /bin/mkdir -p /home/%i/tmp/sonarr-naacky
+    start:
+      - /opt/%i/sonarr-naacky/Sonarr
+      - -nobrowser
+      - -data=/home/%i/.config/sonarr-naacky
+files:
+  service: /etc/systemd/system/sonarr-naacky@.service
+  config:
+    - /home/%i/.krate/applications/sonarr-naacky.env
+  database:
+    - /home/%i/.config/sonarr-naacky/sonarr.db
+  proxy:
+    - /etc/caddy/softwares/%i.sonarr-naacky.caddy
+  binary:
+    - /opt/%i/sonarr-naacky/Sonarr
+autogen:
+  - apikey
+  - default_port
+  - ssl_port
+security:
+  network: true
+  filesystem:
+    read_write:
+      - /home/%i/.config/sonarr-naacky
+      - /home/%i/tmp/sonarr-naacky
+      - /home/%i/.krate/backups/sonarr-naacky
+      - /home/%i/.krate/applications
+    read_only:
+      - /opt/%i/sonarr-naacky

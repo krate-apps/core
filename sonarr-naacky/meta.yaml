@@ -1,0 +1,20 @@
+id: sonarr-naacky
+name: Sonarr (Snaacky)
+description: "Anime-focused fork of Sonarr v4 develop for CJK media."
+links:
+  homepage: https://github.com/Snaacky/Sonarr
+  documentation: https://github.com/Snaacky/Sonarr#readme
+  source: https://github.com/Snaacky/Sonarr
+  krate_docs: https://krate.github.io/docs/software/official/sonarr-naacky
+tier: free
+category: media
+install_mode: local
+password_constraints:
+  min_length: 8
+  max_length: 128
+  require_upper: false
+  require_digit: false
+autocomplete_options:
+  - -s
+ui_options:
+  subdomain: true
