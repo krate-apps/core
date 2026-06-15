@@ -1,0 +1,88 @@
+id: rtorrent
+multi_user: true
+runtime:
+  kind: systemd
+  service_template: rtorrent@.service
+dependencies:
+  apt:
+    common:
+      packages: strace tmux libtinyxml2-dev
+install:
+  layout:
+    install_dir: /opt/%i/rtorrent
+    backup_dir: /home/%i/.krate/backups/rtorrent
+    config_dir: /home/%i/.config/rtorrent
+    data_dir: /home/%i/download-clients/rtorrent
+    downloads_dir: /home/%i/download-clients/rtorrent/downloads
+    torrents_dir: /home/%i/download-clients/rtorrent/torrents
+    incomplete_dir: /home/%i/download-clients/rtorrent/incomplete
+    logs_dir: /home/%i/download-clients/rtorrent/logs
+    session_dir: /home/%i/download-clients/rtorrent/.sessions
+    watch_dir: /home/%i/download-clients/rtorrent/.watch
+    watch_load_dir: /home/%i/download-clients/rtorrent/.watch/load
+    watch_start_dir: /home/%i/download-clients/rtorrent/.watch/start
+    temp_dir: /home/%i/tmp/rtorrent
+  executable:
+    - /home/%i/.krate/active/rtorrent/usr/bin/rtorrent
+systemd:
+  unit:
+    Type: forking
+    KillMode: control-group
+    WorkingDirectory: /home/%i/
+    Restart: on-failure
+    RestartSec: 5
+    TimeoutStopSec: 30
+    LimitNOFILE: "8192"
+    Group: krate
+    UMask: "0007"
+    SupplementaryGroups: krate
+  environment:
+    inline:
+      TERM: xterm
+      PATH: /home/%i/.local/bin:/home/%i/.krate/active/rtorrent/usr/bin:/usr/local/bin:/usr/bin:/bin
+  exec:
+    pre:
+      - +/bin/sh -c '/opt/Krate/share/applications/community/rtorrent/bin/rtorrent-pre.sh %i'
+    start:
+      - /usr/bin/tmux
+      - -f
+      - /dev/null
+      - new-session
+      - -d
+      - -s
+      - rtorrent-%i
+      - --
+      - /home/%i/.krate/active/rtorrent/usr/bin/rtorrent
+      - -n
+      - -o
+      - import=/home/%i/.config/rtorrent/.rtorrent.rc
+    stop:
+      - /usr/bin/tmux
+      - kill-session
+      - -t
+      - rtorrent-%i
+files:
+  service: /etc/systemd/system/rtorrent@.service
+  config:
+    - /home/%i/.config/rtorrent/.rtorrent.rc
+  proxy:
+    - /etc/caddy/softwares/%i.rtorrent.caddy
+  binary:
+    - /home/%i/.krate/active/rtorrent/usr/bin/rtorrent
+autogen:
+  - port_range
+security:
+  network: true
+  filesystem:
+    read_write:
+      - /home/%i/download-clients/rtorrent
+      - /home/%i/.krate/backups/rtorrent
+      - /home/%i/tmp/rtorrent
+      - /home/%i/.config/rtorrent
+      - /run/krate/user
+      - /var/run/%i
+    read_only:
+      - /home/%i/.krate/active/rtorrent
+      - /opt/Krate/vendor
+      - /etc/caddy/auth/local/users.json
+      - /etc/caddy/auth/users.json

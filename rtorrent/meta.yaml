@@ -1,0 +1,14 @@
+id: rtorrent
+name: rTorrent
+description: "rTorrent vendor binary and rtorrent@<user> service. Config ~/.config/rtorrent/.rtorrent.rc. tmux session rtorrent-<user>, SCGI /run/krate/user/<user>.rtorrent.sock. autogen port_range."
+links:
+  homepage: http://rakshasa.github.io/rtorrent/
+  documentation: http://rakshasa.github.io/rtorrent/
+  source: https://github.com/rakshasa/rtorrent
+  krate_docs: https://krate.github.io/docs/software/official/rtorrent
+tier: free
+category: download
+install_mode: local
+autocomplete_options:
+  - -b
+ui_options: {}
