@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+# @file applications/community/byparr/byparr
+# @project KRATE
+# @description Byparr — app handler (clone Git, uv sync, Camoufox + Playwright Firefox, systemd).
+# FastAPI + Camoufox/Playwright (FlareSolverr-compatible /v1). Pas de conteneur Docker.
+# shellcheck disable=SC2154
+set -euo pipefail
+
+_add() {
+	zenfw::workspace::uv::install
+	zenfw::git::clone "${app_repo}" "${install_dir}" "main"
+	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
+	_byparr_provision_runtime
+	zenfw::service::generate "${app_name}" true false
+	_config
+	_verify
+}
+
+_config() {
+	local default_port
+	default_port="${service_default_port}"
+	zenfw::fs::env::set "${env_file}" "HOST" "127.0.0.1"
+	zenfw::fs::env::set "${env_file}" "PORT" "${default_port}"
+	zenfw::fs::env::set "${env_file}" "LOG_LEVEL" "INFO"
+	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
+	zenfw::service::manage restart "${service_unit}"
+}
+
+_update() {
+	zenfw::service::manage stop "${service_unit}"
+	rm -rf "${install_dir:?}"/* "${install_dir:?}"/.[!.]* 2> /dev/null || true
+	zenfw::git::clone "${app_repo}" "${install_dir}" "main"
+	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
+	_byparr_provision_runtime
+	zenfw::service::manage restart "${service_unit}"
+	_verify
+	zenfw::software::backup::create "${app_name}" "user" "${install_dir}" "${username}"
+}
+
+# Run as the instance user; uv resolves the project venv (downloads Python 3.14 if needed),
+# then Playwright/Camoufox cache their browser bundles under user HOME (~/.cache).
+_byparr_provision_runtime() {
+	runuser -u "${username}" -- bash -c "cd '${install_dir}' && uv sync --frozen" || {
+		printf '[%s] uv sync failed in %s\n' "${app_name}" "${install_dir}" >&2
+		return 1
+	}
+	runuser -u "${username}" -- bash -c "cd '${install_dir}' && .venv/bin/python -m playwright install firefox" || {
+		printf '[%s] playwright firefox install failed\n' "${app_name}" >&2
+		return 1
+	}
+	runuser -u "${username}" -- bash -c "cd '${install_dir}' && .venv/bin/python -m camoufox fetch" || {
+		printf '[%s] camoufox fetch failed\n' "${app_name}" >&2
+		return 1
+	}
+}
+
+# After restart: wait for FastAPI to answer on /docs, then exercise /v1 against a Cloudflare-protected URL.
+_verify() {
+	local port base resp i
+	port="$(printf '%s\n' "${service_default_port:-}" | tr -cd '0-9')"
+	[[ -n "${port}" && "${port}" != "0" ]] || {
+		printf '[%s] probe: missing listen port after autogen\n' "${app_name}" >&2
+		return 1
+	}
+	base="http://127.0.0.1:${port}"
+	for ((i = 1; i <= 120; i++)); do
+		if curl -fsS --max-time 5 "${base}/docs" > /dev/null 2>&1; then
+			break
+		fi
+		sleep 1
+		[[ "${i}" -eq 120 ]] || continue
+		printf '[%s] probe: FastAPI did not become ready on %s/docs\n' "${app_name}" "${base}" >&2
+		return 1
+	done
+	resp="$(curl -fsS --max-time 180 -X POST "${base}/v1" \
+		-H 'Content-Type: application/json' \
+		--data-raw '{"url":"https://www.hetzner.com","max_timeout":120}')"
+	if ! grep -Eq '"status"[[:space:]]*:[[:space:]]*"?(ok|200)"?' <<< "${resp}"; then
+		printf '[%s] probe: /v1 did not return ok for hetzner.com (check Camoufox/Firefox)\n' "${app_name}" >&2
+		printf '%s\n' "${resp}" | head -c 1200 >&2
+		printf '\n' >&2
+		return 1
+	fi
+}

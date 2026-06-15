@@ -1,0 +1,16 @@
+id: byparr
+name: Byparr
+description: "Successeur communautaire de FlareSolverr basé sur Camoufox /
+  Playwright (FastAPI). KRATE clone le dépôt Git, gère le venv via uv et
+  expose l'API /v1 derrière systemd — sans Docker."
+links:
+  homepage: https://github.com/ThePhaseless/Byparr
+  documentation: https://github.com/ThePhaseless/Byparr#readme
+  source: https://github.com/ThePhaseless/Byparr
+  krate_docs: https://krate.github.io/docs/software/community/byparr
+tier: free
+category: indexers
+install_mode: local
+autocomplete_options: []
+ui_options:
+  subdomain: false
