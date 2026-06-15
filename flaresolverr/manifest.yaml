@@ -1,0 +1,76 @@
+id: flaresolverr
+multi_user: true
+runtime:
+  kind: systemd
+  service_template: flaresolverr@.service
+dependencies:
+  apt:
+    common:
+      packages: libdbus-glib-1-2 libxtst6 libx11-xcb1 libgtk-3-0 libasound2
+        default-jre-headless xvfb xauth chromium
+install:
+  layout:
+    install_dir: /opt/%i/flaresolverr
+    backup_dir: /home/%i/.krate/backups/flaresolverr
+    temp_dir: /home/%i/tmp/flaresolverr
+  executable:
+    - /opt/%i/flaresolverr/flaresolverr
+  release:
+    asset: flaresolverr_linux_x64.tar.gz
+systemd:
+  unit:
+    TimeoutStopSec: 30
+    Type: simple
+    Restart: always
+    RestartSec: "5"
+    SyslogIdentifier: flaresolverr@%i
+    WorkingDirectory: /opt/%i/flaresolverr
+  environment:
+    inline:
+      TMPDIR: /home/%i/tmp/flaresolverr
+      HOME: /home/%i
+      # systemd: prefer xvfb-run ExecStart over FlareSolverr's xvfbwrapper when HEADLESS=true (default).
+      HEADLESS: "false"
+    file:
+      path: /home/%i/.krate/applications/flaresolverr.env
+      mode: "0600"
+      variables:
+        HOST: 127.0.0.1
+        PORT: "{default_port}"
+        LOG_LEVEL: info
+        LOG_HTML: "false"
+        CAPTCHA_SOLVER: none
+        BROWSER_TIMEOUT: "40000"
+        # Smoke test at process start only — keep a fast page; heavy CF checks run from handler _verify (request.get).
+        TEST_URL: https://www.google.com
+        LANG: en_US
+  exec:
+    pre:
+      - /bin/mkdir -p /home/%i/tmp/flaresolverr /home/%i/.config/chromium /home/%i/.cache/chromium /home/%i/.local/share/undetected_chromedriver
+    start:
+      - /usr/bin/xvfb-run
+      - -a
+      - --
+      - /opt/%i/flaresolverr/flaresolverr
+files:
+  service: /etc/systemd/system/flaresolverr@.service
+  config:
+    - /home/%i/.krate/applications/flaresolverr.env
+  binary:
+    - /opt/%i/flaresolverr/flaresolverr
+    # KRATE wrapper: scrubs LD_LIBRARY_PATH/LD_PRELOAD before exec'ing /usr/bin/chromium.
+    - /opt/%i/flaresolverr/_internal/chrome/chrome
+autogen:
+  - default_port
+security:
+  network: true
+  filesystem:
+    read_write:
+      - /home/%i/tmp/flaresolverr
+      - /home/%i/.config/chromium
+      - /home/%i/.cache/chromium
+      - /home/%i/.local/share/undetected_chromedriver
+      - /home/%i/.krate/backups/flaresolverr
+      - /home/%i/.krate/applications
+    read_only:
+      - /opt/%i/flaresolverr
