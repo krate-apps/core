@@ -1,0 +1,26 @@
+id: emby
+name: Emby
+description: Personal media server with apps for TV, mobile, and the web (Emby Premier optional).
+source: https://github.com/MediaBrowser/Emby.Releases
+links:
+  homepage: https://emby.media/
+  documentation: https://emby.media/support/articles/Quick-Start.html
+  source: https://github.com/MediaBrowser/Emby.Releases
+  krate_docs: https://krate.github.io/docs/software/community/emby
+tier: free
+category: streaming
+install_mode: local
+password_constraints:
+  min_length: 8
+  max_length: 128
+  require_upper: false
+  require_digit: false
+autocomplete_options:
+  - -b
+  - -s
+  - --emby-premiere-key
+ui_options:
+  subdomain: true
+  branches:
+    - main
+    - beta

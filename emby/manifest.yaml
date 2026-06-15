@@ -1,0 +1,60 @@
+id: emby
+multi_user: true
+runtime:
+  kind: systemd
+  service_template: emby@.service
+dependencies:
+  apt:
+    common:
+      packages: dpkg libfontconfig1 libfreetype6 curl ca-certificates
+install:
+  layout:
+    install_dir: /opt/%i/emby
+    data_dir: /home/%i/.config/emby-server
+    backup_dir: /home/%i/.krate/backups/emby
+    temp_dir: /home/%i/tmp/emby
+  release:
+    asset: emby-server-deb_
+  executable:
+    - /opt/%i/emby/bin/emby-server
+systemd:
+  unit:
+    Restart: on-failure
+    RestartSec: "5"
+    # Emby's two-phase startup exits 3 to request a restart into the real server instance.
+    RestartForceExitStatus: "3"
+    TimeoutStopSec: 20
+    Type: simple
+    LimitNOFILE: "65536"
+    WorkingDirectory: /opt/%i/emby
+  environment:
+    file:
+      path: /etc/%i-emby-server.conf
+      mode: "0644"
+      variables:
+        EMBY_DATA: /home/%i/.config/emby-server
+  exec:
+    start:
+      - /opt/%i/emby/bin/emby-server
+files:
+  service: /etc/systemd/system/emby@.service
+  config:
+    - /etc/%i-emby-server.conf
+    - /home/%i/.config/emby-server/config/system.xml
+  database:
+    - /home/%i/.config/emby-server/data/library.db
+  proxy:
+    - /etc/caddy/softwares/%i.emby.caddy
+  binary:
+    - /opt/%i/emby/bin/emby-server
+autogen:
+  - default_port
+security:
+  network: true
+  filesystem:
+    read_write:
+      - /home/%i/.config/emby-server
+      - /home/%i/tmp/emby
+      - /home/%i/.krate/backups/emby
+    read_only:
+      - /opt/%i/emby
