@@ -1,0 +1,24 @@
+id: lidarr
+name: Lidarr
+description: Lidarr application.
+links:
+  homepage: https://lidarr.audio/
+  documentation: https://wiki.servarr.com/Lidarr
+  source: https://github.com/Lidarr/Lidarr
+  krate_docs: https://krate.github.io/docs/software/official/lidarr
+tier: free
+category: media
+install_mode: local
+password_constraints:
+  min_length: 8
+  max_length: 128
+  require_upper: false
+  require_digit: false
+autocomplete_options:
+  - -b
+  - -s
+ui_options:
+  subdomain: true
+  branches:
+    - main
+    - beta
