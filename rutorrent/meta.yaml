@@ -1,0 +1,13 @@
+id: rutorrent
+name: ruTorrent
+description: "Web UI for rTorrent (PHP). Requires rtorrent@<user> first. SCGI unix:///run/krate/user/{user}.rtorrent.sock. URL /{user}/rutorrent. App: /srv/rutorrent/app; state: /var/lib/krate/rutorrent/{user}. Optional plugins may need apt packages (ffmpeg, mediainfo, sox) — not installed by default."
+links:
+  homepage: https://rutorrent.video/
+  documentation: https://github.com/Novik/ruTorrent/wiki
+  source: https://github.com/Novik/ruTorrent
+  krate_docs: https://krate.github.io/docs/software/community/rutorrent
+tier: free
+category: download
+install_mode: local
+autocomplete_options: []
+ui_options: {}
