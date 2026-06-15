@@ -1,0 +1,23 @@
+id: nzbget
+name: NZBGet
+description: Efficient Usenet downloader with a built-in web interface.
+links:
+  homepage: https://nzbget.com/
+  documentation: https://nzbget.com/documentation/
+  source: https://github.com/nzbgetcom/nzbget
+  krate_docs: https://krate.github.io/docs/software/official/nzbget
+tier: free
+category: download
+install_mode: local
+password_constraints:
+  min_length: 8
+  max_length: 128
+  require_upper: false
+  require_digit: false
+autocomplete_options:
+  - -b
+ui_options:
+  subdomain: true
+  branches:
+    - main
+    - beta
