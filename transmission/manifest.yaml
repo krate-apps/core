@@ -1,0 +1,62 @@
+id: transmission
+multi_user: true
+runtime:
+  kind: systemd
+  service_template: transmission@.service
+dependencies:
+  apt:
+    common:
+      packages: curl wget ca-certificates libminiupnpc-dev libnatpmp-dev
+install:
+  layout:
+    install_dir: /opt/%i/transmission
+    backup_dir: /home/%i/.krate/backups/transmission
+    config_dir: /home/%i/.config/transmission
+    data_dir: /home/%i/download-clients/transmission
+    downloads_dir: /home/%i/download-clients/transmission/downloads
+    incomplete_dir: /home/%i/download-clients/transmission/incomplete
+    logs_dir: /home/%i/download-clients/transmission/logs
+  executable:
+    - /home/%i/.krate/active/transmission-daemon/usr/bin/transmission-daemon
+systemd:
+  unit:
+    Type: simple
+    Restart: always
+    RestartSec: "5"
+    WorkingDirectory: /home/%i
+  environment:
+    file:
+      path: /home/%i/.krate/applications/transmission.env
+      mode: "0600"
+      variables:
+        RPC_PORT: "{default_port}"
+        TRANSMISSION_WEB_HOME: /home/%i/.krate/active/transmission-daemon/usr/share/transmission
+  exec:
+    start:
+      - /home/%i/.krate/active/transmission-daemon/usr/bin/transmission-daemon
+      - -f
+      - --config-dir
+      - /home/%i/.config/transmission
+files:
+  service: /etc/systemd/system/transmission@.service
+  config:
+    - /home/%i/.krate/applications/transmission.env
+    - /home/%i/.config/transmission/settings.json
+  proxy:
+    - /etc/caddy/softwares/%i.transmission.caddy
+  binary:
+    - /home/%i/.krate/active/transmission-daemon/usr/bin/transmission-daemon
+autogen:
+  - default_port
+security:
+  network: true
+  filesystem:
+    read_write:
+      - /home/%i/.config/transmission
+      - /home/%i/download-clients/transmission
+      - /home/%i/.krate/backups/transmission
+      - /home/%i/.krate/applications
+    read_only:
+      - /home/%i/.krate/active/transmission-daemon
+      - /etc/caddy/auth/local/users.json
+      - /etc/caddy/auth/users.json
