@@ -1,0 +1,24 @@
+id: tautulli
+name: Tautulli
+description: Tautulli application.
+links:
+  homepage: https://tautulli.com/
+  documentation: https://github.com/Tautulli/Tautulli/wiki
+  source: https://github.com/Tautulli/Tautulli
+  krate_docs: https://krate.github.io/docs/software/community/tautulli
+tier: free
+category: monitoring
+install_mode: local
+password_constraints:
+  min_length: 8
+  max_length: 128
+  require_upper: false
+  require_digit: false
+autocomplete_options:
+  - -b
+  - -s
+ui_options:
+  subdomain: true
+  branches:
+    - master
+    - nightly

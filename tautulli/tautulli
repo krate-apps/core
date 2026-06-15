@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# @file applications/apps-community/tautulli/tautulli
+# @project KRATE
+# @description Tautulli — app handler (Python source via git release, INI config, no Servarr API).
+# shellcheck disable=SC2154
+set -euo pipefail
+
+_add() {
+	zenfw::git::release::get "${install_dir}" "${app_repo}" "${is_prerelease}" "source"
+	zenfw::workspace::venv::create "${install_dir}" "${username}" true
+	zenfw::service::generate "${app_name}" true false
+	_config
+}
+
+_config() {
+	local apikey default_port config_file
+	mkdir -p "${data_dir}/backups" "${data_dir}/cache" "${data_dir}/exports" "${data_dir}/logs" "${data_dir}/newsletters"
+	zenfw::permission::read_exec::set "${data_dir}" "${username}" "${username}"
+	apikey="${service_apikey}"
+	default_port="${service_default_port}"
+	config_file="${data_dir}/config.ini"
+	cat > "${config_file}" <<-EOF
+		[General]
+		first_run_complete = 1
+		check_github = 0
+		launch_browser = 0
+		api_enabled = 1
+		api_key = ${apikey}
+		http_host = 127.0.0.1
+		http_port = ${default_port}
+		http_root = ${url_base}
+		http_proxy = 1
+		http_username = ${username}
+		http_password = ${user_password}
+		http_hash_password = 1
+		http_hashed_password = 0
+		backup_dir = ${data_dir}/backups
+		cache_dir = ${data_dir}/cache
+		export_dir = ${data_dir}/exports
+		log_dir = ${data_dir}/logs
+		newsletter_dir = ${data_dir}/newsletters
+	EOF
+	zenfw::permission::read_exec::set "${data_dir}" "${username}" "${username}"
+	zenfw::permission::set "${config_file}" "640" "700" "${username}" "${username}"
+	zenfw::vault::save "${username}.${app_name}" "${user_password}" application
+	zenfw::proxy::generate "${app_name}" "${default_port}" "${url_base}" true "${username}"
+	zenfw::service::manage restart "${service_unit}"
+}
+
+_update() {
+	zenfw::service::manage stop "${service_unit}"
+	zenfw::git::release::get "${install_dir}" "${app_repo}" "${is_prerelease}" "source"
+	zenfw::workspace::venv::create "${install_dir}" "${username}" true
+	zenfw::service::manage restart "${service_unit}"
+	zenfw::software::backup::create "${app_name}" "user" "${install_dir}" "${username}"
+}
