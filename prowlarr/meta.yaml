@@ -1,0 +1,24 @@
+id: prowlarr
+name: Prowlarr
+description: Prowlarr application.
+links:
+  homepage: https://prowlarr.com/
+  documentation: https://wiki.servarr.com/Prowlarr
+  source: https://github.com/Prowlarr/Prowlarr
+  krate_docs: https://krate.github.io/docs/software/official/prowlarr
+tier: free
+category: indexers
+install_mode: local
+password_constraints:
+  min_length: 8
+  max_length: 128
+  require_upper: false
+  require_digit: false
+autocomplete_options:
+  - -b
+  - -s
+ui_options:
+  subdomain: true
+  branches:
+    - main
+    - beta
