@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+# @file applications/community/requestrr/requestrr
+# @project KRATE
+# @description Requestrr — app handler (.NET self-contained, settings.json + POST /api/auth/register).
+# Upstream CLI: -c/--config-dir, -p/--port, -u/--base-url. Optional env: REQUESTRR_PORT, REQUESTRR_BASE_URL (see Program.cs).
+# We ship port/BaseUrl in settings.json; no per-app .env file is required.
+# shellcheck disable=SC2154
+set -euo pipefail
+
+_add() {
+	zenfw::git::release::get "${install_dir}" "${app_repo}" "${is_prerelease}" "$(app::cfg install.release.asset)"
+	zenfw::service::generate "${app_name}" true false
+	_config
+	_secure
+}
+
+_config() {
+	local default_port settings_file template tmp merged_json pk
+	mkdir -p "${data_dir}"
+	zenfw::permission::read_exec::set "${data_dir}" "${username}" "${username}"
+	default_port="${service_default_port}"
+	settings_file="${data_dir}/settings.json"
+	template="${install_dir}/SettingsTemplate.json"
+	[[ -f "${template}" ]] || {
+		printf '[%s] missing %s (extracted release layout)\n' "${app_name}" "${template}" >&2
+		return 1
+	}
+	tmp="$(mktemp)"
+	trap 'rm -f "${tmp}"' RETURN
+	pk="$(uuidgen)"
+	sed "s/\\[PRIVATEKEY\\]/${pk}/" "${template}" > "${tmp}"
+	merged_json="$(zenfw::json::merge "$(<"${tmp}")" \
+		"Port" "${default_port}" \
+		"BaseUrl" "${url_base}")"
+	zenfw::json::validate "${merged_json}" >/dev/null
+	printf '%s\n' "${merged_json}" > "${settings_file}"
+	zenfw::permission::read_exec::set "${data_dir}" "${username}" "${username}"
+	zenfw::permission::private::set "${settings_file}" "${username}" "${username}"
+	zenfw::vault::save "${username}.${app_name}" "${user_password}" application
+	zenfw::proxy::generate "${app_name}" "${default_port}" "${url_base}" true "${username}"
+	zenfw::service::manage restart "${service_unit}"
+}
+
+_update() {
+	zenfw::service::manage stop "${service_unit}"
+	zenfw::git::release::get "${install_dir}" "${app_repo}" "${is_prerelease}" "$(app::cfg install.release.asset)"
+	zenfw::service::manage restart "${service_unit}"
+	zenfw::software::backup::create "${app_name}" "user" "${install_dir}" "${username}"
+}
+
+# POST /api/auth/register on first boot; must run before UI login. Hit loopback to skip Caddy auth.
+_secure() {
+	local listen_port url payload response
+	listen_port="$(printf '%s\n' "${service_default_port:-}" | tr -cd '0-9')"
+	[[ -n "${listen_port}" ]] || listen_port="$(_requestrr_port_from_settings)"
+	url="http://127.0.0.1:${listen_port}${url_base}"
+	zenfw::request::wait::ping "${url}" 60 1000 false
+	payload="$(printf '{"Username":"%s","Password":"%s","PasswordConfirmation":"%s"}' \
+		"${username}" "${user_password}" "${user_password}")"
+	response="$(curl -fsS -X POST "${url}/api/auth/register" \
+		-H "Content-Type: application/json" \
+		-H "Accept: application/json" \
+		-d "${payload}" 2>/dev/null || true)"
+	if [[ "${response}" != *'"token"'* ]]; then
+		printf '[%s] /api/auth/register did not return a token — set credentials in the web UI\n' "${app_name}" >&2
+		return 0
+	fi
+}
+
+_requestrr_port_from_settings() {
+	grep -oE '"Port"[[:space:]]*:[[:space:]]*[0-9]+' "${data_dir}/settings.json" | grep -oE '[0-9]+$' | head -1
+}

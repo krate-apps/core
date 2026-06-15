@@ -1,0 +1,62 @@
+id: requestrr
+multi_user: true
+runtime:
+  kind: systemd
+  service_template: requestrr@.service
+dependencies:
+  apt:
+    common:
+      packages: sqlite3 gawk
+install:
+  layout:
+    install_dir: /opt/%i/requestrr
+    data_dir: /home/%i/.config/requestrr
+    backup_dir: /home/%i/.krate/backups/requestrr
+    temp_dir: /home/%i/tmp/requestrr
+  release:
+    asset: linux-x64.tar.gz
+  executable:
+    - /opt/%i/requestrr/Requestrr.WebApi
+systemd:
+  unit:
+    KillMode: process
+    TimeoutStopSec: 20
+    Type: simple
+    WorkingDirectory: /opt/%i/requestrr
+    SyslogIdentifier: requestrr
+    Restart: always
+    RestartSec: 5
+  # Runtime only (.NET bundle extract); Requestrr itself is configured via CLI (-c/-p/-u) or settings.json.
+  # Upstream also honors REQUESTRR_PORT / REQUESTRR_BASE_URL if you add them via a drop-in — not required here.
+  environment:
+    inline:
+      TMPDIR: /home/%i/tmp/requestrr
+      DOTNET_BUNDLE_EXTRACT_BASE_DIR: /home/%i/tmp/requestrr
+  exec:
+    pre:
+      - /bin/mkdir -p /home/%i/tmp/requestrr
+    start:
+      - /opt/%i/requestrr/Requestrr.WebApi
+      - --config-dir
+      - /home/%i/.config/requestrr
+files:
+  service: /etc/systemd/system/requestrr@.service
+  config:
+    - /home/%i/.config/requestrr/settings.json
+  database:
+    - /home/%i/.config/requestrr/Requestrr.db
+  proxy:
+    - /etc/caddy/softwares/%i.requestrr.caddy
+  binary:
+    - /opt/%i/requestrr/Requestrr.WebApi
+autogen:
+  - default_port
+security:
+  network: true
+  filesystem:
+    read_write:
+      - /home/%i/.config/requestrr
+      - /home/%i/tmp/requestrr
+      - /home/%i/.krate/backups/requestrr
+    read_only:
+      - /opt/%i/requestrr

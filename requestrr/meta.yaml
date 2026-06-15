@@ -1,0 +1,20 @@
+id: requestrr
+name: Requestrr
+description: Requestrr application.
+links:
+  homepage: https://github.com/thomst08/requestrr/wiki
+  documentation: https://github.com/thomst08/requestrr/wiki
+  source: https://github.com/thomst08/requestrr
+  krate_docs: https://krate.github.io/docs/software/community/requestrr
+tier: free
+category: workflow
+install_mode: local
+password_constraints:
+  min_length: 8
+  max_length: 128
+  require_upper: false
+  require_digit: false
+autocomplete_options:
+  - -s
+ui_options:
+  subdomain: true
