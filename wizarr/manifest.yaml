@@ -1,0 +1,73 @@
+id: wizarr
+multi_user: true
+runtime:
+  kind: systemd
+  service_template: wizarr@.service
+dependencies:
+  apt:
+    common:
+      packages: git curl ca-certificates
+install:
+  release:
+    update_branch:
+      stable: main
+      prerelease: beta
+  layout:
+    backup_dir: /home/%i/.krate/backups/wizarr
+    data_dir: /home/%i/.config/wizarr
+    install_dir: /opt/%i/wizarr
+    temp_dir: /home/%i/tmp/wizarr
+  executable:
+    - /usr/local/bin/pnpm
+    - /opt/%i/wizarr/.venv/bin/gunicorn
+systemd:
+  unit:
+    TimeoutStopSec: 60
+    Type: simple
+    Restart: on-failure
+    RestartSec: "10"
+    WorkingDirectory: /opt/%i/wizarr
+  environment:
+    inline:
+      TMPDIR: /home/%i/tmp/wizarr
+      PYTHONUNBUFFERED: "1"
+      FLASK_ENV: production
+    file:
+      path: /home/%i/.krate/applications/wizarr.env
+      mode: "0600"
+  exec:
+    pre:
+      - /bin/mkdir -p /home/%i/tmp/wizarr /home/%i/.config/wizarr/database
+    start:
+      - /opt/%i/wizarr/.venv/bin/gunicorn
+      - --umask
+      - "007"
+      - run:app
+files:
+  service: /etc/systemd/system/wizarr@.service
+  config:
+    - /home/%i/.krate/applications/wizarr.env
+  database:
+    - /home/%i/.config/wizarr/database/database.db
+  proxy:
+    - /etc/caddy/softwares/%i.wizarr.caddy
+  binary:
+    - /usr/local/bin/pnpm
+    - /opt/%i/wizarr/.venv/bin/python
+    - /opt/%i/wizarr/.venv/bin/gunicorn
+autogen:
+  - default_port
+security:
+  network: true
+  filesystem:
+    read_write:
+      - /home/%i/.config/wizarr
+      - /home/%i/tmp/wizarr
+      - /home/%i/.krate/backups/wizarr
+      - /home/%i/.krate/applications
+      - /home/%i/.local/share/pnpm
+      - /home/%i/.cache
+      - /opt/%i/wizarr/.venv
+      - /opt/%i/wizarr/database
+    read_only:
+      - /opt/%i/wizarr

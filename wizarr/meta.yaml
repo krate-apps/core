@@ -1,0 +1,23 @@
+id: wizarr
+name: Wizarr
+description: "User invitation system for Plex, Jellyfin, Emby and related apps."
+links:
+  homepage: https://github.com/wizarrrr/wizarr
+  documentation: https://github.com/wizarrrr/wizarr#readme
+  source: https://github.com/wizarrrr/wizarr
+  krate_docs: https://krate.github.io/docs/software/official/wizarr
+tier: free
+category: streaming
+install_mode: local
+password_constraints:
+  min_length: 8
+  max_length: 128
+  require_upper: true
+  require_digit: true
+autocomplete_options:
+  - -b
+ui_options:
+  subdomain: true
+  branches:
+    - main
+    - beta

@@ -1,0 +1,216 @@
+--- a/app/__init__.py	2026-06-07 09:12:54.000000000 +0200
++++ b/app/__init__.py	2026-06-07 20:26:00.245914695 +0200
+@@ -1,6 +1,9 @@
+ import os
+ 
+ from flask import Flask
++from werkzeug.middleware.proxy_fix import ProxyFix
++
++from .krate_middleware import ForwardedPrefixMiddleware
+ 
+ from .config import DevelopmentConfig
+ from .error_handlers import register_error_handlers
+@@ -72,11 +75,13 @@
+         inject_app_version,
+         inject_plus_features,
+         inject_server_name,
++        inject_krate_url_base,
+     )
+ 
+     app.context_processor(inject_server_name)
+     app.context_processor(inject_plus_features)
+     app.context_processor(inject_app_version)
++    app.context_processor(inject_krate_url_base)
+     register_error_handlers(app)
+ 
+     # Register custom Jinja filters
+@@ -194,4 +199,7 @@
+         # Complete startup sequence
+         logger.complete()
+ 
++    app.wsgi_app = ForwardedPrefixMiddleware(app.wsgi_app)
++    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=0)
++
+     return app
+--- a/app/blueprints/auth/routes.py	2026-06-07 09:12:54.000000000 +0200
++++ b/app/blueprints/auth/routes.py	2026-06-07 20:26:00.246914724 +0200
+@@ -17,7 +17,7 @@
+ def login():
+     if os.getenv("DISABLE_BUILTIN_AUTH", "").lower() == "true":
+         login_user(AdminUser(), remember=bool(request.form.get("remember")))
+-        return redirect("/")
++        return redirect(url_for("public.root"))
+ 
+     # Pre-compute shared template context
+     from app.models import LDAPConfiguration, WebAuthnCredential
+@@ -48,7 +48,7 @@
+ 
+         success, message = handle_ldap_login(username, password)
+         if success:
+-            return redirect("/")
++            return redirect(url_for("public.root"))
+ 
+         return render_template(
+             "login.html",
+@@ -77,7 +77,7 @@
+             )
+         # No passkeys, allow direct login
+         login_user(account, remember=bool(request.form.get("remember")))
+-        return redirect("/")
++        return redirect(url_for("public.root"))
+ 
+     # fetch the stored admin credentials
+     admin_username = (
+@@ -94,7 +94,7 @@
+     ):
+         # Legacy single-admin (Settings table)
+         login_user(AdminUser(), remember=bool(request.form.get("remember")))
+-        return redirect("/")
++        return redirect(url_for("public.root"))
+ 
+     # Get IP address: prefer Cloudflare's header, then X-Forwarded-For, then remote_addr
+     client_ip = (
+@@ -156,7 +156,7 @@
+     session.pop("pending_2fa_remember", None)
+ 
+     login_user(account, remember=remember)
+-    return redirect("/")
++    return redirect(url_for("public.root"))
+ 
+ 
+ # ── Logout ────────────────────────────────────────────────────────────
+--- a/app/blueprints/public/routes.py	2026-06-07 09:12:54.000000000 +0200
++++ b/app/blueprints/public/routes.py	2026-06-07 20:26:00.246914724 +0200
+@@ -30,8 +30,8 @@
+     # check if admin_username exists
+     admin_setting = Settings.query.filter_by(key="admin_username").first()
+     if not admin_setting:
+-        return redirect("/setup/")  # installation wizard
+-    return redirect("/admin")
++        return redirect(url_for("setup.onboarding"))
++    return redirect(url_for("admin.dashboard"))
+ 
+ 
+ # ─── Favicon ─────────────────────────────────────────────────────────────────
+--- a/app/blueprints/wizard/routes.py	2026-06-07 09:12:54.000000000 +0200
++++ b/app/blueprints/wizard/routes.py	2026-06-07 20:26:00.247914752 +0200
+@@ -78,7 +78,7 @@
+             request.referrer and "/j/" in request.referrer
+         ):
+             return None
+-        return redirect("/")
++        return redirect(url_for("public.root"))
+     return None
+ 
+ 
+--- a/app/context_processors.py	2026-06-07 09:12:54.000000000 +0200
++++ b/app/context_processors.py	2026-06-07 20:26:00.245914695 +0200
+@@ -37,3 +37,13 @@
+ def inject_app_version():
+     """Inject current app version into template context for cache busting."""
+     return {"app_version": os.getenv("APP_VERSION", "dev")}
++
++
++def inject_krate_url_base():
++    """Krate subpath prefix for templates and client-side URL helpers."""
++    from flask import has_request_context, request
++
++    base = ""
++    if has_request_context():
++        base = (request.script_root or "").rstrip("/")
++    return {"krate_url_base": base}
+--- a/app/krate_middleware.py
++++ b/app/krate_middleware.py
+@@ -0,0 +1,18 @@
++"""Krate reverse-proxy helpers (X-Forwarded-Prefix + ProxyFix)."""
++
++
++class ForwardedPrefixMiddleware:
++    """Strip Krate subpath from PATH_INFO; Caddy sends the full public path upstream."""
++
++    def __init__(self, app):
++        self.app = app
++
++    def __call__(self, environ, start_response):
++        prefix = (environ.get("HTTP_X_FORWARDED_PREFIX") or "").rstrip("/")
++        if prefix:
++            path = environ.get("PATH_INFO") or ""
++            if path == prefix or path.startswith(prefix + "/"):
++                environ["SCRIPT_NAME"] = prefix
++                rest = path[len(prefix) :] or "/"
++                environ["PATH_INFO"] = rest
++        return self.app(environ, start_response)
+--- a/app/templates/base.html	2026-06-07 09:12:54.000000000 +0200
++++ b/app/templates/base.html	2026-06-07 20:26:00.248914781 +0200
+@@ -8,6 +8,17 @@
+           href="{{ url_for('static', filename='css/tiny-mde.min.css', v=app_version) }}" />
+     <link rel="stylesheet"
+           href="{{ url_for('static', filename='css/vendor/animate.min.css', v=app_version) }}">
++    <script>
++      window.WIZARR_URL_BASE = {{ krate_url_base|tojson }};
++      function wizarrUrl(p) {
++        if (typeof p !== "string") return p;
++        if (!p.startsWith("/")) return p;
++        const b = window.WIZARR_URL_BASE || "";
++        if (!b || p.startsWith(b + "/") || p === b) return p;
++        return b + p;
++      }
++      window.wizarrUrl = wizarrUrl;
++    </script>
+     <script src="{{ url_for('static', filename='js/vendor/htmx.min.js', v=app_version) }}"></script>
+     <script src="{{ url_for('static', filename='js/vendor/htmx-preload.min.js', v=app_version) }}"></script>
+     <link rel="icon"
+@@ -137,5 +148,27 @@
+     <script src="{{ url_for('static', filename='js/vendor/bowser.min.js', v=app_version) }}"></script>
+     <script src="{{ url_for('static', filename='js/vendor/inapp-spy.min.js', v=app_version) }}"></script>
+     <script src="{{ url_for('static', filename='js/in-app-escape.js', v=app_version) }}"></script>
++    <script>
++      document.body.addEventListener("htmx:configRequest", function (evt) {
++        if (evt.detail.path) evt.detail.path = wizarrUrl(evt.detail.path);
++      });
++      document.addEventListener("DOMContentLoaded", function () {
++        document.querySelectorAll('form[action^="/"]').forEach(function (form) {
++          const action = form.getAttribute("action");
++          if (action && action.charAt(0) === "/") form.action = wizarrUrl(action);
++        });
++      });
++      (function () {
++        const _fetch = window.fetch;
++        window.fetch = function (input, init) {
++          if (typeof input === "string") input = wizarrUrl(input);
++          else if (input instanceof Request) {
++            const url = wizarrUrl(input.url);
++            if (url !== input.url) input = new Request(url, input);
++          }
++          return _fetch.call(this, input, init);
++        };
++      })();
++    </script>
+   </body>
+ </html>
+--- a/app/templates/login.html	2026-06-07 09:12:54.000000000 +0200
++++ b/app/templates/login.html	2026-06-07 20:26:00.247914752 +0200
+@@ -177,7 +177,7 @@
+             // Handle back to login button
+             if (backToLoginBtn) {
+                 backToLoginBtn.addEventListener('click', function() {
+-                    window.location.href = '/login';
++                    window.location.href = wizarrUrl('/login');
+                 });
+             }
+ 
+@@ -257,12 +257,12 @@
+                                     }
+                                 });
+                                 if (completeLoginResponse.ok) {
+-                                    window.location.href = '/';
++                                    window.location.href = wizarrUrl('/');
+                                 } else {
+                                     throw new Error('{{ _("Failed to complete 2FA login") }}');
+                                 }
+                             } else {
+-                                window.location.href = result.redirect;
++                                window.location.href = wizarrUrl(result.redirect);
+                             }
+                         } else {
+                             throw new Error('{{ _("Authentication failed") }}');

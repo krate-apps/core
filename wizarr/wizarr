@@ -1,0 +1,139 @@
+#!/usr/bin/env bash
+# @file applications/community/wizarr/wizarr
+# @project KRATE
+# @description Wizarr — git clone (main only), uv sync, subpath patch (ProxyFix + htmx), gunicorn.
+# shellcheck disable=SC2154
+set -euo pipefail
+
+_add() {
+	rm -rf "${install_dir:?}" 2>/dev/null || true
+	mkdir -p "${install_dir}"
+	_wizarr_clone
+	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
+	_wizarr_provision
+	_config
+	_secure
+}
+
+_config() {
+	local default_port
+	mkdir -p "${data_dir}/database"
+	zenfw::permission::read_exec::set "${data_dir}" "${username}" "${username}"
+	rm -rf "${install_dir}/database"
+	ln -sfn "${data_dir}/database" "${install_dir}/database"
+	default_port="${service_default_port}"
+	default_port="${default_port//[^0-9]/}"
+	: "${default_port:?wizarr: missing default_port from lifecycle autogen}"
+	zenfw::fs::env::set "${env_file}" "FLASK_ENV" "production"
+	zenfw::fs::env::set "${env_file}" "HOST" "127.0.0.1"
+	zenfw::fs::env::set "${env_file}" "PORT" "${default_port}"
+	zenfw::fs::env::set "${env_file}" "GUNICORN_CMD_ARGS" "--bind 127.0.0.1:${default_port}"
+	_wizarr_db_upgrade
+	zenfw::proxy::generate "${app_name}" "${default_port}" "${url_base}" true "${username}"
+	zenfw::service::generate "${app_name}" false false
+	zenfw::service::manage start "${service_unit}" 120
+}
+
+_secure() {
+	local default_port loopback_url admin_script="${app_dir}/bin/create-admin.py"
+	[[ -n "${user_password:-}" ]] || return 0
+	default_port="${service_default_port:-}"
+	default_port="${default_port//[^0-9]/}"
+	[[ -n "${default_port}" && "${default_port}" != "0" ]] || return 0
+	[[ -f "${admin_script}" ]] || {
+		printf '[%s] missing %s\n' "${app_name}" "${admin_script}" >&2
+		return 1
+	}
+	loopback_url="http://127.0.0.1:${default_port}/"
+	zenfw::request::wait::ping "${loopback_url}" 120 1000 true
+	if ! runuser -u "${username}" -- env \
+		WIZARR_KRATE_USERNAME="${username}" \
+		WIZARR_KRATE_PASSWORD="${user_password}" \
+		bash -c "
+set -euo pipefail
+cd '${install_dir}'
+set -a
+source '${env_file}'
+set +a
+'${install_dir}/.venv/bin/python' '${admin_script}'
+"; then
+		printf '[%s] create admin account in the web UI (/setup)\n' "${app_name}" >&2
+		return 0
+	fi
+	zenfw::vault::save "${username}.${app_name}" "${user_password}" application 2>/dev/null || true
+}
+
+_update() {
+	zenfw::service::manage stop "${service_unit}"
+	rm -rf "${install_dir:?}"/* "${install_dir:?}"/.[!.]* 2>/dev/null || true
+	_wizarr_clone
+	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
+	_wizarr_provision
+	_config
+	zenfw::software::backup::create "${app_name}" "user" "${data_dir}" "${username}"
+}
+
+_wizarr_clone() {
+	if [[ "${is_prerelease:-false}" == "true" || "${branch:-main}" == "beta" ]]; then
+		branch="main"
+		is_prerelease=false
+		app::lifecycle::record_branch main false
+	fi
+	zenfw::git::clone "${app_repo}" "${install_dir}" "main"
+}
+
+_wizarr_provision() {
+	local static="${install_dir}/app/static" build_env pkg patch_file
+	shopt -s nullglob
+	for patch_file in "${app_dir}"/patches/*.patch; do
+		patch -p1 --forward --batch -d "${install_dir}" -i "${patch_file}" 2>/dev/null && continue
+		patch -p1 --reverse --dry-run --batch -d "${install_dir}" -i "${patch_file}" 2>/dev/null && continue
+		printf '[%s] failed to apply patch %s\n' "${app_name}" "${patch_file}" >&2
+		shopt -u nullglob
+		return 1
+	done
+	shopt -u nullglob
+	zenfw::workspace::uv::install
+	if [[ -f "${install_dir}/uv.lock" ]]; then
+		runuser -u "${username}" -- bash -c "cd '${install_dir}' && uv sync --frozen"
+	else
+		runuser -u "${username}" -- bash -c "cd '${install_dir}' && uv sync"
+	fi
+	zenfw::permission::exec_exec::set "${install_dir}/.venv" "${username}" "${username}"
+	cat > "${static}/.npmrc" <<'EOF'
+engine-strict=false
+strict-dep-builds=false
+block-exotic-subdeps=false
+use-node-version=22.19.0
+manage-package-manager-versions=true
+only-built-dependencies[]=@parcel/watcher
+only-built-dependencies[]=core-js
+EOF
+	zenfw::permission::read_exec::set "${static}/.npmrc" "${username}" "${username}"
+	pkg="${static}/package.json"
+	sed -i \
+		-e 's/npx @tailwindcss\/cli/pnpm exec tailwindcss/g' \
+		-e 's/pnpm exec @tailwindcss\/cli/pnpm exec tailwindcss/g' \
+		-e 's/npm run/pnpm run/g' \
+		"${pkg}"
+	grep -q 'pnpm exec tailwindcss' "${pkg}"
+	zenfw::workspace::pnpm::prepare "${username}"
+	zenfw::workspace::pnpm::node "${static}" "${username}"
+	build_env="PNPM_HOME=/home/${username}/.local/share/pnpm CI=false HUSKY=0 DOCKER_BUILD=false"
+	zenfw::workspace::node::build "${static}" "${username}" build "${build_env}"
+	test -f "${static}/css/main.css"
+	test -f "${static}/js/sortable.min.js"
+}
+
+_wizarr_db_upgrade() {
+	runuser -u "${username}" -- bash -c "
+set -euo pipefail
+cd '${install_dir}'
+set -a
+source '${env_file}'
+set +a
+export FLASK_APP='run:app'
+export FLASK_SKIP_SCHEDULER=true
+'${install_dir}/.venv/bin/flask' db upgrade
+"
+}
