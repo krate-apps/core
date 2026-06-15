@@ -1,0 +1,72 @@
+id: dispatcharr
+multi_user: true
+runtime:
+  kind: systemd
+  service_template: dispatcharr@.service
+dependencies:
+  apt:
+    common:
+      packages: git curl ca-certificates ffmpeg redis-server postgresql build-essential python3-dev libpq-dev
+install:
+  release:
+    update_branch:
+      stable: main
+      prerelease: main
+  layout:
+    backup_dir: /home/%i/.krate/backups/dispatcharr
+    data_dir: /home/%i/.config/dispatcharr
+    install_dir: /opt/%i/dispatcharr
+    temp_dir: /home/%i/tmp/dispatcharr
+  executable:
+    - /opt/%i/dispatcharr/.venv/bin/uwsgi
+    - /opt/%i/dispatcharr/.venv/bin/celery
+    - /opt/%i/dispatcharr/.venv/bin/daphne
+    - /opt/Krate/share/applications/community/dispatcharr/bin/krate-run.sh
+systemd:
+  unit:
+    TimeoutStartSec: 600
+    TimeoutStopSec: 60
+    Type: simple
+    Restart: on-failure
+    RestartSec: "10"
+    KillMode: control-group
+    WorkingDirectory: /opt/%i/dispatcharr
+    BindPaths: /home/%i/.config/dispatcharr:/data
+  environment:
+    inline:
+      TMPDIR: /home/%i/tmp/dispatcharr
+      PYTHONUNBUFFERED: "1"
+      DISPATCHARR_ENV: aio
+    file:
+      path: /home/%i/.krate/applications/dispatcharr.env
+      mode: "0600"
+  exec:
+    pre:
+      - /bin/mkdir -p /home/%i/tmp/dispatcharr /home/%i/.config/dispatcharr
+    start:
+      - /bin/bash
+      - /opt/Krate/share/applications/community/dispatcharr/bin/krate-run.sh %i
+files:
+  service: /etc/systemd/system/dispatcharr@.service
+  config:
+    - /home/%i/.krate/applications/dispatcharr.env
+    - /opt/%i/dispatcharr/.env
+  proxy:
+    - /etc/caddy/softwares/%i.dispatcharr.caddy
+  binary:
+    - /opt/%i/dispatcharr/.venv/bin/python
+autogen:
+  - default_port
+security:
+  network: true
+  filesystem:
+    read_write:
+      - /home/%i/.config/dispatcharr
+      - /home/%i/tmp/dispatcharr
+      - /home/%i/.krate/backups/dispatcharr
+      - /home/%i/.krate/applications
+      - /opt/%i/dispatcharr/.venv
+      - /opt/%i/dispatcharr/static
+      - /opt/%i/dispatcharr/frontend/dist
+    read_only:
+      - /opt/%i/dispatcharr
