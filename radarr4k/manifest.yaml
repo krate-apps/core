@@ -1,0 +1,75 @@
+id: radarr4k
+multi_user: true
+runtime:
+  kind: systemd
+  service_template: radarr4k@.service
+dependencies:
+  apt:
+    common:
+      packages: mediainfo
+install:
+  layout:
+    backup_dir: /home/%i/.krate/backups/radarr4k
+    data_dir: /home/%i/.config/radarr4k
+    install_dir: /opt/%i/radarr4k
+    temp_dir: /home/%i/tmp/radarr4k
+  release:
+    asset: linux-core-x64.tar.gz
+    update_branch:
+      stable: master
+      prerelease: develop
+  executable:
+    - /opt/%i/radarr4k/Radarr
+systemd:
+  unit:
+    TimeoutStopSec: 20
+    Type: simple
+  environment:
+    inline:
+      TMPDIR: /home/%i/tmp/radarr4k
+    file:
+      path: /home/%i/.krate/applications/radarr4k.env
+      mode: "0600"
+      variables:
+        RADARR__SERVER__BINDADDRESS: 127.0.0.1
+        RADARR__SERVER__PORT: "{default_port}"
+        RADARR__SERVER__URLBASE: "{url_base}"
+        RADARR__SERVER__ENABLESSL: "False"
+        RADARR__SERVER__SSLPORT: "{ssl_port}"
+        RADARR__AUTH__APIKEY: "{apikey}"
+        RADARR__UPDATE__BRANCH: "master"
+        RADARR__APP__LAUNCHBROWSER: "False"
+        RADARR__APP__INSTANCENAME: "{instance_name}"
+        RADARR__LOG__ANALYTICSENABLED: "False"
+        RADARR__APP__THEME: dark
+  exec:
+    pre:
+      - /bin/mkdir -p /home/%i/tmp/radarr4k
+    start:
+      - /opt/%i/radarr4k/Radarr
+      - -nobrowser
+      - -data=/home/%i/.config/radarr4k
+files:
+  service: /etc/systemd/system/radarr4k@.service
+  config:
+    - /home/%i/.krate/applications/radarr4k.env
+  database:
+    - /home/%i/.config/radarr4k/radarr.db
+  proxy:
+    - /etc/caddy/softwares/%i.radarr4k.caddy
+  binary:
+    - /opt/%i/radarr4k/Radarr
+autogen:
+  - apikey
+  - default_port
+  - ssl_port
+security:
+  network: true
+  filesystem:
+    read_write:
+      - /home/%i/.config/radarr4k
+      - /home/%i/tmp/radarr4k
+      - /home/%i/.krate/backups/radarr4k
+      - /home/%i/.krate/applications
+    read_only:
+      - /opt/%i/radarr4k
