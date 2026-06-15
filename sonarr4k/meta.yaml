@@ -1,0 +1,24 @@
+id: sonarr4k
+name: Sonarr4K
+description: Sonarr4K application.
+links:
+  homepage: https://sonarr.tv/
+  documentation: https://wiki.servarr.com/Sonarr
+  source: https://github.com/Sonarr/Sonarr
+  krate_docs: https://krate.github.io/docs/software/official/sonarr
+tier: free
+category: media
+install_mode: local
+password_constraints:
+  min_length: 8
+  max_length: 128
+  require_upper: false
+  require_digit: false
+autocomplete_options:
+  - -b
+  - -s
+ui_options:
+  subdomain: true
+  branches:
+    - main
+    - beta
