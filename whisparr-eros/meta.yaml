@@ -1,0 +1,18 @@
+id: whisparr-eros
+name: Whisparr-Eros
+description: Whisparr-Eros application.
+links:
+  homepage: https://whisparr.github.io/
+  documentation: https://wiki.servarr.com/Whisparr
+  source: https://github.com/Whisparr/Whisparr-Eros
+  krate_docs: https://krate.github.io/docs/software/official/whisparr-eros
+tier: free
+category: media
+install_mode: local
+password_constraints:
+  min_length: 8
+  max_length: 128
+  require_upper: false
+  require_digit: false
+autocomplete_options:
+  - -b
