@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+# @file applications/community/suggestarr/suggestarr
+# @project KRATE
+# @description SuggestArr — git clone, npm client build, Python venv (api_service), uvicorn ASGI.
+# shellcheck disable=SC2154
+set -euo pipefail
+
+_add() {
+	zenfw::workspace::uv::install
+	rm -rf "${install_dir:?}" 2>/dev/null || true
+	mkdir -p "${install_dir}"
+	zenfw::git::clone "${app_repo}" "${install_dir}" "$(app::update_branch)"
+	_suggestarr_provision
+	zenfw::service::generate "${app_name}" false false
+	_config
+	_secure
+}
+
+_config() {
+	local default_port subpath
+	mkdir -p "${data_dir}"
+	zenfw::permission::read_exec::set "${data_dir}" "${username}" "${username}"
+	default_port="${service_default_port}"
+	subpath="${url_base#/}"
+	subpath="${subpath%/}"
+	zenfw::fs::env::set "${env_file}" "SUGGESTARR_PORT" "${default_port}"
+	zenfw::fs::env::set "${env_file}" "SUBPATH" "${subpath}"
+	zenfw::proxy::generate "${app_name}" "${default_port}" "${url_base}" true "${username}"
+	zenfw::service::manage start "${service_unit}"
+}
+
+# POST /api/auth/setup on first boot (loopback only). Same idea as Requestrr/Radarr hardening.
+_secure() {
+	local listen_port url payload response
+	listen_port="$(printf '%s\n' "${service_default_port:-}" | tr -cd '0-9')"
+	[[ -n "${listen_port}" ]] || listen_port="$(zenfw::fs::env::get "${env_file}" "SUGGESTARR_PORT" | tr -cd '0-9')"
+	[[ -n "${listen_port}" ]] || return 0
+	url="http://127.0.0.1:${listen_port}${url_base}"
+	zenfw::request::wait::ping "${url}" 60 1000 false
+	payload="$(zenfw::json::merge '{}' \
+		username "${username}" \
+		password "${user_password}")"
+	response="$(curl -fsS -X POST "${url}/api/auth/setup" \
+		-H "Content-Type: application/json" \
+		-H "Accept: application/json" \
+		-d "${payload}" 2>/dev/null || true)"
+	if [[ "${response}" == *'"Admin account created"'* ]]; then
+		return 0
+	fi
+	if [[ "${response}" == *'"Setup already completed"'* ]]; then
+		return 0
+	fi
+	printf '[%s] /api/auth/setup did not create admin — configure login in the web UI if needed\n' "${app_name}" >&2
+	return 0
+}
+
+_update() {
+	zenfw::service::manage stop "${service_unit}"
+	rm -rf "${install_dir:?}"/* "${install_dir:?}"/.[!.]* 2> /dev/null || true
+	zenfw::git::clone "${app_repo}" "${install_dir}" "$(app::update_branch)"
+	_suggestarr_provision
+	_config
+	_secure
+	zenfw::software::backup::create "${app_name}" "user" "${data_dir}" "${username}"
+}
+
+_suggestarr_provision() {
+	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
+	zenfw::workspace::node::convert "${install_dir}/client" "${username}"
+	zenfw::workspace::node::build "${install_dir}/client" "${username}"
+	mkdir -p "${install_dir}/static"
+	cp -a "${install_dir}/client/dist/." "${install_dir}/static/"
+	zenfw::workspace::venv::create "${install_dir}" "${username}" false
+	[[ -f "${install_dir}/api_service/requirements.txt" ]] || {
+		printf '[%s] api_service/requirements.txt not found\n' "${app_name}" >&2
+		return 1
+	}
+	su -s /bin/bash -c "cd '${install_dir}' && uv pip install -r api_service/requirements.txt" - "${username}" || {
+		printf '[%s] uv pip install failed in %s\n' "${app_name}" "${install_dir}" >&2
+		return 1
+	}
+	su -s /bin/bash -c "cd '${install_dir}' && .venv/bin/python -m uvicorn --version" - "${username}" > /dev/null 2>&1 || {
+		printf '[%s] uvicorn missing after pip install\n' "${app_name}" >&2
+		return 1
+	}
+}
