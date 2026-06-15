@@ -1,0 +1,53 @@
+id: decluttarr
+multi_user: true
+runtime:
+  kind: systemd
+  service_template: decluttarr@.service
+dependencies:
+  apt:
+    common:
+      packages: git curl ca-certificates
+install:
+  release:
+    update_branch:
+      stable: latest
+      prerelease: dev
+  layout:
+    backup_dir: /home/%i/.krate/backups/decluttarr
+    data_dir: /home/%i/.config/decluttarr
+    install_dir: /opt/%i/decluttarr
+    temp_dir: /home/%i/tmp/decluttarr
+  executable:
+    - /opt/%i/decluttarr/.venv/bin/python
+systemd:
+  unit:
+    TimeoutStopSec: 20
+    Type: simple
+    Restart: on-failure
+    RestartSec: "10"
+    WorkingDirectory: /opt/%i/decluttarr
+  environment:
+    inline:
+      TMPDIR: /home/%i/tmp/decluttarr
+      PYTHONUNBUFFERED: "1"
+  exec:
+    pre:
+      - /bin/mkdir -p /home/%i/tmp/decluttarr /home/%i/.config/decluttarr/config
+    start:
+      - /opt/%i/decluttarr/.venv/bin/python
+      - /opt/%i/decluttarr/main.py
+files:
+  service: /etc/systemd/system/decluttarr@.service
+  config:
+    - /home/%i/.config/decluttarr/config/config.yaml
+autogen: []
+security:
+  network: true
+  filesystem:
+    read_write:
+      - /home/%i/.config/decluttarr
+      - /home/%i/tmp/decluttarr
+      - /home/%i/.krate/backups/decluttarr
+      - /opt/%i/decluttarr/.venv
+    read_only:
+      - /opt/%i/decluttarr

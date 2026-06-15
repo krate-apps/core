@@ -1,0 +1,18 @@
+id: decluttarr
+name: Decluttarr
+description: "Background worker (no web UI): cleans *arr queues and download clients. Configure config.yaml (*arr API keys and/or qBittorrent); logs via journalctl. Useless without at least one configured target."
+links:
+  homepage: https://github.com/ManiMatter/decluttarr
+  documentation: https://github.com/ManiMatter/decluttarr#readme
+  source: https://github.com/ManiMatter/decluttarr
+  krate_docs: https://krate.github.io/docs/software/official/decluttarr
+tier: free
+category: tools
+install_mode: local
+autocomplete_options:
+  - -b
+ui_options:
+  subdomain: false
+  branches:
+    - latest
+    - dev
