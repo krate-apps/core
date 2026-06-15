@@ -1,0 +1,75 @@
+id: kapowarr
+multi_user: true
+runtime:
+  kind: systemd
+  service_template: kapowarr@.service
+dependencies:
+  apt:
+    common:
+      packages: git curl ca-certificates
+install:
+  release:
+    update_branch:
+      stable: main
+      prerelease: development
+  layout:
+    backup_dir: /home/%i/.krate/backups/kapowarr
+    data_dir: /home/%i/.config/kapowarr
+    install_dir: /opt/%i/kapowarr
+    temp_dir: /home/%i/tmp/kapowarr
+  executable:
+    - /opt/%i/kapowarr/.venv/bin/python
+systemd:
+  unit:
+    TimeoutStopSec: 30
+    Type: simple
+    KillSignal: SIGINT
+    Restart: on-failure
+    RestartSec: "10"
+    WorkingDirectory: /opt/%i/kapowarr
+  environment:
+    inline:
+      TMPDIR: /home/%i/tmp/kapowarr
+      PYTHONUNBUFFERED: "1"
+    file:
+      path: /home/%i/.krate/applications/kapowarr.env
+      mode: "0600"
+  exec:
+    pre:
+      - /bin/mkdir -p /home/%i/tmp/kapowarr /home/%i/.config/kapowarr/db /home/%i/.config/kapowarr/logs /home/%i/.config/kapowarr/temp_downloads
+    start:
+      - /opt/%i/kapowarr/.venv/bin/python
+      - /opt/%i/kapowarr/Kapowarr.py
+      - --DatabaseFolder
+      - /home/%i/.config/kapowarr/db
+      - --LogFolder
+      - /home/%i/.config/kapowarr/logs
+      - --TempDownloadFolder
+      - /home/%i/.config/kapowarr/temp_downloads
+      - --Host
+      - "127.0.0.1"
+      - --Port
+      - ${PORT}
+      - --UrlBase
+      - ${URL_BASE}
+files:
+  service: /etc/systemd/system/kapowarr@.service
+  config:
+    - /home/%i/.krate/applications/kapowarr.env
+  proxy:
+    - /etc/caddy/softwares/%i.kapowarr.caddy
+  binary:
+    - /opt/%i/kapowarr/.venv/bin/python
+autogen:
+  - default_port
+security:
+  network: true
+  filesystem:
+    read_write:
+      - /home/%i/.config/kapowarr
+      - /home/%i/tmp/kapowarr
+      - /home/%i/.krate/backups/kapowarr
+      - /home/%i/.krate/applications
+      - /opt/%i/kapowarr/.venv
+    read_only:
+      - /opt/%i/kapowarr

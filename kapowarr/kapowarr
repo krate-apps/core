@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# @file applications/community/kapowarr/kapowarr
+# @project KRATE
+# @description Kapowarr — git clone, Python venv (requirements.txt), Flask/Waitress.
+# shellcheck disable=SC2154
+set -euo pipefail
+
+_add() {
+	zenfw::workspace::uv::install
+	rm -rf "${install_dir:?}" 2>/dev/null || true
+	mkdir -p "${install_dir}"
+	zenfw::git::clone "${app_repo}" "${install_dir}" "$(app::update_branch)"
+	_kapowarr_provision_venv
+	zenfw::service::generate "${app_name}" false false
+	_config
+}
+
+_config() {
+	local default_port
+	mkdir -p "${data_dir}/db" "${data_dir}/logs" "${data_dir}/temp_downloads"
+	zenfw::permission::read_exec::set "${data_dir}" "${username}" "${username}"
+	default_port="${service_default_port}"
+	zenfw::fs::env::set "${env_file}" "PORT" "${default_port}"
+	zenfw::fs::env::set "${env_file}" "URL_BASE" "${url_base}"
+	zenfw::proxy::generate "${app_name}" "${default_port}" "${url_base}" true "${username}"
+	zenfw::service::manage start "${service_unit}"
+}
+
+_update() {
+	zenfw::service::manage stop "${service_unit}"
+	rm -rf "${install_dir:?}"/* "${install_dir:?}"/.[!.]* 2> /dev/null || true
+	zenfw::git::clone "${app_repo}" "${install_dir}" "$(app::update_branch)"
+	_kapowarr_provision_venv
+	_config
+	zenfw::software::backup::create "${app_name}" "user" "${install_dir}" "${username}"
+}
+
+_kapowarr_provision_venv() {
+	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
+	zenfw::workspace::venv::create "${install_dir}" "${username}" true
+}
