@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+# @file applications/community/seerr/seerr
+# @project KRATE
+# @description Seerr — git clone, pnpm build (Node via .npmrc), production server.
+# shellcheck disable=SC2154
+set -euo pipefail
+
+_add() {
+	rm -rf "${install_dir:?}" 2>/dev/null || true
+	mkdir -p "${install_dir}"
+	zenfw::git::clone "${app_repo}" "${install_dir}" "$(app::update_branch)"
+	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
+	_seerr_provision
+	_config
+	app::lifecycle::record_effective_branch
+}
+
+_config() {
+	local default_port config_dir caddy_fragment="/etc/caddy/softwares/${username}.${app_name}.caddy"
+	mkdir -p "${data_dir}"
+	config_dir="${data_dir}/config"
+	mkdir -p "${config_dir}/db" "${config_dir}/logs"
+	zenfw::permission::read_exec::set "${data_dir}" "${username}" "${username}"
+	default_port="${service_default_port//[^0-9]/}"
+	: "${default_port:?}"
+	zenfw::fs::env::set "${env_file}" "PORT" "${default_port}"
+	zenfw::fs::env::set "${env_file}" "HOST" "127.0.0.1"
+	zenfw::fs::env::set "${env_file}" "CONFIG_DIRECTORY" "${config_dir}"
+	zenfw::fs::env::set "${env_file}" "NODE_ENV" "production"
+	zenfw::fs::env::set "${env_file}" "CYPRESS_INSTALL_BINARY" "0"
+	zenfw::proxy::generate "${app_name}" "${default_port}" "${url_base}" false "${username}"
+	# header_down Location must use $1 (regex capture), not {re.1} (matcher placeholder).
+	if [[ -f "${caddy_fragment}" ]]; then
+		sed -i 's|{re\.1}|$1|g' "${caddy_fragment}"
+		command -v caddy >/dev/null && {
+			caddy fmt --overwrite "${caddy_fragment}" 2>/dev/null || true
+			caddy validate -c /etc/caddy/Caddyfile 2>/dev/null || true
+			caddy reload -c /etc/caddy/Caddyfile 2>/dev/null || true
+		}
+	fi
+	zenfw::service::generate "${app_name}" false false
+	zenfw::service::manage start "${service_unit}"
+}
+
+_update() {
+	zenfw::service::manage stop "${service_unit}"
+	rm -rf "${install_dir:?}"/* "${install_dir:?}"/.[!.]* 2>/dev/null || true
+	zenfw::git::clone "${app_repo}" "${install_dir}" "$(app::update_branch)"
+	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
+	_seerr_provision
+	_config
+	app::lifecycle::record_effective_branch
+	zenfw::software::backup::create "${app_name}" "user" "${data_dir}" "${username}"
+}
+
+_seerr_provision() {
+	local build_env
+	zenfw::workspace::pnpm::prepare "${username}"
+	cat > "${install_dir}/.npmrc" <<'EOF'
+engine-strict=false
+strict-dep-builds=false
+block-exotic-subdeps=false
+use-node-version=22.19.0
+manage-package-manager-versions=true
+EOF
+	zenfw::permission::read_exec::set "${install_dir}/.npmrc" "${username}" "${username}"
+	# Build with Turbopack (upstream default): next.config.ts wires @svgr/webpack only via
+	# turbopack.rules, so --webpack yields SVG-as-object and "Element type is invalid" at SSR.
+	build_env="PNPM_HOME=/home/${username}/.local/share/pnpm CI=true HUSKY=0 CYPRESS_INSTALL_BINARY=0"
+	build_env+=" NEXT_TELEMETRY_DISABLED=1 NODE_OPTIONS=--max-old-space-size=6144"
+	# Split phases so build:server runs after Next memory is released.
+	zenfw::workspace::node::build "${install_dir}" "${username}" build:next "${build_env}"
+	zenfw::workspace::node::build "${install_dir}" "${username}" build:server "${build_env}"
+	test -f "${install_dir}/dist/index.js"
+}
