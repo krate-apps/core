@@ -1,0 +1,64 @@
+id: deluge
+multi_user: true
+runtime:
+  kind: systemd
+  service_template: deluge@.service
+dependencies:
+  apt:
+    common:
+      packages: curl wget ca-certificates python3.13 python3.13-venv python3.13-dev build-essential libffi-dev pkg-config
+install:
+  layout:
+    install_dir: /opt/%i/deluge
+    backup_dir: /home/%i/.krate/backups/deluge
+    config_dir: /home/%i/.config/deluge
+    data_dir: /home/%i/download-clients/deluge
+    downloads_dir: /home/%i/download-clients/deluge/downloads
+    incomplete_dir: /home/%i/download-clients/deluge/incomplete
+    logs_dir: /home/%i/download-clients/deluge/logs
+  executable:
+    - /opt/%i/deluge/.venv/bin/python
+    - /home/%i/.krate/active/deluge/usr/bin/deluged
+    - /home/%i/.krate/active/deluge/usr/bin/deluge-web
+systemd:
+  unit:
+    Type: simple
+    Restart: always
+    RestartSec: "5"
+    KillMode: control-group
+    WorkingDirectory: /home/%i
+  environment:
+    file:
+      path: /home/%i/.krate/applications/deluge.env
+      mode: "0600"
+      variables:
+        PORT: "{default_port}"
+        CONFIG_DIR: "{config_dir}"
+  exec:
+    start:
+      - /bin/bash
+      - /opt/Krate/share/applications/community/deluge/bin/deluge-run.sh %i
+files:
+  service: /etc/systemd/system/deluge@.service
+  config:
+    - /home/%i/.krate/applications/deluge.env
+  proxy:
+    - /etc/caddy/softwares/%i.deluge.caddy
+  binary:
+    - /home/%i/.krate/active/deluge/usr/bin/deluged
+    - /home/%i/.krate/active/deluge/usr/bin/deluge-web
+autogen:
+  - default_port
+security:
+  network: true
+  filesystem:
+    read_write:
+      - /home/%i/.config/deluge
+      - /home/%i/download-clients/deluge
+      - /home/%i/.krate/backups/deluge
+      - /home/%i/.krate/applications
+      - /opt/%i/deluge
+    read_only:
+      - /home/%i/.krate/active/deluge
+      - /etc/caddy/auth/local/users.json
+      - /etc/caddy/auth/users.json

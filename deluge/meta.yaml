@@ -1,0 +1,17 @@
+id: deluge
+name: Deluge
+description: "Deluge BitTorrent client (deluged + Deluge-Web). Branch main (default) installs vendor slot 2.1.1; beta installs 2.2.0."
+links:
+  homepage: https://deluge-torrent.org/
+  documentation: https://dev.deluge-torrent.org/wiki/UserGuide
+  source: https://github.com/deluge-torrent/deluge
+  krate_docs: https://krate.github.io/docs/software/community/deluge
+tier: free
+category: download
+install_mode: local
+autocomplete_options:
+  - -b
+ui_options:
+  branches:
+    - main
+    - beta
