@@ -1,0 +1,23 @@
+__version__ = 19
+__encoding__ = utf-8
+[misc]
+config_conversion_version = 4
+enable_https_verification = 1
+host = 127.0.0.1
+port = 8080
+https_port = ""
+username = krate
+password = krate
+bandwidth_max = ""
+cache_limit = 1G
+download_dir = /home/USER/download-clients/sabnzbd/incomplete
+complete_dir = /home/USER/download-clients/sabnzbd/downloads
+admin_dir = /home/USER/.config/sabnzbd/admin
+backup_dir = /home/USER/.config/sabnzbd/backup
+log_dir = /home/USER/download-clients/sabnzbd/logs
+url_base = /USER/sabnzbd
+language = USER_LOCALE
+enable_https = 0
+inet_exposure = 5
+html_login = 1
+verify_xff_header = 0

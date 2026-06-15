@@ -1,0 +1,65 @@
+id: sabnzbd
+multi_user: true
+runtime:
+  kind: systemd
+  service_template: sabnzbd@.service
+dependencies:
+  apt:
+    common:
+      packages: python3 python3-venv python3-dev par2 unrar curl ca-certificates build-essential libssl-dev libffi-dev
+install:
+  layout:
+    install_dir: /opt/%i/sabnzbd
+    data_dir: /home/%i/.config/sabnzbd
+    backup_dir: /home/%i/.krate/backups/sabnzbd
+    admin_dir: /home/%i/.config/sabnzbd/admin
+    config_backup_dir: /home/%i/.config/sabnzbd/backup
+    downloads_dir: /home/%i/download-clients/sabnzbd/downloads
+    incomplete_dir: /home/%i/download-clients/sabnzbd/incomplete
+    logs_dir: /home/%i/download-clients/sabnzbd/logs
+  release:
+    asset: src.tar.gz
+  executable:
+    - /opt/%i/sabnzbd/.venv/bin/python
+systemd:
+  unit:
+    Restart: on-failure
+    RestartSec: "5"
+    Type: simple
+    WorkingDirectory: /opt/%i/sabnzbd
+  environment:
+    inline:
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
+      PYTHONIOENCODING: utf-8
+      PYTHONUTF8: "1"
+  exec:
+    start:
+      - /opt/%i/sabnzbd/.venv/bin/python
+      - /opt/%i/sabnzbd/SABnzbd.py
+      - -f
+      - /home/%i/.config/sabnzbd/sabnzbd.ini
+      - -b
+      - "0"
+files:
+  service: /etc/systemd/system/sabnzbd@.service
+  config:
+    - /home/%i/.config/sabnzbd/sabnzbd.ini
+  proxy:
+    - /etc/caddy/softwares/%i.sabnzbd.caddy
+  binary:
+    - /opt/%i/sabnzbd/SABnzbd.py
+autogen:
+  - default_port
+  - ssl_port
+security:
+  network: true
+  filesystem:
+    read_write:
+      - /home/%i/.config/sabnzbd
+      - /home/%i/download-clients/sabnzbd
+      - /home/%i/.krate/backups/sabnzbd
+      - /opt/%i/sabnzbd
+    read_only:
+      - /etc/caddy/auth/local/users.json
+      - /etc/caddy/auth/users.json

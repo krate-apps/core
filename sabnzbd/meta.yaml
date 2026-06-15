@@ -1,0 +1,23 @@
+id: sabnzbd
+name: Sabnzbd
+description: Free and easy Usenet binary newsreader with web UI and API.
+links:
+  homepage: https://sabnzbd.org/
+  source: https://github.com/sabnzbd/sabnzbd
+  krate_docs: https://krate.github.io/docs/software/official/sabnzbd
+tier: free
+category: download
+install_mode: local
+password_constraints:
+  min_length: 8
+  max_length: 128
+  require_upper: false
+  require_digit: false
+autocomplete_options:
+  - -b
+  - -s
+ui_options:
+  subdomain: true
+  branches:
+    - main
+    - beta
