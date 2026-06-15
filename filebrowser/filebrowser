@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# @file applications/apps-community/filebrowser/filebrowser
+# @project KRATE
+# @description Filebrowser — app handler (Go binary, sqlite-backed config via filebrowser CLI).
+# shellcheck disable=SC2154
+set -euo pipefail
+
+_add() {
+	zenfw::git::release::get "${install_dir}" "${app_repo}" "${is_prerelease}" "$(app::cfg install.release.asset)"
+	zenfw::service::generate "${app_name}" true false
+	_config
+}
+
+_config() {
+	local default_port db_file locale instance
+	local install_q db_q user_q pass_q log_q root_q name_q locale_q base_q
+	mkdir -p "${data_dir}/logs"
+	zenfw::permission::read_exec::set "${data_dir}" "${username}" "${username}"
+	default_port="${service_default_port}"
+	db_file="${data_dir}/filebrowser.db"
+	locale="${ZEN_LOCALE_SHORT_CODE}"
+	instance="${instance_name}"
+	rm -f "${db_file}"
+	install_q=$(printf '%q' "${install_dir}/filebrowser")
+	db_q=$(printf '%q' "${db_file}")
+	log_q=$(printf '%q' "${data_dir}/logs/filebrowser.log")
+	root_q=$(printf '%q' "/home/${username}")
+	name_q=$(printf '%q' "${instance}")
+	user_q=$(printf '%q' "${username}")
+	pass_q=$(printf '%q' "${user_password}")
+	locale_q=$(printf '%q' "${locale}")
+	base_q=$(printf '%q' "${url_base}")
+	su -s /bin/bash -c "${install_q} -d ${db_q} config init >/dev/null" - "${username}"
+	su -s /bin/bash -c "${install_q} -d ${db_q} config set \
+		--address 127.0.0.1 \
+		--port ${default_port} \
+		--locale ${locale_q} \
+		--log ${log_q} \
+		--root ${root_q} \
+		--auth.method=json \
+		--baseURL ${base_q} \
+		--branding.name ${name_q} \
+		--minimumPasswordLength 8 \
+		>/dev/null" - "${username}"
+	if ! su -s /bin/bash -c "${install_q} -d ${db_q} users add ${user_q} ${pass_q} --perm.admin=true >/dev/null" - "${username}"; then
+		printf '[%s] users add failed (see filebrowser CLI output with stderr)\n' "${app_name}" >&2
+		return 1
+	fi
+	zenfw::vault::save "${username}.${app_name}" "${user_password}" application
+	zenfw::permission::read_exec::set "${data_dir}" "${username}" "${username}"
+	zenfw::proxy::generate "${app_name}" "${default_port}" "${url_base}" true "${username}"
+	zenfw::service::manage restart "${service_unit}"
+}
+
+_update() {
+	zenfw::service::manage stop "${service_unit}"
+	zenfw::git::release::get "${install_dir}" "${app_repo}" "${is_prerelease}" "$(app::cfg install.release.asset)"
+	zenfw::service::manage restart "${service_unit}"
+	zenfw::software::backup::create "${app_name}" "user" "${install_dir}" "${username}"
+}
+

@@ -1,0 +1,52 @@
+id: filebrowser
+multi_user: true
+runtime:
+  kind: systemd
+  service_template: filebrowser@.service
+install:
+  layout:
+    install_dir: /opt/%i/filebrowser
+    data_dir: /home/%i/.config/filebrowser
+    backup_dir: /home/%i/.krate/backups/filebrowser
+    temp_dir: /home/%i/tmp/filebrowser
+  release:
+    asset: linux-amd64-filebrowser.tar.gz
+  executable:
+    - /opt/%i/filebrowser/filebrowser
+systemd:
+  unit:
+    Restart: on-failure
+    RestartSec: "5"
+    TimeoutStopSec: 20
+    Type: simple
+  environment:
+    inline:
+      TMPDIR: /home/%i/tmp/filebrowser
+  exec:
+    pre:
+      - /bin/mkdir -p /home/%i/tmp/filebrowser /home/%i/.config/filebrowser/logs
+    start:
+      - /opt/%i/filebrowser/filebrowser
+      - -d
+      - /home/%i/.config/filebrowser/filebrowser.db
+files:
+  service: /etc/systemd/system/filebrowser@.service
+  config:
+    - /home/%i/.config/filebrowser/filebrowser.db
+  database:
+    - /home/%i/.config/filebrowser/filebrowser.db
+  proxy:
+    - /etc/caddy/softwares/%i.filebrowser.caddy
+  binary:
+    - /opt/%i/filebrowser/filebrowser
+autogen:
+  - default_port
+security:
+  network: true
+  filesystem:
+    read_write:
+      - /home/%i/.config/filebrowser
+      - /home/%i/tmp/filebrowser
+      - /home/%i/.krate/backups/filebrowser
+    read_only:
+      - /opt/%i/filebrowser

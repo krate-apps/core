@@ -1,0 +1,20 @@
+id: filebrowser
+name: Filebrowser
+description: Filebrowser application.
+links:
+  homepage: https://filebrowser.org/
+  documentation: https://filebrowser.org/
+  source: https://github.com/filebrowser/filebrowser
+  krate_docs: https://krate.github.io/docs/software/community/filebrowser
+tier: free
+category: network
+install_mode: local
+password_constraints:
+  min_length: 8
+  max_length: 128
+  require_upper: false
+  require_digit: false
+autocomplete_options:
+  - -s
+ui_options:
+  subdomain: true
