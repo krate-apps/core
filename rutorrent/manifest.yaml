@@ -1,6 +1,8 @@
 id: rutorrent
 multi_user: true
 require: rtorrent
+sync_repos:
+  - apps-extensions
 # Path-based UI: /{user}/rutorrent (url_base from lifecycle). Requires rtorrent@{user}.
 #
 # Layout:
