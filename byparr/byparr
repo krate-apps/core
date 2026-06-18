@@ -37,18 +37,16 @@ _update() {
 	zenfw::software::backup::create "${app_name}" "user" "${install_dir}" "${username}"
 }
 
-# Run as the instance user; uv resolves the project venv (downloads Python 3.14 if needed),
-# then Playwright/Camoufox cache their browser bundles under user HOME (~/.cache).
 _byparr_provision_runtime() {
-	runuser -u "${username}" -- bash -c "cd '${install_dir}' && uv sync --frozen" || {
+	zenfw::workspace::user::run "${username}" "${install_dir}" "uv sync --frozen" || {
 		printf '[%s] uv sync failed in %s\n' "${app_name}" "${install_dir}" >&2
 		return 1
 	}
-	runuser -u "${username}" -- bash -c "cd '${install_dir}' && .venv/bin/python -m playwright install firefox" || {
+	zenfw::workspace::user::run "${username}" "${install_dir}" ".venv/bin/python -m playwright install firefox" || {
 		printf '[%s] playwright firefox install failed\n' "${app_name}" >&2
 		return 1
 	}
-	runuser -u "${username}" -- bash -c "cd '${install_dir}' && .venv/bin/python -m camoufox fetch" || {
+	zenfw::workspace::user::run "${username}" "${install_dir}" ".venv/bin/python -m camoufox fetch" || {
 		printf '[%s] camoufox fetch failed\n' "${app_name}" >&2
 		return 1
 	}
