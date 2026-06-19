@@ -37,7 +37,7 @@ systemd:
   exec:
     start:
       - /bin/bash
-      - /opt/Krate/share/applications/community/deluge/bin/deluge-run.sh %i
+      - /opt/Krate/share/applications/official/deluge/bin/deluge-run.sh %i
 files:
   service: /etc/systemd/system/deluge@.service
   config:
