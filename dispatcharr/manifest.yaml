@@ -21,7 +21,7 @@ install:
     - /opt/%i/dispatcharr/.venv/bin/uwsgi
     - /opt/%i/dispatcharr/.venv/bin/celery
     - /opt/%i/dispatcharr/.venv/bin/daphne
-    - /opt/Krate/share/applications/community/dispatcharr/bin/krate-run.sh
+    - /opt/Krate/share/applications/official/dispatcharr/bin/krate-run.sh
 systemd:
   unit:
     TimeoutStartSec: 600
@@ -45,7 +45,7 @@ systemd:
       - /bin/mkdir -p /home/%i/tmp/dispatcharr /home/%i/.config/dispatcharr
     start:
       - /bin/bash
-      - /opt/Krate/share/applications/community/dispatcharr/bin/krate-run.sh %i
+      - /opt/Krate/share/applications/official/dispatcharr/bin/krate-run.sh %i
 files:
   service: /etc/systemd/system/dispatcharr@.service
   config:

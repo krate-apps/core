@@ -7,7 +7,7 @@ user="${1:?usage: krate-run.sh USER}"
 install_dir="/opt/${user}/dispatcharr"
 venv="${install_dir}/.venv"
 uwsgi_bin="${venv}/bin/uwsgi"
-ini="/opt/Krate/share/applications/community/dispatcharr/krate-uwsgi.ini"
+ini="/opt/Krate/share/applications/official/dispatcharr/krate-uwsgi.ini"
 
 : "${PORT:?PORT is required}"
 : "${DAPHNE_PORT:?DAPHNE_PORT is required}"
