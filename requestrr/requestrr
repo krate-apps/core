@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+[[ -n "${KRATE_HANDLER_CONTEXT_FILE:-}" && -f "${KRATE_HANDLER_CONTEXT_FILE}" ]] && . "${KRATE_HANDLER_CONTEXT_FILE}"
 # @file applications/community/requestrr/requestrr
 # @project KRATE
 # @description Requestrr — app handler (.NET self-contained, settings.json + POST /api/auth/register).
