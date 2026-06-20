@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+[[ -n "${KRATE_HANDLER_CONTEXT_FILE:-}" && -f "${KRATE_HANDLER_CONTEXT_FILE}" ]] && . "${KRATE_HANDLER_CONTEXT_FILE}"
 # @file applications/community/sonarr-naacky/sonarr-naacky
 # @project KRATE
 # @description Sonarr (Snaacky) — zenfw git::release::get (dernière release stable); Servarr handler.
