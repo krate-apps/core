@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2154,SC1090
+[[ -n "${KRATE_HANDLER_CONTEXT_FILE:-}" && -f "${KRATE_HANDLER_CONTEXT_FILE}" ]] && . "${KRATE_HANDLER_CONTEXT_FILE}"
 # @file applications/apps-official/sonarr/sonarr
 # @project KRATE
 # @description Sonarr — app handler (aligned with community radarr)
-# shellcheck disable=SC2154
 set -euo pipefail
 
 # Servarr env namespace — must match manifest systemd.environment.file.variables
