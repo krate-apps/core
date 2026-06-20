@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+[[ -n "${KRATE_HANDLER_CONTEXT_FILE:-}" && -f "${KRATE_HANDLER_CONTEXT_FILE}" ]] && . "${KRATE_HANDLER_CONTEXT_FILE}"
 # @file applications/apps-community/tautulli/tautulli
 # @project KRATE
 # @description Tautulli — app handler (Python source via git release, INI config, no Servarr API).
