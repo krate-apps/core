@@ -26,7 +26,7 @@ systemd:
     SyslogIdentifier: requestrr
     Restart: always
     RestartSec: 5
-  # Runtime only (.NET bundle extract); Requestrr itself is configured via CLI (-c/-p/-u) or settings.json.
+  # Runtime only (.NET single-file extract); Requestrr itself is configured via CLI (-c/-p/-u) or settings.json.
   # Upstream also honors REQUESTRR_PORT / REQUESTRR_BASE_URL if you add them via a drop-in — not required here.
   environment:
     inline:
