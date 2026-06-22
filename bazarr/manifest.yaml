@@ -60,3 +60,11 @@ security:
       - /home/%i/.krate/backups/bazarr
     read_only:
       - /opt/%i/bazarr
+version:
+  probes:
+    - type: http_json
+      url: "http://127.0.0.1:{default_port}{root_url}/api/system/status"
+      field: data.bazarr_version
+      auth: apikey
+      auth_header: X-API-KEY
+      requires: active
