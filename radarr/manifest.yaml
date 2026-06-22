@@ -72,3 +72,17 @@ security:
       - /home/%i/tmp/radarr
     read_only:
       - /opt/%i/radarr
+version:
+  probes:
+    - type: http_json
+      url: "http://127.0.0.1:{default_port}{root_url}/api/v3/system/status"
+      field: version
+      auth: apikey
+      requires: active
+  latest:
+    probes:
+      - type: http_json
+        url: "http://127.0.0.1:{default_port}{root_url}/api/v3/update"
+        field: "0.version"
+        auth: apikey
+        requires: active
