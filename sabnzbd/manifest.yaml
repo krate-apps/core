@@ -63,3 +63,9 @@ security:
     read_only:
       - /etc/caddy/auth/local/users.json
       - /etc/caddy/auth/users.json
+version:
+  probes:
+    - type: http_json
+      url: "http://127.0.0.1:{default_port}{root_url}/api?mode=version&output=json"
+      field: version
+      requires: active
