@@ -60,3 +60,8 @@ security:
       - /home/%i/.krate/active/qbittorrent-nox
       - /etc/caddy/auth/local/users.json
       - /etc/caddy/auth/users.json
+version:
+  probes:
+    - type: vendor_symlink
+      path: "/home/{username}/.krate/active/qbittorrent-nox"
+      pattern: "_([0-9][^_]*)$"
