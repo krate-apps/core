@@ -69,3 +69,17 @@ security:
       - /home/%i/.krate/applications
     read_only:
       - /opt/%i/prowlarr
+version:
+  probes:
+    - type: http_json
+      url: "http://127.0.0.1:{default_port}{root_url}/api/v1/system/status"
+      field: version
+      auth: apikey
+      requires: active
+  latest:
+    probes:
+      - type: http_json
+        url: "http://127.0.0.1:{default_port}{root_url}/api/v1/update"
+        field: "0.version"
+        auth: apikey
+        requires: active
