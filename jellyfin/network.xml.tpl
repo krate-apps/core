@@ -14,7 +14,7 @@
   <EnableIPv6>false</EnableIPv6>
   <IgnoreVirtualInterfaces>true</IgnoreVirtualInterfaces>
   <VirtualInterfaceNames>vEthernet*</VirtualInterfaceNames>
-  <EnablePublishedServerUriByRequest>false</EnablePublishedServerUriByRequest>
+  <EnablePublishedServerUriByRequest>true</EnablePublishedServerUriByRequest>
   <PublishedServerUriBySubnet />
   <RemoteIPFilter />
   <IsRemoteIPFilterBlacklist>false</IsRemoteIPFilterBlacklist>
