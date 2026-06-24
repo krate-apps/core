@@ -26,7 +26,8 @@ install:
     - /home/%i/.krate/active/rtorrent/usr/bin/rtorrent
 systemd:
   unit:
-    Type: simple
+    Type: oneshot
+    RemainAfterExit: "yes"
     KillMode: control-group
     WorkingDirectory: /home/%i/
     Restart: on-failure
