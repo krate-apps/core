@@ -22,17 +22,17 @@ _config() {
 	default_port="${service_default_port}"
 	settings_file="${data_dir}/settings.json"
 	template="${install_dir}/SettingsTemplate.json"
+	pk="$(uuidgen)"
 	[[ -f "${template}" ]] || {
 		printf '[%s] missing %s (extracted release layout)\n' "${app_name}" "${template}" >&2
 		return 1
 	}
 	tmp="$(mktemp)"
-	trap 'rm -f "${tmp}"' RETURN
-	pk="$(uuidgen)"
 	sed "s/\\[PRIVATEKEY\\]/${pk}/" "${template}" > "${tmp}"
 	merged_json="$(zenfw::json::merge "$(<"${tmp}")" \
 		"Port" "${default_port}" \
 		"BaseUrl" "${url_base}")"
+	rm -f "${tmp}"
 	zenfw::json::validate "${merged_json}" >/dev/null
 	printf '%s\n' "${merged_json}" > "${settings_file}"
 	zenfw::permission::read_exec::set "${data_dir}" "${username}" "${username}"
