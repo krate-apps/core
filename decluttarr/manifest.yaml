@@ -6,7 +6,7 @@ runtime:
 dependencies:
   apt:
     common:
-      packages: git curl ca-certificates
+      packages: git curl ca-certificates python3.13 python3.13-venv python3.13-dev build-essential
 install:
   release:
     update_branch:
