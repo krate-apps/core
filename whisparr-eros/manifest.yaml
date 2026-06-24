@@ -6,7 +6,7 @@ runtime:
 dependencies:
   apt:
     common:
-      packages: referenceassemblies-pcl ca-certificates-mono mono-devel mediainfo sqlite3
+      packages: ca-certificates-mono mono-devel mediainfo sqlite3
 install:
   layout:
     backup_dir: /home/%i/.krate/backups/whisparr-eros
