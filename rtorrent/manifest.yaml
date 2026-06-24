@@ -26,7 +26,7 @@ install:
     - /home/%i/.krate/active/rtorrent/usr/bin/rtorrent
 systemd:
   unit:
-    Type: forking
+    Type: simple
     KillMode: control-group
     WorkingDirectory: /home/%i/
     Restart: on-failure
