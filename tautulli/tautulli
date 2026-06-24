@@ -7,8 +7,14 @@
 set -euo pipefail
 
 _add() {
+	zenfw::workspace::uv::install
 	zenfw::git::release::get "${install_dir}" "${app_repo}" "${is_prerelease}" "source"
-	zenfw::workspace::venv::create "${install_dir}" "${username}" true
+	printf '3.13\n' > "${install_dir}/.python-version"
+	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
+	zenfw::workspace::user::run "${username}" "${install_dir}" "uv python install 3.13" || true
+	zenfw::workspace::venv::create "${install_dir}" "${username}" false
+	zenfw::workspace::venv::build "${install_dir}" "${username}"
+	zenfw::permission::exec_exec::set "${install_dir}/.venv" "${username}" "${username}"
 	zenfw::service::generate "${app_name}" true false
 	_config
 }
@@ -51,7 +57,10 @@ _config() {
 _update() {
 	zenfw::service::manage stop "${service_unit}"
 	zenfw::git::release::get "${install_dir}" "${app_repo}" "${is_prerelease}" "source"
-	zenfw::workspace::venv::create "${install_dir}" "${username}" true
+	printf '3.13\n' > "${install_dir}/.python-version"
+	zenfw::workspace::venv::create "${install_dir}" "${username}" false
+	zenfw::workspace::venv::build "${install_dir}" "${username}"
+	zenfw::permission::exec_exec::set "${install_dir}/.venv" "${username}" "${username}"
 	zenfw::service::manage restart "${service_unit}"
 	zenfw::software::backup::create "${app_name}" "user" "${install_dir}" "${username}"
 }
