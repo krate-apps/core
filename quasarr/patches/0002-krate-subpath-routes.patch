@@ -1,149 +1,6 @@
---- a/quasarr/storage/setup/common.py	2026-06-06 20:54:59.000000000 +0200
-+++ b/quasarr/storage/setup/common.py	2026-06-07 03:33:20.206579330 +0200
-@@ -39,12 +39,12 @@
-                 var attempts = 0;
-                 function attempt() {{
-                     attempts++;
--                    fetch('/', {{ method: 'HEAD', cache: 'no-store' }})
-+                    fetch(quasarrUrl('/'), {{ method: 'HEAD', cache: 'no-store' }})
-                     .then(function(response) {{
-                         if (response.ok) {{
-                             btn.innerText = 'Connected! Reloading...';
-                             btn.className = 'btn-primary';
--                            setTimeout(function() {{ window.location.href = '/'; }}, 500);
-+                            setTimeout(function() {{ window.location.href = quasarrUrl('/'); }}, 500);
-                         }} else {{
-                             scheduleRetry();
-                         }}
---- a/quasarr/storage/setup/hostnames.py	2026-06-06 20:54:59.000000000 +0200
-+++ b/quasarr/storage/setup/hostnames.py	2026-06-07 03:33:20.209577923 +0200
-@@ -434,11 +434,11 @@
- 
-     function attempt() {{
-       attempts++;
--      fetch('/', {{ method: 'HEAD', cache: 'no-store' }})
-+      fetch(quasarrUrl('/'), {{ method: 'HEAD', cache: 'no-store' }})
-       .then(response => {{
-         if (response.ok) {{
-           statusEl.textContent = 'Connected! Reloading...';
--          setTimeout(function() {{ window.location.href = '/'; }}, 500);
-+          setTimeout(function() {{ window.location.href = quasarrUrl('/'); }}, 500);
-         }} else {{
-           scheduleRetry();
-         }}
-@@ -508,7 +508,7 @@
-                         <strong>⚠️ flaresolverr-go Required</strong><br>
-                         This site requires flaresolverr-go, but it was skipped. You must configure it first.
-                         <div style="margin-top: 0.5rem;">
--                            <button class="btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" onclick="window.location.href='/flaresolverr'">Configure flaresolverr-go</button>
-+                            <button class="btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" onclick="window.location.href=quasarrUrl('/flaresolverr')">Configure flaresolverr-go</button>
-                         </div>
-                     </div>
-                 `;
-@@ -967,7 +967,7 @@
-             quasarrApiFetch('/api/credentials/{shorthand}/skip', {{ method: 'POST' }})
-             .then(response => {{
-                 if (response.ok) {{
--                    window.location.href = '/skip-success';
-+                    window.location.href = quasarrUrl('/skip-success');
-                 }} else {{
-                     showModal('Error', 'Failed to skip login');
-                     formSubmitted = false;
---- a/quasarr/storage/setup/radarr.py	2026-06-06 20:54:59.000000000 +0200
-+++ b/quasarr/storage/setup/radarr.py	2026-06-07 03:33:20.210577455 +0200
-@@ -219,7 +219,7 @@
-         quasarrApiFetch('/api/radarr/skip', {{ method: 'POST' }})
-         .then(function(response) {{
-             if (response.ok) {{
--                window.location.href = '/skip-success';
-+                window.location.href = quasarrUrl('/skip-success');
-             }} else {{
-                 showModal('Error', 'Failed to skip Radarr setup');
-                 formSubmitted = false;
---- a/quasarr/storage/setup/sonarr.py	2026-06-06 20:54:59.000000000 +0200
-+++ b/quasarr/storage/setup/sonarr.py	2026-06-07 03:33:20.210577455 +0200
-@@ -219,7 +219,7 @@
-         quasarrApiFetch('/api/sonarr/skip', {{ method: 'POST' }})
-         .then(function(response) {{
-             if (response.ok) {{
--                window.location.href = '/skip-success';
-+                window.location.href = quasarrUrl('/skip-success');
-             }} else {{
-                 showModal('Error', 'Failed to skip Sonarr setup');
-                 formSubmitted = false;
---- a/quasarr/storage/setup/flaresolverr.py	2026-06-06 20:54:59.000000000 +0200
-+++ b/quasarr/storage/setup/flaresolverr.py	2026-06-07 03:33:20.211576986 +0200
-@@ -128,7 +128,7 @@
-             quasarrApiFetch('/api/flaresolverr/skip', { method: 'POST' })
-             .then(response => {
-                 if (response.ok) {
--                    window.location.href = '/skip-success';
-+                    window.location.href = quasarrUrl('/skip-success');
-                 } else {
-                     showModal('Error', 'Failed to skip flaresolverr-go setup');
-                     formSubmitted = false;
-@@ -191,7 +191,7 @@
-     """
- 
-     if not is_setup:
--        form_html += f"""<p>{render_button("Back", "secondary", {"onclick": "location.href='/'"})}</p>"""
-+        form_html += f"""<p>{render_button("Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"})}</p>"""
- 
-     return form_html
- 
---- a/quasarr/api/__init__.py	2026-06-06 20:54:59.000000000 +0200
-+++ b/quasarr/api/__init__.py	2026-06-07 03:33:20.213576049 +0200
-@@ -161,7 +161,7 @@
-                     {"" if shared_state.values.get("helper_active") else '<br><a href="https://github.com/rix1337/Quasarr?tab=readme-ov-file#sponsorshelper" target="_blank">Sponsors get automated CAPTCHA solutions!</a>'}
-                 </div>
-                 <div class="alert-action">
--                    {render_button(f"Solve CAPTCHA{plural}", "primary", {"onclick": "location.href='/captcha'"})}
-+                    {render_button(f"Solve CAPTCHA{plural}", "primary", {"onclick": "location.href=quasarrUrl('/captcha')"})}
-                 </div>
-             </div>
-             """
-@@ -999,7 +999,7 @@
-                     'Regenerate API Key?', 
-                     'Are you sure you want to regenerate the API Key? This will invalidate the current key.', 
-                     `<button class="btn-secondary" onclick="closeModal()">Cancel</button>
--                     <button class="btn-primary" onclick="location.href='/regenerate-api-key'">Regenerate</button>`
-+                     <button class="btn-primary" onclick="location.href=quasarrUrl('/regenerate-api-key')">Regenerate</button>`
-                 );
-             }}
-             
---- a/quasarr/api/config/__init__.py	2026-06-06 20:54:59.000000000 +0200
-+++ b/quasarr/api/config/__init__.py	2026-06-07 03:33:20.214575580 +0200
-@@ -77,7 +77,7 @@
-             Use status buttons to change credentials and check for errors.
-         </p>"""
-         back_button = f"""<p>
--                        {render_button("Back", "secondary", {"onclick": "location.href='/'"})}
-+                        {render_button("Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"})}
-                     </p>"""
-         return render_form(
-             "Hostnames",
-@@ -615,7 +615,7 @@
- 
-         {search_add_form_html}
- 
--        <p>{render_button("Back", "secondary", {"onclick": "location.href='/'"})}</p>
-+        <p>{render_button("Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"})}</p>
- 
-         <script>
-         const ALL_HOSTERS = {hosters_js};
---- a/quasarr/api/statistics/__init__.py	2026-06-06 20:54:59.000000000 +0200
-+++ b/quasarr/api/statistics/__init__.py	2026-06-07 03:33:20.215575111 +0200
-@@ -109,7 +109,7 @@
-         </div>
- 
-         <p>
--            {render_button("Back", "secondary", {"onclick": "location.href='/'"})}
-+            {render_button("Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"})}
-         </p>
- 
-         <style>
---- a/quasarr/api/captcha/__init__.py	2026-06-06 20:54:59.000000000 +0200
-+++ b/quasarr/api/captcha/__init__.py	2026-06-07 03:33:20.220572767 +0200
+diff -ruN a1/quasarr/api/captcha/__init__.py a2/quasarr/api/captcha/__init__.py
+--- a/quasarr/api/captcha/__init__.py	2026-06-22 21:42:14.000000000 +0200
++++ b/quasarr/api/captcha/__init__.py	2026-06-24 00:02:55.913570539 +0200
 @@ -46,7 +46,7 @@
                  <h1><img src="{images.logo}" class="logo"/>Quasarr</h1>
                  <p><b>Error:</b> Package not found or already solved.</p>
@@ -595,8 +452,51 @@
              </p>''')
  
      @app.post("/captcha/decrypt-filecrypt")
---- a/quasarr/api/packages/__init__.py	2026-06-06 20:54:59.000000000 +0200
-+++ b/quasarr/api/packages/__init__.py	2026-06-07 03:33:20.223571361 +0200
+diff -ruN a1/quasarr/api/config/__init__.py a2/quasarr/api/config/__init__.py
+--- a/quasarr/api/config/__init__.py	2026-06-22 21:42:14.000000000 +0200
++++ b/quasarr/api/config/__init__.py	2026-06-24 00:02:55.912570523 +0200
+@@ -77,7 +77,7 @@
+             Use status buttons to change credentials and check for errors.
+         </p>"""
+         back_button = f"""<p>
+-                        {render_button("Back", "secondary", {"onclick": "location.href='/'"})}
++                        {render_button("Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"})}
+                     </p>"""
+         return render_form(
+             "Hostnames",
+@@ -615,7 +615,7 @@
+ 
+         {search_add_form_html}
+ 
+-        <p>{render_button("Back", "secondary", {"onclick": "location.href='/'"})}</p>
++        <p>{render_button("Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"})}</p>
+ 
+         <script>
+         const ALL_HOSTERS = {hosters_js};
+diff -ruN a1/quasarr/api/__init__.py a2/quasarr/api/__init__.py
+--- a/quasarr/api/__init__.py	2026-06-22 21:42:14.000000000 +0200
++++ b/quasarr/api/__init__.py	2026-06-24 00:02:55.911570507 +0200
+@@ -161,7 +161,7 @@
+                     {"" if shared_state.values.get("helper_active") else '<br><a href="https://github.com/rix1337/Quasarr?tab=readme-ov-file#sponsorshelper" target="_blank">Sponsors get automated CAPTCHA solutions!</a>'}
+                 </div>
+                 <div class="alert-action">
+-                    {render_button(f"Solve CAPTCHA{plural}", "primary", {"onclick": "location.href='/captcha'"})}
++                    {render_button(f"Solve CAPTCHA{plural}", "primary", {"onclick": "location.href=quasarrUrl('/captcha')"})}
+                 </div>
+             </div>
+             """
+@@ -999,7 +999,7 @@
+                     'Regenerate API Key?', 
+                     'Are you sure you want to regenerate the API Key? This will invalidate the current key.', 
+                     `<button class="btn-secondary" onclick="closeModal()">Cancel</button>
+-                     <button class="btn-primary" onclick="location.href='/regenerate-api-key'">Regenerate</button>`
++                     <button class="btn-primary" onclick="location.href=quasarrUrl('/regenerate-api-key')">Regenerate</button>`
+                 );
+             }}
+             
+diff -ruN a1/quasarr/api/packages/__init__.py a2/quasarr/api/packages/__init__.py
+--- a/quasarr/api/packages/__init__.py	2026-06-22 21:42:14.000000000 +0200
++++ b/quasarr/api/packages/__init__.py	2026-06-24 00:02:55.914570555 +0200
 @@ -398,7 +398,7 @@
          # Get rendered packages content using shared helper
          packages_content = _render_packages_content()
@@ -615,3 +515,231 @@
                      }}
                      
                      const content = `
+diff -ruN a1/quasarr/api/statistics/__init__.py a2/quasarr/api/statistics/__init__.py
+--- a/quasarr/api/statistics/__init__.py	2026-06-22 21:42:14.000000000 +0200
++++ b/quasarr/api/statistics/__init__.py	2026-06-24 00:02:55.912570523 +0200
+@@ -109,7 +109,7 @@
+         </div>
+ 
+         <p>
+-            {render_button("Back", "secondary", {"onclick": "location.href='/'"})}
++            {render_button("Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"})}
+         </p>
+ 
+         <style>
+diff -ruN a1/quasarr/providers/html_templates.py a2/quasarr/providers/html_templates.py
+--- a/quasarr/providers/html_templates.py	2026-06-24 00:02:55.885570094 +0200
++++ b/quasarr/providers/html_templates.py	2026-06-22 21:42:14.000000000 +0200
+@@ -2,8 +2,6 @@
+ # Quasarr
+ # Project by https://github.com/rix1337
+ 
+-import json
+-import os
+ import time
+ 
+ import quasarr.providers.html_images as images
+@@ -22,8 +20,6 @@
+         except Exception:
+             api_key = ""
+ 
+-    krate_url_base = (os.environ.get("QUASARR_URL_BASE") or "").rstrip("/")
+-
+     head = (
+         '''
+     <head>
+@@ -382,37 +378,16 @@
+         + repr(api_key)
+         + """;
+ 
+-            window.QUASARR_URL_BASE = """
+-        + json.dumps(krate_url_base)
+-        + """;
+-
+-            function quasarrUrl(p) {
+-                if (typeof p !== 'string' || p.charAt(0) !== '/') return p;
+-                const b = window.QUASARR_URL_BASE || '';
+-                if (!b || p.indexOf(b + '/') === 0 || p === b) return p;
+-                return b + p;
+-            }
+-
+-            window.quasarrUrl = quasarrUrl;
+-
+-
+             document.addEventListener('DOMContentLoaded', function() {
+                 const h1 = document.querySelector('h1');
+                 if (h1) {
+                     h1.onclick = function() {
+-                        window.location.href = quasarrUrl('/');
++                        window.location.href = '/';
+                     };
+                 }
+ 
+-                document.querySelectorAll('form[action^="/"]').forEach(function(form) {
+-                    const action = form.getAttribute('action');
+-                    if (action && action.charAt(0) === '/') {
+-                        form.action = quasarrUrl(action);
+-                    }
+-                });
+-
+                 if (window.QUASARR_API_KEY) {
+-                    document.querySelectorAll('form[action*="/api"]').forEach(function(form) {
++                    document.querySelectorAll('form[action^="/api"]').forEach(function(form) {
+                         if (form.querySelector('input[name="apikey"]')) {
+                             return;
+                         }
+@@ -435,7 +410,7 @@
+                 }
+ 
+                 requestOptions.headers = headers;
+-                return fetch(quasarrUrl(path), requestOptions);
++                return fetch(path, requestOptions);
+             }
+         </script>
+     </head>"""
+@@ -537,7 +512,7 @@
+ 
+ def render_form(header, form="", script="", footer_content=""):
+     content = f'''
+-    <h1 onclick="window.location.href=quasarrUrl('/')"><img src="{images.logo}" type="image/webp" alt="Quasarr logo" class="logo"/>Quasarr</h1>
++    <h1 onclick="window.location.href='/'"><img src="{images.logo}" type="image/webp" alt="Quasarr logo" class="logo"/>Quasarr</h1>
+     <h2>{header}</h2>
+     {form}
+     {script}
+@@ -561,12 +536,12 @@
+                     btn.innerText = 'Continue';
+                     btn.disabled = false;
+                     btn.className = 'btn-primary';
+-                    btn.onclick = () => window.location.href = quasarrUrl('/');
++                    btn.onclick = () => window.location.href = '/';
+                 }}
+             }}, 1000);
+         </script>
+     """
+-    content = f'''<h1 onclick="window.location.href=quasarrUrl('/')"><img src="{images.logo}" type="image/webp" alt="Quasarr logo" class="logo"/>Quasarr</h1>
++    content = f'''<h1 onclick="window.location.href='/'"><img src="{images.logo}" type="image/webp" alt="Quasarr logo" class="logo"/>Quasarr</h1>
+     <h2>{message}</h2>
+     {optional_text}
+     {button_html}
+@@ -577,9 +552,9 @@
+ 
+ def render_success_no_wait(message, optional_text=""):
+     button_html = render_button(
+-        "Continue", "primary", {"onclick": "window.location.href=quasarrUrl('/')"}
++        "Continue", "primary", {"onclick": "window.location.href='/'"}
+     )
+-    content = f'''<h1 onclick="window.location.href=quasarrUrl('/')"><img src="{images.logo}" type="image/webp" alt="Quasarr logo" class="logo"/>Quasarr</h1>
++    content = f'''<h1 onclick="window.location.href='/'"><img src="{images.logo}" type="image/webp" alt="Quasarr logo" class="logo"/>Quasarr</h1>
+     <h2>{message}</h2>
+     {optional_text}
+     {button_html}
+@@ -589,9 +564,9 @@
+ 
+ def render_fail(message):
+     button_html = render_button(
+-        "Back", "secondary", {"onclick": "window.location.href=quasarrUrl('/')"}
++        "Back", "secondary", {"onclick": "window.location.href='/'"}
+     )
+-    return render_centered_html(f"""<h1 onclick="window.location.href=quasarrUrl('/')"><img src="{images.logo}" type="image/webp" alt="Quasarr logo" class="logo"/>Quasarr</h1>
++    return render_centered_html(f"""<h1 onclick="window.location.href='/'"><img src="{images.logo}" type="image/webp" alt="Quasarr logo" class="logo"/>Quasarr</h1>
+         <h2>{message}</h2>
+         {button_html}
+     """)
+diff -ruN a1/quasarr/storage/setup/common.py a2/quasarr/storage/setup/common.py
+--- a/quasarr/storage/setup/common.py	2026-06-22 21:42:14.000000000 +0200
++++ b/quasarr/storage/setup/common.py	2026-06-24 00:02:55.909570475 +0200
+@@ -39,12 +39,12 @@
+                 var attempts = 0;
+                 function attempt() {{
+                     attempts++;
+-                    fetch('/', {{ method: 'HEAD', cache: 'no-store' }})
++                    fetch(quasarrUrl('/'), {{ method: 'HEAD', cache: 'no-store' }})
+                     .then(function(response) {{
+                         if (response.ok) {{
+                             btn.innerText = 'Connected! Reloading...';
+                             btn.className = 'btn-primary';
+-                            setTimeout(function() {{ window.location.href = '/'; }}, 500);
++                            setTimeout(function() {{ window.location.href = quasarrUrl('/'); }}, 500);
+                         }} else {{
+                             scheduleRetry();
+                         }}
+diff -ruN a1/quasarr/storage/setup/flaresolverr.py a2/quasarr/storage/setup/flaresolverr.py
+--- a/quasarr/storage/setup/flaresolverr.py	2026-06-22 21:42:14.000000000 +0200
++++ b/quasarr/storage/setup/flaresolverr.py	2026-06-24 00:02:55.911570507 +0200
+@@ -128,7 +128,7 @@
+             quasarrApiFetch('/api/flaresolverr/skip', { method: 'POST' })
+             .then(response => {
+                 if (response.ok) {
+-                    window.location.href = '/skip-success';
++                    window.location.href = quasarrUrl('/skip-success');
+                 } else {
+                     showModal('Error', 'Failed to skip flaresolverr-next setup');
+                     formSubmitted = false;
+@@ -191,7 +191,7 @@
+     """
+ 
+     if not is_setup:
+-        form_html += f"""<p>{render_button("Back", "secondary", {"onclick": "location.href='/'"})}</p>"""
++        form_html += f"""<p>{render_button("Back", "secondary", {"onclick": "location.href=quasarrUrl('/')"})}</p>"""
+ 
+     return form_html
+ 
+diff -ruN a1/quasarr/storage/setup/hostnames.py a2/quasarr/storage/setup/hostnames.py
+--- a/quasarr/storage/setup/hostnames.py	2026-06-22 21:42:14.000000000 +0200
++++ b/quasarr/storage/setup/hostnames.py	2026-06-24 00:02:55.918570618 +0200
+@@ -582,11 +582,11 @@
+ 
+     function attempt() {{
+       attempts++;
+-      fetch('/', {{ method: 'HEAD', cache: 'no-store' }})
++      fetch(quasarrUrl('/'), {{ method: 'HEAD', cache: 'no-store' }})
+       .then(response => {{
+         if (response.ok) {{
+           statusEl.textContent = 'Connected! Reloading...';
+-          setTimeout(function() {{ window.location.href = '/'; }}, 500);
++          setTimeout(function() {{ window.location.href = quasarrUrl('/'); }}, 500);
+         }} else {{
+           scheduleRetry();
+         }}
+@@ -656,7 +656,7 @@
+                         <strong>⚠️ flaresolverr-next Required</strong><br>
+                         This site requires flaresolverr-next, but it was skipped. You must configure it first.
+                         <div style="margin-top: 0.5rem;">
+-                            <button class="btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" onclick="window.location.href='/flaresolverr'">Configure flaresolverr-next</button>
++                            <button class="btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" onclick="window.location.href=quasarrUrl('/flaresolverr')">Configure flaresolverr-next</button>
+                         </div>
+                     </div>
+                 `;
+@@ -1131,7 +1131,7 @@
+             quasarrApiFetch('/api/credentials/{shorthand}/skip', {{ method: 'POST' }})
+             .then(response => {{
+                 if (response.ok) {{
+-                    window.location.href = '/skip-success';
++                    window.location.href = quasarrUrl('/skip-success');
+                 }} else {{
+                     showModal('Error', 'Failed to skip login');
+                     formSubmitted = false;
+diff -ruN a1/quasarr/storage/setup/radarr.py a2/quasarr/storage/setup/radarr.py
+--- a/quasarr/storage/setup/radarr.py	2026-06-22 21:42:14.000000000 +0200
++++ b/quasarr/storage/setup/radarr.py	2026-06-24 00:02:55.910570491 +0200
+@@ -219,7 +219,7 @@
+         quasarrApiFetch('/api/radarr/skip', {{ method: 'POST' }})
+         .then(function(response) {{
+             if (response.ok) {{
+-                window.location.href = '/skip-success';
++                window.location.href = quasarrUrl('/skip-success');
+             }} else {{
+                 showModal('Error', 'Failed to skip Radarr setup');
+                 formSubmitted = false;
+diff -ruN a1/quasarr/storage/setup/sonarr.py a2/quasarr/storage/setup/sonarr.py
+--- a/quasarr/storage/setup/sonarr.py	2026-06-22 21:42:14.000000000 +0200
++++ b/quasarr/storage/setup/sonarr.py	2026-06-24 00:02:55.911570507 +0200
+@@ -219,7 +219,7 @@
+         quasarrApiFetch('/api/sonarr/skip', {{ method: 'POST' }})
+         .then(function(response) {{
+             if (response.ok) {{
+-                window.location.href = '/skip-success';
++                window.location.href = quasarrUrl('/skip-success');
+             }} else {{
+                 showModal('Error', 'Failed to skip Sonarr setup');
+                 formSubmitted = false;
