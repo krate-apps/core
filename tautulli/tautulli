@@ -74,7 +74,7 @@ _config() {
 	zenfw::permission::set "${config_file}" "640" "700" "${username}" "${username}"
 	zenfw::vault::save "${username}.${app_name}" "${user_password}" application
 	zenfw::proxy::generate "${app_name}" "${default_port}" "${url_base}" true "${username}"
-	zenfw::service::manage restart "${service_unit}"
+	zenfw::service::manage start "${service_unit}" 180 || zenfw::service::manage restart "${service_unit}" 180
 }
 
 _update() {
@@ -84,6 +84,6 @@ _update() {
 	zenfw::workspace::venv::create "${install_dir}" "${username}" false
 	_tautulli_install_venv_deps || return 1
 	zenfw::permission::exec_exec::set "${install_dir}/.venv" "${username}" "${username}"
-	zenfw::service::manage restart "${service_unit}"
+	zenfw::service::manage start "${service_unit}" 180 || zenfw::service::manage restart "${service_unit}" 180
 	zenfw::software::backup::create "${app_name}" "user" "${install_dir}" "${username}"
 }
