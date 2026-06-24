@@ -6,7 +6,7 @@ runtime:
 dependencies:
   apt:
     common:
-      packages: curl wget ca-certificates python3.13 python3.13-venv python3.13-dev build-essential libffi-dev pkg-config
+      packages: curl wget ca-certificates python3.13 python3.13-venv python3.13-dev python3-rencode build-essential libffi-dev pkg-config
 install:
   layout:
     install_dir: /opt/%i/deluge
