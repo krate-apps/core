@@ -13,10 +13,33 @@ _add() {
 	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
 	zenfw::workspace::user::run "${username}" "${install_dir}" "uv python install 3.13" || true
 	zenfw::workspace::venv::create "${install_dir}" "${username}" false
-	zenfw::workspace::venv::build "${install_dir}" "${username}"
+	_tautulli_install_venv_deps || return 1
 	zenfw::permission::exec_exec::set "${install_dir}/.venv" "${username}" "${username}"
 	zenfw::service::generate "${app_name}" true false
 	_config
+}
+
+_tautulli_install_venv_deps() {
+	# Drop python_version markers uv cannot apply on 3.13 (e.g. backports.zoneinfo).
+	python3 - "${install_dir}/requirements.txt" "${install_dir}/.krate-requirements.txt" <<'PY'
+import sys
+from pathlib import Path
+
+src, dst = Path(sys.argv[1]), Path(sys.argv[2])
+lines = []
+for raw in src.read_text(encoding="utf-8").splitlines():
+    line = raw.strip()
+    if not line or line.startswith("#"):
+        continue
+    if ";python_version" in line.replace(" ", ""):
+        continue
+    lines.append(line)
+dst.write_text("\n".join(lines) + "\n", encoding="utf-8")
+PY
+	zenfw::workspace::user::run "${username}" "${install_dir}" "uv pip install -r .krate-requirements.txt" || {
+		printf '[%s] uv pip install failed in %s\n' "${app_name}" "${install_dir}" >&2
+		return 1
+	}
 }
 
 _config() {
@@ -59,7 +82,7 @@ _update() {
 	zenfw::git::release::get "${install_dir}" "${app_repo}" "${is_prerelease}" "source"
 	printf '3.13\n' > "${install_dir}/.python-version"
 	zenfw::workspace::venv::create "${install_dir}" "${username}" false
-	zenfw::workspace::venv::build "${install_dir}" "${username}"
+	_tautulli_install_venv_deps || return 1
 	zenfw::permission::exec_exec::set "${install_dir}/.venv" "${username}" "${username}"
 	zenfw::service::manage restart "${service_unit}"
 	zenfw::software::backup::create "${app_name}" "user" "${install_dir}" "${username}"
