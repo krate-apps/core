@@ -24,7 +24,7 @@ _config() {
 	zenfw::fs::env::set "${env_file}" "PORT" "${default_port}"
 	zenfw::fs::env::set "${env_file}" "LOG_LEVEL" "INFO"
 	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
-	zenfw::service::manage restart "${service_unit}"
+	zenfw::service::manage restart "${service_unit}" 600
 }
 
 _update() {
@@ -33,13 +33,14 @@ _update() {
 	zenfw::git::clone "${app_repo}" "${install_dir}" "main"
 	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
 	_byparr_provision_runtime
-	zenfw::service::manage restart "${service_unit}"
+	zenfw::service::manage restart "${service_unit}" 600
 	_verify
 	zenfw::software::backup::create "${app_name}" "user" "${install_dir}" "${username}"
 }
 
 _byparr_provision_runtime() {
-	zenfw::workspace::user::run "${username}" "${install_dir}" "uv sync --frozen" || {
+	printf '3.13\n' > "${install_dir}/.python-version"
+	zenfw::workspace::user::run "${username}" "${install_dir}" "UV_PYTHON=3.13 uv sync --frozen" || {
 		printf '[%s] uv sync failed in %s\n' "${app_name}" "${install_dir}" >&2
 		return 1
 	}
