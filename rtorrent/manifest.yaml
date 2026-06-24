@@ -43,7 +43,7 @@ systemd:
       PATH: /home/%i/.local/bin:/home/%i/.krate/active/rtorrent/usr/bin:/usr/local/bin:/usr/bin:/bin
   exec:
     pre:
-      - +/bin/sh -c '/opt/Krate/share/applications/community/rtorrent/bin/rtorrent-pre.sh %i'
+      - +/bin/sh -c '/opt/Krate/share/applications/official/rtorrent/bin/rtorrent-pre.sh %i'
     start:
       - /usr/bin/tmux
       - -f
