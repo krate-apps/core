@@ -20,11 +20,12 @@ _add() {
 _config() {
 	local default_port
 	default_port="${service_default_port}"
-	zenfw::fs::env::set "${env_file}" "HOST" "127.0.0.1"
-	zenfw::fs::env::set "${env_file}" "PORT" "${default_port}"
-	zenfw::fs::env::set "${env_file}" "LOG_LEVEL" "INFO"
+	mkdir -p "$(dirname "${env_file}")"
+	printf 'HOST=127.0.0.1\nPORT=%s\nLOG_LEVEL=INFO\n' "${default_port}" >"${env_file}"
+	zenfw::permission::private::set "${env_file}" "${username}" "${username}"
 	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
-	zenfw::service::manage restart "${service_unit}" 600
+	zenfw::permission::exec_exec::set "${install_dir}/.venv" "${username}" "${username}"
+	zenfw::service::manage start "${service_unit}" 180 || zenfw::service::manage restart "${service_unit}" 180
 }
 
 _update() {
@@ -33,7 +34,7 @@ _update() {
 	zenfw::git::clone "${app_repo}" "${install_dir}" "main"
 	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
 	_byparr_provision_runtime
-	zenfw::service::manage restart "${service_unit}" 600
+	_config
 	_verify
 	zenfw::software::backup::create "${app_name}" "user" "${install_dir}" "${username}"
 }
@@ -56,6 +57,7 @@ _byparr_provision_runtime() {
 		printf '[%s] camoufox fetch failed\n' "${app_name}" >&2
 		return 1
 	}
+	zenfw::permission::exec_exec::set "${install_dir}/.venv" "${username}" "${username}"
 }
 
 # After restart: wait for FastAPI to answer on /docs, then exercise /v1 against a Cloudflare-protected URL.
