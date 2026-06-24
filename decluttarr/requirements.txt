@@ -4,3 +4,4 @@ PyYAML>=6.0
 pyyaml_env_tag>=1.1
 watchdog>=6.0.0
 packaging>=24.0
+setuptools>=61
