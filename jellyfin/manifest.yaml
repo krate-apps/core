@@ -16,6 +16,8 @@ install:
   release:
     asset: amd64.tar.gz
     base: https://repo.jellyfin.org/files/server/linux/latest-{channel}/amd64/
+    channel_guard:
+      prerelease: stable
   ffmpeg:
     repo: jellyfin/jellyfin-ffmpeg
     asset: portable_linux64-gpl.tar.xz
