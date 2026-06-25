@@ -29,21 +29,17 @@ systemd:
     WorkingDirectory: /opt/%i/emby
   environment:
     file:
-      path: /etc/%i-emby-server.conf
-      mode: "0644"
+      path: /home/%i/.krate/applications/emby.env
+      mode: "0600"
       variables:
         EMBY_DATA: /home/%i/.config/emby-server
   exec:
     start:
       - /opt/%i/emby/bin/emby-server
-      - -programdata
-      - /home/%i/.config/emby-server
-      - -restartexitcode
-      - "3"
 files:
   service: /etc/systemd/system/emby@.service
   config:
-    - /etc/%i-emby-server.conf
+    - /home/%i/.krate/applications/emby.env
     - /home/%i/.config/emby-server/config/system.xml
   database:
     - /home/%i/.config/emby-server/data/library.db
@@ -60,5 +56,6 @@ security:
       - /home/%i/.config/emby-server
       - /home/%i/tmp/emby
       - /home/%i/.krate/backups/emby
+      - /home/%i/.krate/applications
     read_only:
       - /opt/%i/emby
