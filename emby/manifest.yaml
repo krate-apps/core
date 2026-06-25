@@ -36,6 +36,10 @@ systemd:
   exec:
     start:
       - /opt/%i/emby/bin/emby-server
+      - -programdata
+      - /home/%i/.config/emby-server
+      - -restartexitcode
+      - "3"
 files:
   service: /etc/systemd/system/emby@.service
   config:
