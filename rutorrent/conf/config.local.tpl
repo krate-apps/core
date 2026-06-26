@@ -35,6 +35,7 @@ if ($krateRuUser !== '' && preg_match('/^[a-z_][a-z0-9_-]*$/i', $krateRuUser)) {
 
 	$scgi_port = 0;
 	$scgi_host = 'unix:///run/krate/user/' . $krateRuUser . '.rtorrent.sock';
+	$XMLRPCMountPoint = '/RPC2';
 
 	// Copies in ~/.local/bin (see rtorrent/rutorrent handler); avoid symlinks into ~/.krate/active (www-data cannot traverse).
 	$krateLocalBin = '/home/' . $krateRuUser . '/.local/bin';
