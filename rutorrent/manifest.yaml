@@ -3,6 +3,7 @@ multi_user: true
 require: rtorrent
 sync_repos:
   - apps-extensions
+# apps-extensions: rutorrent/ext/* → plugins/ ; rutorrent/themes/* → plugins/theme/themes/
 # Path-based UI: /{user}/rutorrent (url_base from lifecycle). Requires rtorrent@{user}.
 #
 # Layout:

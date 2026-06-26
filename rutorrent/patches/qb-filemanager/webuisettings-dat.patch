@@ -1,0 +1,50 @@
+--- a/flm.class.php
++++ b/flm.class.php
+@@ -547,6 +547,38 @@ class FLM {
+ 
+ 
+ 
++	protected static function loadWebUiSettings()
++	{
++		$settings = array();
++		$webuiPhp = dirname(__FILE__).'/../../php/WebUISettings.php';
++
++		if(is_readable($webuiPhp))
++		{
++			require_once($webuiPhp);
++			$ws = WebUISettings::load();
++			$json = $ws->get();
++			if(is_string($json) && $json !== '' && $json !== '{}')
++			{
++				$decoded = json_decode($json, true);
++				if(is_array($decoded))
++					$settings = $decoded;
++			}
++		}
++
++		if(empty($settings))
++		{
++			$legacy = FileUtil::getSettingsPath().'/uisettings.json';
++			if(is_readable($legacy))
++			{
++				$decoded = json_decode(file_get_contents($legacy), true);
++				if(is_array($decoded))
++					$settings = $decoded;
++			}
++		}
++
++		return $settings;
++	}
++
+ 	public function screenshots($file, $output) {
+ 
+ 
+@@ -555,7 +587,7 @@ class FLM {
+ 
+ 		$defaults = array('scrows' => '12', 'sccols' => 4, 'scwidth' => 300 );
+ 
+-		$uisettings = json_decode(file_get_contents(FileUtil::getSettingsPath().'/uisettings.json'), true);
++		$uisettings = self::loadWebUiSettings();
+ 		$settings = array();
+ 
+ 		foreach($defaults as $k => $value) {
