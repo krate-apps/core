@@ -1,0 +1,5 @@
+plugin.description: Krate shims for ruTorrent 5.x API gaps used by third-party plugins.
+plugin.author: Krate
+plugin.version: 1.0
+plugin.runlevel: 1
+plugin.depends: theme

@@ -49,8 +49,17 @@ if ($krateRuUser !== '' && preg_match('/^[a-z_][a-z0-9_-]*$/i', $krateRuUser)) {
 			'mktorrent' => $krateLocalBin . '/mktorrent',
 			'rblcheck' => $krateLocalBin . '/rblcheck',
 			'dnsget' => $krateLocalBin . '/dnsget',
+			'zip' => '/usr/bin/zip',
+			'unzip' => '/usr/bin/unzip',
+			'tar' => '/bin/tar',
+			'unrar' => '/usr/bin/unrar',
 		)
 	);
+	if (is_executable('/usr/bin/rar')) {
+		$pathToExternals['rar'] = '/usr/bin/rar';
+	} elseif (is_executable('/usr/bin/unrar')) {
+		$pathToExternals['rar'] = '/usr/bin/unrar';
+	}
 	// Fallback when copies are missing but vendor tree exists (rTorrent RPC runs as the app user).
 	foreach (array('dumptorrent', 'scrapec', 'mktorrent', 'rblcheck', 'dnsget') as $krateTool) {
 		if (!is_executable($pathToExternals[$krateTool] ?? '') && is_executable($krateVendorBin . '/' . $krateTool)) {
