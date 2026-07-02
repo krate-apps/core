@@ -53,3 +53,11 @@ security:
       - /home/%i/.krate/backups/jackett
     read_only:
       - /opt/%i/jackett
+version:
+  probes:
+    - type: http_json
+      url: "http://127.0.0.1:{default_port}{root_url}/api/v2/server/status"
+      field: version
+      auth: apikey
+      auth_header: X-Api-Key
+      requires: active
