@@ -15,9 +15,9 @@ install:
     temp_dir: /home/%i/tmp/whisparr
   release:
     asset: linux-x64.tar.gz
-    update_branch:
-      stable: master
-      prerelease: develop
+    branches:
+      main: master
+      beta: develop
   executable:
     - /opt/%i/whisparr/Whisparr
 systemd:
