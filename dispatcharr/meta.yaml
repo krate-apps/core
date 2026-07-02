@@ -14,9 +14,5 @@ password_constraints:
   max_length: 128
   require_upper: false
   require_digit: false
-autocomplete_options:
-  - -b
 ui_options:
   subdomain: true
-  branches:
-    - main
