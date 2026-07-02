@@ -14,7 +14,7 @@ sync_repos:
 dependencies:
   apt:
     common:
-      packages: php8.4-curl php8.4-mbstring php8.4-xml php8.4-zip geoip-database p7zip-full unrar ffmpeg mediainfo sox
+      packages: php8.5-curl php8.5-mbstring php8.5-xml php8.5-zip geoip-database p7zip-full unrar ffmpeg mediainfo sox
 install:
   layout:
     install_dir: /srv/rutorrent/app
@@ -43,3 +43,8 @@ security:
     read_only:
       - /etc/caddy/auth/local/users.json
       - /etc/caddy/auth/users.json
+version:
+  probes:
+    - type: vendor_symlink
+      path: "/home/{username}/.krate/active/rtorrent"
+      pattern: "_([0-9][^_]*)$" 
