@@ -12,7 +12,7 @@ install_mode: local
 autocomplete_options:
   - -b
 ui_options:
-  subdomain: false
   branches:
-    - latest
-    - dev
+    - main
+    - beta
+  subdomain: false
