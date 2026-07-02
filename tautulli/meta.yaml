@@ -18,7 +18,7 @@ autocomplete_options:
   - -b
   - -s
 ui_options:
-  subdomain: true
   branches:
-    - master
-    - nightly
+    - main
+    - beta
+  subdomain: true
