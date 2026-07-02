@@ -16,3 +16,7 @@ password_constraints:
   require_digit: false
 autocomplete_options:
   - -b
+ui_options:
+  branches:
+    - main
+    - beta
