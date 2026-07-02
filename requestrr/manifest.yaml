@@ -60,3 +60,9 @@ security:
       - /home/%i/.krate/backups/requestrr
     read_only:
       - /opt/%i/requestrr
+version:
+  probes:
+    - type: executable
+      cmd: "{install_dir}/Requestrr.WebApi"
+      args: --version
+      requires: active
