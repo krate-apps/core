@@ -10,12 +10,8 @@ tier: free
 category: download
 install_mode: local
 autocomplete_options:
-  - -b
   - -lt
 ui_options:
-  branches:
-    - main
-    - beta
   libtorrent:
     - v2
     - v1
