@@ -68,3 +68,9 @@ security:
       - /opt/%i/flood
       - /var/run/%i
       - /run/%i
+version:
+  probes:
+    - type: executable
+      cmd: "{install_dir}/flood"
+      args: --version
+      requires: active
