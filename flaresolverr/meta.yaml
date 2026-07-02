@@ -11,6 +11,10 @@ links:
 tier: free
 category: indexers
 install_mode: local
-autocomplete_options: []
+autocomplete_options:
+  - -b
 ui_options:
+  branches:
+    - main
+    - beta
   subdomain: false

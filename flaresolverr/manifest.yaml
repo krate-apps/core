@@ -74,3 +74,9 @@ security:
       - /home/%i/.krate/applications
     read_only:
       - /opt/%i/flaresolverr
+version:
+  probes:
+    - type: http_json
+      url: "http://127.0.0.1:{default_port}/"
+      field: version
+      requires: active
