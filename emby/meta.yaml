@@ -20,7 +20,7 @@ autocomplete_options:
   - -s
   - --emby-premiere-key
 ui_options:
-  subdomain: true
   branches:
     - main
     - beta
+  subdomain: true
