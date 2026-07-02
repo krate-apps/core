@@ -70,3 +70,9 @@ security:
       - /home/%i/.krate/backups/nzbget
     read_only:
       - /opt/%i/nzbget
+version:
+  probes:
+    - type: executable
+      cmd: "{install_dir}/nzbget/usr/bin/nzbget"
+      args: --version
+      requires: active
