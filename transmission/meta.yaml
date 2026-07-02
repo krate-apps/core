@@ -9,9 +9,4 @@ links:
 tier: free
 category: download
 install_mode: local
-autocomplete_options:
-  - -b
 ui_options:
-  branches:
-    - main
-    - beta
