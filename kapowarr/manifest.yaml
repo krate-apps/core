@@ -9,9 +9,8 @@ dependencies:
       packages: git curl ca-certificates
 install:
   release:
-    update_branch:
-      stable: main
-      prerelease: development
+    branches:
+      beta: development
   layout:
     backup_dir: /home/%i/.krate/backups/kapowarr
     data_dir: /home/%i/.config/kapowarr
@@ -73,3 +72,10 @@ security:
       - /opt/%i/kapowarr/.venv
     read_only:
       - /opt/%i/kapowarr
+version:
+  probes:
+    - type: http_json
+      url: "http://127.0.0.1:{default_port}{root_url}/api/v1/system/status"
+      field: version
+      auth: apikey
+      requires: active
