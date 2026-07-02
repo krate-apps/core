@@ -10,9 +10,8 @@ dependencies:
 install:
   release:
     asset: release.tar.gz
-    update_branch:
-      stable: main
-      prerelease: dev
+    branches:
+      beta: dev
   layout:
     backup_dir: /home/%i/.krate/backups/trailarr
     data_dir: /home/%i/.config/trailarr
@@ -71,3 +70,13 @@ security:
       - /opt/%i/trailarr/frontend-build/browser
     read_only:
       - /opt/%i/trailarr
+version:
+  probes:
+    - type: http_json
+      url: "http://127.0.0.1:{default_port}{root_url}/api/health"
+      field: version
+      auth: apikey
+      requires: active
+    - type: file
+      path: "{install_dir}/package.json"
+      field: version
