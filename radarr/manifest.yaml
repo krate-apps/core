@@ -17,9 +17,9 @@ install:
     - /opt/%i/radarr/Radarr
   release:
     asset: linux-core-x64.tar.gz
-    update_branch:
-      stable: master
-      prerelease: develop
+    branches:
+      main: master
+      beta: develop
 systemd:
   unit:
     TimeoutStopSec: 20

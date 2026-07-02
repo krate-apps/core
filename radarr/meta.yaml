@@ -17,3 +17,7 @@ password_constraints:
 autocomplete_options:
   - -b
   - -s
+ui_options:
+  branches:
+    - main
+    - beta
