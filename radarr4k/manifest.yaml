@@ -15,9 +15,9 @@ install:
     temp_dir: /home/%i/tmp/radarr4k
   release:
     asset: linux-core-x64.tar.gz
-    update_branch:
-      stable: master
-      prerelease: develop
+    branches:
+      main: master
+      beta: develop
   executable:
     - /opt/%i/radarr4k/Radarr
 systemd:
