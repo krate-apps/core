@@ -50,3 +50,9 @@ security:
       - /home/%i/.krate/backups/filebrowser
     read_only:
       - /opt/%i/filebrowser
+version:
+  probes:
+    - type: executable
+      cmd: "{install_dir}/filebrowser"
+      args: --version
+      requires: active
