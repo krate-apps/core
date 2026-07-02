@@ -9,9 +9,6 @@ dependencies:
       packages: git curl ca-certificates
 install:
   release:
-    update_branch:
-      stable: main
-      prerelease: beta
   layout:
     backup_dir: /home/%i/.krate/backups/wizarr
     data_dir: /home/%i/.config/wizarr
@@ -71,3 +68,8 @@ security:
       - /opt/%i/wizarr/database
     read_only:
       - /opt/%i/wizarr
+version:
+  probes:
+    - type: pip
+      venv: "{install_dir}/.venv"
+      package: wizarr

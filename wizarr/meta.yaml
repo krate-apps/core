@@ -17,7 +17,7 @@ password_constraints:
 autocomplete_options:
   - -b
 ui_options:
-  subdomain: true
   branches:
     - main
     - beta
+  subdomain: true

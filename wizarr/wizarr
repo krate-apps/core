@@ -80,7 +80,7 @@ _wizarr_clone() {
 		is_prerelease=false
 		app::lifecycle::record_branch main false
 	fi
-	zenfw::git::clone "${app_repo}" "${install_dir}" "main"
+	zenfw::git::clone "${app_repo}" "${install_dir}" "$(app::update_branch)"
 }
 
 _wizarr_provision() {
