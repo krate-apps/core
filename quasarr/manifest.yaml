@@ -61,3 +61,8 @@ security:
       - /opt/%i/quasarr/.venv
     read_only:
       - /opt/%i/quasarr
+version:
+  probes:
+    - type: pip
+      venv: "{install_dir}/.venv"
+      package: quasarr
