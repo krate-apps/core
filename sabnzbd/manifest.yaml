@@ -62,7 +62,6 @@ security:
       - /opt/%i/sabnzbd
     read_only:
       - /etc/caddy/auth/local/users.json
-      - /etc/caddy/auth/users.json
 version:
   probes:
     - type: http_json
