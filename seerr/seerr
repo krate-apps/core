@@ -17,7 +17,8 @@ _add() {
 }
 
 _config() {
-	local default_port config_dir caddy_fragment="/etc/caddy/softwares/${username}.${app_name}.caddy"
+	local default_port config_dir caddy_fragment
+	caddy_fragment="$(proxy_caddy_fragment_path)"
 	mkdir -p "${data_dir}"
 	config_dir="${data_dir}/config"
 	mkdir -p "${config_dir}/db" "${config_dir}/logs"
