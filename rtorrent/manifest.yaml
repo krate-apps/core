@@ -86,7 +86,6 @@ security:
       - /home/%i/.krate/active/rtorrent
       - /opt/Krate/vendor
       - /etc/caddy/auth/local/users.json
-      - /etc/caddy/auth/users.json
 version:
   probes:
     - type: vendor_symlink
