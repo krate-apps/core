@@ -61,7 +61,6 @@ security:
     read_only:
       - /home/%i/.krate/active/deluge
       - /etc/caddy/auth/local/users.json
-      - /etc/caddy/auth/users.json
 version:
   probes:
     - type: vendor_symlink
