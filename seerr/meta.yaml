@@ -10,4 +10,3 @@ tier: free
 category: workflow
 install_mode: local
 ui_options:
-  subdomain: true
