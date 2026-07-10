@@ -15,3 +15,4 @@ ui_options:
   libtorrent:
     - v2
     - v1
+  subdomain: false
