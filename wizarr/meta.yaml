@@ -20,4 +20,3 @@ ui_options:
   branches:
     - main
     - beta
-  subdomain: true
