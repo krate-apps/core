@@ -10,3 +10,4 @@ tier: free
 category: download
 install_mode: local
 ui_options:
+  subdomain: false
