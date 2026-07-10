@@ -60,7 +60,7 @@ _secure() {
 	api_key="$(zenfw::fs::env::get "${env_file}" "RADARR__AUTH__APIKEY")"
 	listen_port="$(zenfw::fs::env::get "${env_file}" "RADARR__SERVER__PORT")"
 	update_branch="$(zenfw::fs::env::get "${env_file}" "RADARR__UPDATE__BRANCH")"
-	url="http://localhost:${listen_port}/${username}/${app_name}/"
+	url="http://localhost:${listen_port}${url_base%/}/"
 	zenfw::request::wait::ping "${url}" 60 1000 true
 	api_url="${url}api/v3/config/host"
 	radarr_config="$(API_SERVICE_APIKEY="${api_key}" zenfw::request::app::get "${api_url}" true "X-API-KEY")"
