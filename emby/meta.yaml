@@ -17,10 +17,8 @@ password_constraints:
   require_digit: false
 autocomplete_options:
   - -b
-  - -s
   - --emby-premiere-key
 ui_options:
   branches:
     - main
     - beta
-  subdomain: true
