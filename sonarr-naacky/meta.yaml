@@ -15,6 +15,4 @@ password_constraints:
   require_upper: false
   require_digit: false
 autocomplete_options:
-  - -s
 ui_options:
-  subdomain: true
