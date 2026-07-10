@@ -16,9 +16,7 @@ password_constraints:
   require_digit: false
 autocomplete_options:
   - -b
-  - -s
 ui_options:
   branches:
     - main
     - beta
-  subdomain: true
