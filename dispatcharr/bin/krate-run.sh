@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
-# dispatcharr@ ExecStart — uWSGI master (gevent) + attach-daemon celery/beat/daphne (upstream pattern).
 set -euo pipefail
+
+# krate run (sh)
+#
+# Usage:
+#   krate-run.sh [args]
+
+# dispatcharr@ ExecStart — uWSGI master (gevent) + attach-daemon celery/beat/daphne (upstream pattern).
 
 user="${1:?usage: krate-run.sh USER}"
 

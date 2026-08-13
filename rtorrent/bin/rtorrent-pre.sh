@@ -1,4 +1,10 @@
 #!/bin/sh
+
+# rtorrent pre (sh)
+#
+# Usage:
+#   rtorrent-pre.sh [args]
+
 # rtorrent@ pre-start (systemd runs this as root via ExecStartPre=+).
 set -eu
 
