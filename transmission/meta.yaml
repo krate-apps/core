@@ -1,6 +1,6 @@
 id: transmission
 name: Transmission
-description: "Transmission daemon vendor binary at /{user}/transmission via Caddy. Branch main (default) → slot 4.0.6; beta → 4.1.1 (krate-binaries/transmission-builds)."
+description: "Transmission daemon vendor binary at /{user}/transmission via Caddy. Branch main (default) → slot 4.0.6; beta → 4.1.1 (krate-apps/transmission-builds)."
 links:
   homepage: https://transmissionbt.com/
   documentation: https://github.com/transmission/transmission
