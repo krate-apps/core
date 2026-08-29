@@ -1,0 +1,157 @@
+#!/usr/bin/env bash
+[[ -n "${KRATE_HANDLER_CONTEXT_FILE:-}" && -f "${KRATE_HANDLER_CONTEXT_FILE}" ]] && . "${KRATE_HANDLER_CONTEXT_FILE}"
+# @file applications/apps/tdarr/tdarr
+# @project KRATE
+# @description Tdarr — Tdarr_Server zip (storage.tdarr.io) + web UI proxy; GitHub prerelease fallback.
+# shellcheck disable=SC2154
+set -euo pipefail
+
+_add() {
+	_fetch_server
+	zenfw::service::generate "${app_name}" true false
+	_config
+}
+
+_config() {
+	local default_port server_port config_file
+	mkdir -p "${data_dir}/configs" "${data_dir}/logs" "${data_dir}/server" "${data_dir}/media" "${data_dir}/transcode_cache"
+	zenfw::permission::read_exec::set "${data_dir}" "${username}" "${username}"
+	default_port="${service_default_port//[^0-9]/}"
+	: "${default_port:?}"
+	server_port="$((default_port + 1))"
+	# Upstream writes configs next to the binary; keep them under data_dir.
+	rm -rf "${install_dir}/configs"
+	ln -sfn "${data_dir}/configs" "${install_dir}/configs"
+	rm -rf "${install_dir}/logs" 2>/dev/null || true
+	ln -sfn "${data_dir}/logs" "${install_dir}/logs"
+	rm -rf "${install_dir}/server" 2>/dev/null || true
+	ln -sfn "${data_dir}/server" "${install_dir}/server"
+	config_file="${data_dir}/configs/Tdarr_Server_Config.json"
+	_tdarr_write_server_config "${config_file}" "${default_port}" "${server_port}"
+	zenfw::fs::env::set "${env_file}" "webUIPort" "${default_port}"
+	zenfw::fs::env::set "${env_file}" "serverPort" "${server_port}"
+	zenfw::permission::read_exec::set "${data_dir}" "${username}" "${username}"
+	zenfw::permission::private::set "${env_file}" "${username}" "${username}"
+	zenfw::proxy::generate "${app_name}" "${default_port}" "${url_base}" true "${username}"
+	zenfw::service::manage restart "${service_unit}"
+}
+
+_update() {
+	zenfw::service::manage stop "${service_unit}"
+	_fetch_server
+	_config
+	zenfw::software::backup::create "${app_name}" "user" "${data_dir}" "${username}"
+}
+
+_fetch_server() {
+	local tmpdir versions_url version zip_url asset_pat
+	tmpdir="$(mktemp -d)"
+	mkdir -p "${install_dir}"
+	versions_url="https://storage.tdarr.io/versions.json"
+	# Best-effort: modern Server zip from storage.tdarr.io (GitHub Tdarr-Linux assets are legacy V1).
+	if zenfw::request::wait::ping "${versions_url}" 30 1000 false 2>/dev/null \
+		&& curl -fsSL "${versions_url}" -o "${tmpdir}/versions.json"; then
+		version="$(python3 - "${tmpdir}/versions.json" <<'PY'
+import json, sys
+doc = json.load(open(sys.argv[1], encoding="utf-8"))
+# Prefer highest semver-like key that has linux_x64 Tdarr_Server.
+keys = sorted(doc.keys(), key=lambda k: [int(x) if x.isdigit() else x for x in k.replace("-", ".").split(".")], reverse=True)
+for k in keys:
+    block = doc.get(k) or {}
+    linux = block.get("linux_x64") or {}
+    url = linux.get("Tdarr_Server")
+    if url:
+        print(k)
+        break
+PY
+)"
+		if [[ -n "${version}" ]]; then
+			zip_url="$(python3 - "${tmpdir}/versions.json" "${version}" <<'PY'
+import json, sys
+doc = json.load(open(sys.argv[1], encoding="utf-8"))
+print(doc[sys.argv[2]]["linux_x64"]["Tdarr_Server"])
+PY
+)"
+			curl -fsSL -L "${zip_url}" -o "${tmpdir}/Tdarr_Server.zip"
+			unzip -qo "${tmpdir}/Tdarr_Server.zip" -d "${tmpdir}/extract"
+			_tdarr_install_from_extract "${tmpdir}/extract"
+			rm -rf "${tmpdir}"
+			return 0
+		fi
+	fi
+	# Fallback: GitHub prerelease asset matching Tdarr-Linux / Tdarr_Updater.
+	asset_pat="$(app::cfg install.release.asset 2>/dev/null || printf 'Tdarr-Linux')"
+	zenfw::git::release::get "${tmpdir}/gh" "${app_repo}" "true" "${asset_pat}" || \
+		zenfw::git::release::get "${tmpdir}/gh" "${app_repo}" "${is_prerelease:-true}" "${asset_pat}"
+	_tdarr_install_from_extract "${tmpdir}/gh"
+	rm -rf "${tmpdir}"
+	[[ -x "${install_dir}/Tdarr_Server" ]] || {
+		printf '[%s] Tdarr_Server binary missing after extract\n' "${app_name}" >&2
+		return 1
+	}
+}
+
+_tdarr_install_from_extract() {
+	local src="${1:?}" bin
+	# Flatten nested single-directory extracts.
+	if [[ ! -f "${src}/Tdarr_Server" ]]; then
+		bin="$(find "${src}" -type f -name Tdarr_Server -print -quit 2>/dev/null || true)"
+		if [[ -n "${bin}" ]]; then
+			src="$(dirname "${bin}")"
+		fi
+	fi
+	# Preserve data symlinks; replace package contents.
+	find "${install_dir}" -mindepth 1 -maxdepth 1 ! -name configs ! -name logs ! -name server -exec rm -rf {} + 2>/dev/null || true
+	# Copy extracted tree into install_dir.
+	if [[ -d "${src}" ]]; then
+		cp -a "${src}/." "${install_dir}/"
+	fi
+	if [[ -f "${install_dir}/Tdarr_Server" ]]; then
+		chmod 0755 "${install_dir}/Tdarr_Server"
+	elif [[ -f "${install_dir}/Tdarr" ]]; then
+		# Legacy V1 meteor package — best-effort shim name.
+		chmod 0755 "${install_dir}/Tdarr" || true
+		ln -sfn Tdarr "${install_dir}/Tdarr_Server"
+	fi
+	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
+}
+
+_tdarr_write_server_config() {
+	local config_file="${1:?}" web_port="${2:?}" server_port="${3:?}"
+	python3 - "${config_file}" "${web_port}" "${server_port}" "${data_dir}" <<'PY'
+import json
+import os
+import sys
+
+path, web_port, server_port, data_dir = sys.argv[1:5]
+defaults = {
+    "serverPort": str(server_port),
+    "webUIPort": str(web_port),
+    "serverIP": "127.0.0.1",
+    "handbrakePath": "",
+    "ffmpegPath": "",
+    "logLevel": "INFO",
+    "mkvpropeditPath": "",
+    "ccextractorPath": "",
+    "openBrowser": False,
+    "authSecretKey": "",
+    "maxLogSizeMB": 10,
+}
+data = {}
+if os.path.isfile(path):
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f) or {}
+    except (OSError, json.JSONDecodeError):
+        data = {}
+merged = dict(defaults)
+merged.update(data)
+merged["serverPort"] = str(server_port)
+merged["webUIPort"] = str(web_port)
+merged["serverIP"] = "127.0.0.1"
+os.makedirs(os.path.dirname(path), exist_ok=True)
+with open(path, "w", encoding="utf-8") as f:
+    json.dump(merged, f, indent=2)
+    f.write("\n")
+PY
+}
