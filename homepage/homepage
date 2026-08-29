@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+[[ -n "${KRATE_HANDLER_CONTEXT_FILE:-}" && -f "${KRATE_HANDLER_CONTEXT_FILE}" ]] && . "${KRATE_HANDLER_CONTEXT_FILE}"
+# @file applications/apps/homepage/homepage
+# @project KRATE
+# @description Homepage — git clone, pnpm build (Next.js), next start on loopback + Caddy.
+# shellcheck disable=SC2154
+set -euo pipefail
+
+_add() {
+	rm -rf "${install_dir:?}" 2>/dev/null || true
+	mkdir -p "${install_dir}"
+	zenfw::git::clone "${app_repo}" "${install_dir}" "$(app::update_branch)"
+	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
+	_homepage_provision
+	_config
+	app::lifecycle::record_effective_branch
+}
+
+_config() {
+	local default_port skeleton_dir
+	mkdir -p "${data_dir}" "$(dirname "${env_file}")"
+	zenfw::permission::read_exec::set "${data_dir}" "${username}" "${username}"
+	default_port="${service_default_port//[^0-9]/}"
+	: "${default_port:?}"
+	skeleton_dir="${install_dir}/src/skeleton"
+	if [[ -d "${skeleton_dir}" ]]; then
+		# Seed example YAML once; Homepage also auto-copies missing files on start.
+		_homepage_seed_skeleton "${skeleton_dir}" "${data_dir}"
+	fi
+	zenfw::fs::env::set "${env_file}" "PORT" "${default_port}"
+	zenfw::fs::env::set "${env_file}" "HOSTNAME" "127.0.0.1"
+	zenfw::fs::env::set "${env_file}" "HOST" "127.0.0.1"
+	zenfw::fs::env::set "${env_file}" "NODE_ENV" "production"
+	zenfw::fs::env::set "${env_file}" "NEXT_TELEMETRY_DISABLED" "1"
+	zenfw::fs::env::set "${env_file}" "HOMEPAGE_CONFIG_DIR" "${data_dir}"
+	# Behind KRATE/Caddy auth; Host header is the public site name.
+	zenfw::fs::env::set "${env_file}" "HOMEPAGE_ALLOWED_HOSTS" "*"
+	zenfw::permission::private::set "${env_file}" "${username}" "${username}"
+	zenfw::permission::read_exec::set "${data_dir}" "${username}" "${username}"
+	zenfw::proxy::generate "${app_name}" "${default_port}" "${url_base}" true "${username}"
+	zenfw::service::generate "${app_name}" false false
+	zenfw::service::manage start "${service_unit}"
+}
+
+_update() {
+	zenfw::service::manage stop "${service_unit}"
+	rm -rf "${install_dir:?}"/* "${install_dir:?}"/.[!.]* 2>/dev/null || true
+	zenfw::git::clone "${app_repo}" "${install_dir}" "$(app::update_branch)"
+	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
+	_homepage_provision
+	_config
+	app::lifecycle::record_effective_branch
+	zenfw::software::backup::create "${app_name}" "user" "${data_dir}" "${username}"
+}
+
+_homepage_seed_skeleton() {
+	local skeleton_dir="${1:?}" dest_dir="${2:?}" f
+	shopt -s nullglob
+	for f in "${skeleton_dir}"/*; do
+		[[ -f "${f}" ]] || continue
+		[[ -e "${dest_dir}/$(basename "${f}")" ]] && continue
+		cp "${f}" "${dest_dir}/"
+	done
+	shopt -u nullglob
+}
+
+_homepage_provision() {
+	local build_env
+	zenfw::workspace::pnpm::prepare "${username}"
+	cat >"${install_dir}/.npmrc" <<'EOF'
+engine-strict=false
+strict-dep-builds=false
+block-exotic-subdeps=false
+use-node-version=22.19.0
+manage-package-manager-versions=true
+EOF
+	zenfw::permission::read_exec::set "${install_dir}/.npmrc" "${username}" "${username}"
+	build_env="PNPM_HOME=/home/${username}/.local/share/pnpm CI=true HUSKY=0"
+	build_env+=" NEXT_TELEMETRY_DISABLED=1 NODE_OPTIONS=--max-old-space-size=6144"
+	zenfw::workspace::node::build "${install_dir}" "${username}" build "${build_env}"
+	test -d "${install_dir}/.next"
+}
