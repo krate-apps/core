@@ -1,0 +1,17 @@
+id: checkrr
+name: Checkrr
+description: "Scans library files for corrupt media; can replace via Sonarr/Radarr."
+links:
+  homepage: https://github.com/aetaric/checkrr
+  documentation: https://github.com/aetaric/checkrr#readme
+  source: https://github.com/aetaric/checkrr
+  krate_docs: https://krate.github.io/docs/software/official/checkrr
+tier: free
+category: tools
+install_mode: local
+autocomplete_options:
+  - -b
+ui_options:
+  branches:
+    - main
+    - beta
