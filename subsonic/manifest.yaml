@@ -1,0 +1,73 @@
+id: subsonic
+multi_user: true
+runtime:
+  kind: systemd
+  service_template: subsonic@.service
+dependencies:
+  apt:
+    common:
+      packages: curl ca-certificates
+install:
+  layout:
+    backup_dir: /home/%i/.krate/backups/subsonic
+    data_dir: /home/%i/.config/subsonic
+    install_dir: /opt/%i/subsonic
+    temp_dir: /home/%i/tmp/subsonic
+  download:
+    url: https://s3-eu-west-1.amazonaws.com/subsonic-public/download/subsonic-6.1.6-standalone.tar.gz
+  executable:
+    - /opt/%i/subsonic/subsonic.sh
+systemd:
+  unit:
+    TimeoutStopSec: 60
+    Type: simple
+    Restart: on-failure
+    RestartSec: "10"
+    WorkingDirectory: /opt/%i/subsonic
+  environment:
+    inline:
+      TMPDIR: /home/%i/tmp/subsonic
+      HOME: /home/%i
+      SUBSONIC_HOME: /home/%i/.config/subsonic
+      SUBSONIC_HOST: "127.0.0.1"
+    file:
+      path: /home/%i/.krate/applications/subsonic.env
+      mode: "0600"
+      variables:
+        SUBSONIC_PORT: "{default_port}"
+        SUBSONIC_HOME: /home/%i/.config/subsonic
+        SUBSONIC_HOST: "127.0.0.1"
+  exec:
+    pre:
+      - /bin/mkdir -p /home/%i/tmp/subsonic /home/%i/.config/subsonic /home/%i/media/music
+    start:
+      - /opt/%i/subsonic/subsonic.sh
+      - --home=/home/%i/.config/subsonic
+      - --host=127.0.0.1
+      - --port=${SUBSONIC_PORT}
+files:
+  service: /etc/systemd/system/subsonic@.service
+  config:
+    - /home/%i/.krate/applications/subsonic.env
+  proxy:
+    - /etc/caddy/softwares/%i.subsonic.caddy
+  binary:
+    - /opt/%i/subsonic/subsonic.sh
+    - /opt/%i/subsonic/subsonic-booter-jar-with-dependencies.jar
+autogen:
+  - default_port
+security:
+  network: true
+  filesystem:
+    read_write:
+      - /home/%i/.config/subsonic
+      - /home/%i/tmp/subsonic
+      - /home/%i/media/music
+      - /home/%i/.krate/backups/subsonic
+      - /home/%i/.krate/applications
+    read_only:
+      - /opt/%i/subsonic
+version:
+  probes:
+    - type: file
+      path: "{install_dir}/subsonic.sh"

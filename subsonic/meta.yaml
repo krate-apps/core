@@ -1,0 +1,17 @@
+id: subsonic
+name: Subsonic
+description: "Proprietary Subsonic music streamer (standalone 6.1.6). Prefer Airsonic/Navidrome for new installs."
+links:
+  homepage: https://www.subsonic.org/
+  documentation: https://www.subsonic.org/pages/installation.jsp
+  source: https://www.subsonic.org/
+  krate_docs: https://krate.github.io/docs/software/official/subsonic
+tier: free
+category: streaming
+install_mode: local
+autocomplete_options:
+  - -b
+ui_options:
+  branches:
+    - main
+    - beta
