@@ -1,0 +1,87 @@
+id: headphones
+multi_user: true
+runtime:
+  kind: systemd
+  service_template: headphones@.service
+dependencies:
+  apt:
+    common:
+      packages: git curl ca-certificates python3 build-essential
+install:
+  release:
+    branches:
+      main: master
+      beta: develop
+  layout:
+    backup_dir: /home/%i/.krate/backups/headphones
+    data_dir: /home/%i/.config/headphones
+    install_dir: /opt/%i/headphones
+    temp_dir: /home/%i/tmp/headphones
+  executable:
+    - /opt/%i/headphones/.venv/bin/python
+systemd:
+  unit:
+    TimeoutStopSec: 30
+    Type: simple
+    KillSignal: SIGINT
+    Restart: on-failure
+    RestartSec: "10"
+    WorkingDirectory: /opt/%i/headphones
+  environment:
+    inline:
+      TMPDIR: /home/%i/tmp/headphones
+      HOME: /home/%i
+      PYTHONUNBUFFERED: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+    file:
+      path: /home/%i/.krate/applications/headphones.env
+      mode: "0600"
+      variables:
+        PORT: "{default_port}"
+  exec:
+    pre:
+      - /bin/mkdir -p /home/%i/tmp/headphones /home/%i/.config/headphones /home/%i/.cache/uv /home/%i/.local/share/uv
+    start:
+      - /opt/%i/headphones/.venv/bin/python
+      - /opt/%i/headphones/Headphones.py
+      - --nolaunch
+      - --datadir
+      - /home/%i/.config/headphones
+      - --config
+      - /home/%i/.config/headphones/config.ini
+      - --host
+      - "127.0.0.1"
+      - --port
+      - ${PORT}
+files:
+  service: /etc/systemd/system/headphones@.service
+  config:
+    - /home/%i/.config/headphones/config.ini
+    - /home/%i/.krate/applications/headphones.env
+  database:
+    - /home/%i/.config/headphones/headphones.db
+  proxy:
+    - /etc/caddy/softwares/%i.headphones.caddy
+  binary:
+    - /opt/%i/headphones/.venv/bin/python
+autogen:
+  - default_port
+security:
+  network: true
+  filesystem:
+    read_write:
+      - /home/%i/.config/headphones
+      - /home/%i/tmp/headphones
+      - /home/%i/.cache/uv
+      - /home/%i/.local/share/uv
+      - /home/%i/.krate/backups/headphones
+      - /home/%i/.krate/applications
+      - /opt/%i/headphones/.venv
+    read_only:
+      - /opt/%i/headphones
+version:
+  probes:
+    - type: file
+      path: "{install_dir}/Headphones.py"
+    - type: file
+      path: "{install_dir}/.venv/bin/python"
