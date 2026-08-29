@@ -1,0 +1,17 @@
+id: pyload
+name: pyLoad
+description: "Free and open-source download manager with a modern web UI (pyload-ng)."
+links:
+  homepage: https://pyload.net
+  documentation: https://github.com/pyload/pyload/wiki
+  source: https://github.com/pyload/pyload
+  krate_docs: https://krate.github.io/docs/software/official/pyload
+tier: free
+category: download
+install_mode: local
+autocomplete_options:
+  - -b
+ui_options:
+  branches:
+    - main
+    - beta
