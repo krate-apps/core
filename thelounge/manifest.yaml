@@ -1,0 +1,72 @@
+id: thelounge
+multi_user: true
+runtime:
+  kind: systemd
+  service_template: thelounge@.service
+dependencies:
+  apt:
+    common:
+      packages: curl ca-certificates
+install:
+  layout:
+    backup_dir: /home/%i/.krate/backups/thelounge
+    data_dir: /home/%i/.config/thelounge
+    install_dir: /opt/%i/thelounge
+    temp_dir: /home/%i/tmp/thelounge
+  executable:
+    - /opt/%i/thelounge/node_modules/.bin/thelounge
+systemd:
+  unit:
+    TimeoutStopSec: 40
+    Type: simple
+    Restart: on-failure
+    RestartSec: "10"
+    WorkingDirectory: /opt/%i/thelounge
+  environment:
+    inline:
+      TMPDIR: /home/%i/tmp/thelounge
+      HOME: /home/%i
+      NODE_ENV: production
+      THELOUNGE_HOME: /home/%i/.config/thelounge
+      PATH: /opt/%i/thelounge/node_modules/.bin:/usr/local/bin:/usr/bin:/bin
+    file:
+      path: /home/%i/.krate/applications/thelounge.env
+      mode: "0600"
+      variables:
+        PORT: "{default_port}"
+        THELOUNGE_HOME: /home/%i/.config/thelounge
+  exec:
+    pre:
+      - /bin/mkdir -p /home/%i/tmp/thelounge /home/%i/.config/thelounge
+    start:
+      - /opt/%i/thelounge/node_modules/.bin/thelounge
+      - start
+      - --home
+      - /home/%i/.config/thelounge
+files:
+  service: /etc/systemd/system/thelounge@.service
+  config:
+    - /home/%i/.config/thelounge/config.js
+    - /home/%i/.krate/applications/thelounge.env
+  proxy:
+    - /etc/caddy/softwares/%i.thelounge.caddy
+  binary:
+    - /opt/%i/thelounge/node_modules/.bin/thelounge
+autogen:
+  - default_port
+security:
+  network: true
+  filesystem:
+    read_write:
+      - /home/%i/.config/thelounge
+      - /home/%i/tmp/thelounge
+      - /home/%i/.krate/backups/thelounge
+      - /home/%i/.krate/applications
+      - /opt/%i/thelounge
+    read_only: []
+version:
+  probes:
+    - type: executable
+      cmd: "{install_dir}/node_modules/.bin/thelounge"
+      args: --version
+      requires: active
