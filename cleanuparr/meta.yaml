@@ -1,0 +1,17 @@
+id: cleanuparr
+name: Cleanuparr
+description: "Advanced download cleanup for the Servarr ecosystem."
+links:
+  homepage: https://github.com/Cleanuparr/Cleanuparr
+  documentation: https://github.com/Cleanuparr/Cleanuparr#readme
+  source: https://github.com/Cleanuparr/Cleanuparr
+  krate_docs: https://krate.github.io/docs/software/official/cleanuparr
+tier: free
+category: tools
+install_mode: local
+autocomplete_options:
+  - -b
+ui_options:
+  branches:
+    - main
+    - beta
