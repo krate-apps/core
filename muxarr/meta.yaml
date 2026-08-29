@@ -1,0 +1,17 @@
+id: muxarr
+name: Muxarr
+description: "Strips redundant audio/subtitle tracks with *arr integration."
+links:
+  homepage: https://github.com/KirovAir/muxarr
+  documentation: https://muxarr.app/docs/
+  source: https://github.com/KirovAir/muxarr
+  krate_docs: https://krate.github.io/docs/software/official/muxarr
+tier: free
+category: transcode
+install_mode: local
+autocomplete_options:
+  - -b
+ui_options:
+  branches:
+    - main
+    - beta

@@ -1,0 +1,140 @@
+#!/usr/bin/env bash
+[[ -n "${KRATE_HANDLER_CONTEXT_FILE:-}" && -f "${KRATE_HANDLER_CONTEXT_FILE}" ]] && . "${KRATE_HANDLER_CONTEXT_FILE}"
+# @file applications/apps/muxarr/muxarr
+# @project KRATE
+# @description Muxarr — git clone, .NET publish Muxarr.Web; ASP.NET on loopback + Caddy.
+# shellcheck disable=SC2154
+set -euo pipefail
+
+_add() {
+	zenfw::dependency::apt::install_inline "git curl ca-certificates wget build-essential mkvtoolnix ffmpeg" || true
+	_ensure_dotnet_sdk "10.0"
+	_muxarr_provision
+	zenfw::service::generate "${app_name}" true false
+	_config
+	app::lifecycle::record_effective_branch
+}
+
+_config() {
+	local default_port
+	mkdir -p "${data_dir}" "$(dirname "${env_file}")"
+	zenfw::permission::read_exec::set "${data_dir}" "${username}" "${username}"
+	default_port="${service_default_port//[^0-9]/}"
+	: "${default_port:?}"
+	zenfw::fs::env::set "${env_file}" "ASPNETCORE_URLS" "http://127.0.0.1:${default_port}"
+	zenfw::fs::env::set "${env_file}" "ASPNETCORE_ENVIRONMENT" "Production"
+	zenfw::fs::env::set "${env_file}" "ASPNETCORE_HTTP_PORTS" "${default_port}"
+	zenfw::fs::env::set "${env_file}" "ConnectionStrings__DefaultConnection" "Data Source=/config/muxarr.db"
+	zenfw::fs::env::set "${env_file}" "DOTNET_BUNDLE_EXTRACT_BASE_DIR" "/home/${username}/tmp/${app_name}"
+	zenfw::permission::private::set "${env_file}" "${username}" "${username}"
+	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
+	zenfw::proxy::generate "${app_name}" "${default_port}" "${url_base}" true "${username}"
+	zenfw::service::manage restart "${service_unit}"
+}
+
+_update() {
+	zenfw::service::manage stop "${service_unit}"
+	_ensure_dotnet_sdk "10.0"
+	_muxarr_provision
+	_config
+	app::lifecycle::record_effective_branch
+	zenfw::software::backup::create "${app_name}" "user" "${data_dir}" "${username}"
+}
+
+_muxarr_provision() {
+	local src publish_dir bin
+	src="${temp_dir}/src"
+	publish_dir="${temp_dir}/publish"
+	rm -rf "${src}" "${publish_dir}"
+	mkdir -p "${src}" "${publish_dir}" "${install_dir}"
+	zenfw::git::clone "${app_repo}" "${src}" "$(app::update_branch)"
+	zenfw::permission::read_exec::set "${src}" "${username}" "${username}"
+	export DOTNET_ROOT="${DOTNET_ROOT:-/usr/share/dotnet}"
+	export PATH="${DOTNET_ROOT}:/usr/local/bin:${PATH}"
+	command -v dotnet >/dev/null 2>&1 || {
+		printf '[%s] dotnet missing\n' "${app_name}" >&2
+		return 1
+	}
+	# Self-contained linux-x64 so runtime packages are not required after build.
+	zenfw::workspace::user::run "${username}" "${src}" \
+		"export DOTNET_ROOT='${DOTNET_ROOT}' PATH='${DOTNET_ROOT}:/usr/local/bin:\$PATH' DOTNET_CLI_HOME='/home/${username}/tmp/${app_name}' NUGET_PACKAGES='/home/${username}/.nuget/packages'; \
+		dotnet publish Muxarr.Web/Muxarr.Web.csproj -c Release -r linux-x64 --self-contained true -o '${publish_dir}'" || {
+		printf '[%s] dotnet publish Muxarr.Web failed\n' "${app_name}" >&2
+		return 1
+	}
+	find "${install_dir}" -mindepth 1 -maxdepth 1 -exec rm -rf {} + 2>/dev/null || true
+	cp -a "${publish_dir}/." "${install_dir}/"
+	bin="${install_dir}/Muxarr.Web"
+	if [[ ! -x "${bin}" ]]; then
+		# Framework-dependent fallback layout.
+		if [[ -f "${install_dir}/Muxarr.Web.dll" ]]; then
+			cat >"${bin}" <<EOF
+#!/usr/bin/env bash
+exec dotnet "\$(dirname "\$0")/Muxarr.Web.dll" "\$@"
+EOF
+			chmod 0755 "${bin}"
+		fi
+	fi
+	chmod 0755 "${bin}" 2>/dev/null || true
+	[[ -f "${install_dir}/Muxarr.Web.dll" || -x "${bin}" ]] || {
+		printf '[%s] Muxarr.Web publish output missing\n' "${app_name}" >&2
+		return 1
+	}
+	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
+	rm -rf "${src}" "${publish_dir}"
+}
+
+# Ensure a .NET SDK matching channel (muxarr global.json → 10.x). Prefer apt, else official install script.
+_ensure_dotnet_sdk() {
+	local channel="${1:-10.0}" ver major want script deb arch
+	export DOTNET_ROOT="${DOTNET_ROOT:-/usr/share/dotnet}"
+	export PATH="${DOTNET_ROOT}:/usr/local/bin:${PATH}"
+	want="${channel%%.*}"
+	if command -v dotnet >/dev/null 2>&1; then
+		ver="$(dotnet --version 2>/dev/null || true)"
+		major="${ver%%.*}"
+		if [[ -n "${major}" && "${major}" =~ ^[0-9]+$ && "${major}" -ge "${want}" ]]; then
+			return 0
+		fi
+	fi
+	zenfw::dependency::apt::install_inline "dotnet-sdk-${channel}" || \
+		zenfw::dependency::apt::install_inline "dotnet-sdk-8.0" || true
+	if command -v dotnet >/dev/null 2>&1; then
+		ver="$(dotnet --version 2>/dev/null || true)"
+		major="${ver%%.*}"
+		if [[ -n "${major}" && "${major}" =~ ^[0-9]+$ && "${major}" -ge "${want}" ]]; then
+			return 0
+		fi
+	fi
+	# Microsoft package repo (Debian/Ubuntu) then retry apt.
+	arch="$(dpkg --print-architecture 2>/dev/null || echo amd64)"
+	deb="$(mktemp --suffix=.deb)"
+	if curl -fsSL "https://packages.microsoft.com/config/ubuntu/24.04/packages-microsoft-prod.deb" -o "${deb}" 2>/dev/null || \
+		curl -fsSL "https://packages.microsoft.com/config/debian/12/packages-microsoft-prod.deb" -o "${deb}" 2>/dev/null; then
+		dpkg -i "${deb}" >/dev/null 2>&1 || true
+		apt-get update -qq >/dev/null 2>&1 || true
+		zenfw::dependency::apt::install_inline "dotnet-sdk-${channel}" || true
+	fi
+	rm -f "${deb}"
+	if command -v dotnet >/dev/null 2>&1; then
+		ver="$(dotnet --version 2>/dev/null || true)"
+		major="${ver%%.*}"
+		if [[ -n "${major}" && "${major}" =~ ^[0-9]+$ && "${major}" -ge "${want}" ]]; then
+			return 0
+		fi
+	fi
+	script="$(mktemp --suffix=.sh)"
+	curl -fsSL https://dot.net/v1/dotnet-install.sh -o "${script}"
+	bash "${script}" --channel "${channel}" --install-dir "${DOTNET_ROOT}" || {
+		printf '[%s] dotnet-install.sh failed for channel %s\n' "${app_name}" "${channel}" >&2
+		rm -f "${script}"
+		return 1
+	}
+	rm -f "${script}"
+	ln -sfn "${DOTNET_ROOT}/dotnet" /usr/local/bin/dotnet 2>/dev/null || true
+	export PATH="${DOTNET_ROOT}:/usr/local/bin:${PATH}"
+	command -v dotnet >/dev/null 2>&1 || {
+		printf '[%s] dotnet still missing after install script\n' "${app_name}" >&2
+		return 1
+	}
+}
