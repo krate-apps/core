@@ -1,0 +1,83 @@
+id: midarr
+multi_user: true
+runtime:
+  kind: systemd
+  service_template: midarr@.service
+dependencies:
+  apt:
+    common:
+      packages: >-
+        git curl ca-certificates build-essential cmake inotify-tools
+        elixir erlang-dev erlang-nox postgresql postgresql-contrib
+        nodejs npm
+install:
+  release:
+    branches:
+      main: master
+      beta: master
+  layout:
+    backup_dir: /home/%i/.krate/backups/midarr
+    data_dir: /home/%i/.config/midarr
+    install_dir: /opt/%i/midarr
+    temp_dir: /home/%i/tmp/midarr
+  executable:
+    - /opt/%i/midarr/midarr-run
+systemd:
+  unit:
+    TimeoutStopSec: 60
+    Type: simple
+    Restart: on-failure
+    RestartSec: "10"
+    WorkingDirectory: /opt/%i/midarr
+  environment:
+    inline:
+      TMPDIR: /home/%i/tmp/midarr
+      HOME: /home/%i
+      MIX_ENV: prod
+      MIX_HOME: /home/%i/.mix
+      HEX_HOME: /home/%i/.hex
+    file:
+      path: /home/%i/.krate/applications/midarr.env
+      mode: "0600"
+      variables:
+        PORT: "{default_port}"
+        PHX_HOST: "127.0.0.1"
+        DB_HOSTNAME: "127.0.0.1"
+        DB_USERNAME: "%i"
+        DB_DATABASE: midarr_%i
+  exec:
+    pre:
+      - /bin/mkdir -p /home/%i/tmp/midarr /home/%i/.config/midarr /home/%i/.mix /home/%i/.hex
+    start:
+      - /opt/%i/midarr/midarr-run
+files:
+  service: /etc/systemd/system/midarr@.service
+  config:
+    - /home/%i/.krate/applications/midarr.env
+  proxy:
+    - /etc/caddy/softwares/%i.midarr.caddy
+  binary:
+    - /opt/%i/midarr/midarr-run
+autogen:
+  - default_port
+security:
+  network: true
+  filesystem:
+    read_write:
+      - /home/%i/.config/midarr
+      - /home/%i/tmp/midarr
+      - /home/%i/.krate/backups/midarr
+      - /home/%i/.krate/applications
+      - /home/%i/.mix
+      - /home/%i/.hex
+      - /home/%i/.cache
+      - /opt/%i/midarr
+      - /home/%i/media
+    read_only: []
+version:
+  probes:
+    - type: file
+      path: "{install_dir}/mix.exs"
+    - type: http
+      url: "http://127.0.0.1:{default_port}/"
+      requires: active

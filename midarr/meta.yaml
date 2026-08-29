@@ -1,0 +1,17 @@
+id: midarr
+name: Midarr
+description: "Lightweight Phoenix media UI for Radarr/Sonarr (Elixir + Postgres required; apt installs elixir/erlang/postgresql; set DB_* and SETUP_ADMIN_*; best-effort mix build — not a full release)."
+links:
+  homepage: https://github.com/midarrlabs/midarr-server
+  documentation: https://github.com/midarrlabs/midarr-server#readme
+  source: https://github.com/midarrlabs/midarr-server
+  krate_docs: https://krate.github.io/docs/software/official/midarr
+tier: free
+category: streaming
+install_mode: local
+autocomplete_options:
+  - -b
+ui_options:
+  branches:
+    - main
+    - beta
