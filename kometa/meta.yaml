@@ -1,0 +1,18 @@
+id: kometa
+name: Kometa
+description: "Metadata, collections and playlists for Plex/Jellyfin/Emby (CLI; no web UI)."
+links:
+  homepage: https://github.com/Kometa-Team/Kometa
+  documentation: https://kometa.wiki/
+  source: https://github.com/Kometa-Team/Kometa
+  krate_docs: https://krate.github.io/docs/software/official/kometa
+tier: free
+category: streaming
+install_mode: local
+autocomplete_options:
+  - -b
+ui_options:
+  branches:
+    - main
+    - beta
+  subdomain: false
