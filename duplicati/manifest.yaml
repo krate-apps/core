@@ -1,0 +1,69 @@
+id: duplicati
+multi_user: true
+runtime:
+  kind: systemd
+  service_template: duplicati@.service
+dependencies:
+  apt:
+    common:
+      packages: curl ca-certificates
+install:
+  layout:
+    backup_dir: /home/%i/.krate/backups/duplicati
+    data_dir: /home/%i/.config/duplicati
+    install_dir: /opt/%i/duplicati
+    temp_dir: /home/%i/tmp/duplicati
+  release:
+    # Matches duplicati-*-linux-x64-gui.zip (self-contained + web UI)
+    asset: linux-x64-gui.zip
+  executable:
+    - /opt/%i/duplicati/duplicati-server
+systemd:
+  unit:
+    TimeoutStopSec: 60
+    Type: simple
+    Restart: on-failure
+    RestartSec: "10"
+    WorkingDirectory: /opt/%i/duplicati
+  environment:
+    inline:
+      TMPDIR: /home/%i/tmp/duplicati
+      HOME: /home/%i
+      DOTNET_BUNDLE_EXTRACT_BASE_DIR: /home/%i/tmp/duplicati
+    file:
+      path: /home/%i/.krate/applications/duplicati.env
+      mode: "0600"
+      variables:
+        DUPLICATI_PORT: "{default_port}"
+        DUPLICATI_HOME: /home/%i/.config/duplicati
+        DUPLICATI_WEBROOT: "{url_base}"
+  exec:
+    pre:
+      - /bin/mkdir -p /home/%i/tmp/duplicati /home/%i/.config/duplicati
+    start:
+      - /opt/%i/duplicati/duplicati-run
+files:
+  service: /etc/systemd/system/duplicati@.service
+  config:
+    - /home/%i/.krate/applications/duplicati.env
+  proxy:
+    - /etc/caddy/softwares/%i.duplicati.caddy
+  binary:
+    - /opt/%i/duplicati/duplicati-server
+    - /opt/%i/duplicati/duplicati-run
+autogen:
+  - default_port
+security:
+  network: true
+  filesystem:
+    read_write:
+      - /home/%i/.config/duplicati
+      - /home/%i/tmp/duplicati
+      - /home/%i/.krate/backups/duplicati
+      - /home/%i/.krate/applications
+    read_only:
+      - /opt/%i/duplicati
+version:
+  probes:
+    - type: file
+      path: "{install_dir}/duplicati-server"
