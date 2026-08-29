@@ -1,0 +1,87 @@
+id: audiobookshelf
+multi_user: true
+runtime:
+  kind: systemd
+  service_template: audiobookshelf@.service
+dependencies:
+  apt:
+    common:
+      packages: git curl ca-certificates build-essential python3 ffmpeg unzip
+install:
+  release:
+    branches:
+      main: master
+      beta: master
+  layout:
+    backup_dir: /home/%i/.krate/backups/audiobookshelf
+    data_dir: /home/%i/.config/audiobookshelf
+    install_dir: /opt/%i/audiobookshelf
+    temp_dir: /home/%i/tmp/audiobookshelf
+  executable:
+    - /usr/local/bin/pnpm
+systemd:
+  unit:
+    TimeoutStopSec: 60
+    Type: simple
+    Restart: on-failure
+    RestartSec: "10"
+    WorkingDirectory: /opt/%i/audiobookshelf
+  environment:
+    inline:
+      TMPDIR: /home/%i/tmp/audiobookshelf
+      NODE_ENV: production
+      CYPRESS_INSTALL_BINARY: "0"
+      PNPM_HOME: /home/%i/.local/share/pnpm
+      PATH: /home/%i/.local/share/pnpm:/usr/local/bin:/usr/bin:/bin
+      SOURCE: krate
+    file:
+      path: /home/%i/.krate/applications/audiobookshelf.env
+      mode: "0600"
+      variables:
+        PORT: "{default_port}"
+        HOST: "127.0.0.1"
+        CONFIG_PATH: /home/%i/.config/audiobookshelf/config
+        METADATA_PATH: /home/%i/.config/audiobookshelf/metadata
+        ROUTER_BASE_PATH: "{url_base}"
+  exec:
+    pre:
+      - /bin/mkdir -p /home/%i/tmp/audiobookshelf /home/%i/.local/share/pnpm /home/%i/.config/audiobookshelf/config /home/%i/.config/audiobookshelf/metadata /home/%i/media/audiobooks
+    start:
+      - /usr/local/bin/pnpm
+      - exec
+      - node
+      - index.js
+files:
+  service: /etc/systemd/system/audiobookshelf@.service
+  config:
+    - /home/%i/.krate/applications/audiobookshelf.env
+  database:
+    - /home/%i/.config/audiobookshelf/config/absdatabase.sqlite
+  proxy:
+    - /etc/caddy/softwares/%i.audiobookshelf.caddy
+  binary:
+    - /usr/local/bin/pnpm
+autogen:
+  - default_port
+security:
+  network: true
+  filesystem:
+    read_write:
+      - /home/%i/.config/audiobookshelf
+      - /home/%i/tmp/audiobookshelf
+      - /home/%i/.krate/backups/audiobookshelf
+      - /home/%i/.krate/applications
+      - /home/%i/.local/share/pnpm
+      - /home/%i/.cache
+      - /home/%i/media/audiobooks
+      - /opt/%i/audiobookshelf
+    read_only: []
+version:
+  probes:
+    - type: file
+      path: "{install_dir}/package.json"
+      field: version
+    - type: http_json
+      url: "http://127.0.0.1:{default_port}{root_url}/status"
+      field: serverVersion
+      requires: active

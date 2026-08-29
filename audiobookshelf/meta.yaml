@@ -1,0 +1,17 @@
+id: audiobookshelf
+name: Audiobookshelf
+description: "Self-hosted audiobook and podcast server with multi-user progress sync."
+links:
+  homepage: https://www.audiobookshelf.org
+  documentation: https://www.audiobookshelf.org/docs
+  source: https://github.com/advplyr/audiobookshelf
+  krate_docs: https://krate.github.io/docs/software/official/audiobookshelf
+tier: free
+category: media
+install_mode: local
+autocomplete_options:
+  - -b
+ui_options:
+  branches:
+    - main
+    - beta
