@@ -1,0 +1,22 @@
+id: ombi
+name: Ombi
+description: "Media request management for Plex and Emby."
+links:
+  homepage: https://ombi.io/
+  documentation: https://github.com/Ombi-app/Ombi#readme
+  source: https://github.com/Ombi-app/Ombi
+  krate_docs: https://krate.github.io/docs/software/official/ombi
+tier: free
+category: tools
+install_mode: local
+password_constraints:
+  min_length: 8
+  max_length: 128
+  require_upper: false
+  require_digit: false
+autocomplete_options:
+  - -b
+ui_options:
+  branches:
+    - main
+    - beta
