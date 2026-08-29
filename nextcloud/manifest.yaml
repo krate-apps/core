@@ -1,0 +1,72 @@
+id: nextcloud
+multi_user: true
+runtime:
+  kind: systemd
+  service_template: nextcloud@.service
+dependencies:
+  apt:
+    common:
+      packages: >-
+        php-fpm php-cli php-sqlite3 php-curl php-gd php-xml php-mbstring
+        php-zip php-intl php-bcmath unzip curl ca-certificates
+install:
+  layout:
+    backup_dir: /home/%i/.krate/backups/nextcloud
+    data_dir: /home/%i/.config/nextcloud
+    install_dir: /opt/%i/nextcloud
+    temp_dir: /home/%i/tmp/nextcloud
+  executable:
+    - /usr/bin/php
+systemd:
+  unit:
+    TimeoutStopSec: 40
+    Type: simple
+    Restart: on-failure
+    RestartSec: "10"
+    WorkingDirectory: /opt/%i/nextcloud
+  environment:
+    inline:
+      TMPDIR: /home/%i/tmp/nextcloud
+      HOME: /home/%i
+    file:
+      path: /home/%i/.krate/applications/nextcloud.env
+      mode: "0600"
+      variables:
+        PORT: "{default_port}"
+        NEXTCLOUD_DATA: /home/%i/.config/nextcloud/data
+  exec:
+    pre:
+      - /bin/mkdir -p /home/%i/tmp/nextcloud /home/%i/.config/nextcloud/data /home/%i/.config/nextcloud/config /opt/%i/nextcloud
+    start:
+      - /usr/bin/php
+      - -S
+      - 127.0.0.1:${PORT}
+      - -t
+      - /opt/%i/nextcloud
+files:
+  service: /etc/systemd/system/nextcloud@.service
+  config:
+    - /home/%i/.config/nextcloud/config/config.php
+    - /home/%i/.krate/applications/nextcloud.env
+  database:
+    - /home/%i/.config/nextcloud/data
+  proxy:
+    - /etc/caddy/softwares/%i.nextcloud.caddy
+  binary:
+    - /opt/%i/nextcloud/occ
+autogen:
+  - default_port
+security:
+  network: true
+  filesystem:
+    read_write:
+      - /home/%i/.config/nextcloud
+      - /home/%i/tmp/nextcloud
+      - /home/%i/.krate/backups/nextcloud
+      - /home/%i/.krate/applications
+      - /opt/%i/nextcloud
+    read_only: []
+version:
+  probes:
+    - type: file
+      path: "{install_dir}/occ"
