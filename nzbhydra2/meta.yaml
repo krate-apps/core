@@ -1,0 +1,17 @@
+id: nzbhydra2
+name: NZBHydra2
+description: "Meta search aggregator for NZB indexers."
+links:
+  homepage: https://github.com/theotherp/nzbhydra2
+  documentation: https://github.com/theotherp/nzbhydra2#readme
+  source: https://github.com/theotherp/nzbhydra2
+  krate_docs: https://krate.github.io/docs/software/official/nzbhydra2
+tier: free
+category: tools
+install_mode: local
+autocomplete_options:
+  - -b
+ui_options:
+  branches:
+    - main
+    - beta
