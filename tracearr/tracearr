@@ -1,0 +1,152 @@
+#!/usr/bin/env bash
+[[ -n "${KRATE_HANDLER_CONTEXT_FILE:-}" && -f "${KRATE_HANDLER_CONTEXT_FILE}" ]] && . "${KRATE_HANDLER_CONTEXT_FILE}"
+# @file applications/apps/tracearr/tracearr
+# @project KRATE
+# @description Tracearr — pnpm monorepo build; Redis + Postgres (Timescale optional); loopback + Caddy.
+# shellcheck disable=SC2154
+set -euo pipefail
+
+_add() {
+	_ensure_tracearr_deps
+	rm -rf "${install_dir:?}" 2>/dev/null || true
+	mkdir -p "${install_dir}"
+	zenfw::git::clone "${app_repo}" "${install_dir}" "$(app::update_branch)"
+	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
+	_tracearr_provision
+	_config
+	app::lifecycle::record_effective_branch
+}
+
+_config() {
+	local default_port db_name db_url secret_jwt secret_cookie
+	mkdir -p "${data_dir}" "$(dirname "${env_file}")"
+	zenfw::permission::read_exec::set "${data_dir}" "${username}" "${username}"
+	default_port="${service_default_port//[^0-9]/}"
+	: "${default_port:?}"
+	db_name="tracearr_${username}"
+	_ensure_postgres_db "${db_name}"
+	_ensure_redis
+
+	zenfw::fs::env::set "${env_file}" "PORT" "${default_port}"
+	zenfw::fs::env::set "${env_file}" "HOST" "127.0.0.1"
+	zenfw::fs::env::set "${env_file}" "NODE_ENV" "production"
+	zenfw::fs::env::set "${env_file}" "LOG_LEVEL" "info"
+	zenfw::fs::env::set "${env_file}" "TRUST_PROXY" "true"
+	zenfw::fs::env::set "${env_file}" "CORS_ORIGIN" "*"
+	# Socket peer auth: empty password. Override DATABASE_URL for remote/Timescale hosts.
+	db_url="$(zenfw::fs::env::get "${env_file}" "DATABASE_URL" 2>/dev/null || true)"
+	if [[ -z "${db_url}" ]]; then
+		db_url="postgres://${username}@/$(printf '%s' "${db_name}")?host=/var/run/postgresql"
+		zenfw::fs::env::set "${env_file}" "DATABASE_URL" "${db_url}"
+	fi
+	zenfw::fs::env::set "${env_file}" "REDIS_URL" \
+		"$(zenfw::fs::env::get "${env_file}" "REDIS_URL" 2>/dev/null || echo 'redis://127.0.0.1:6379')"
+	secret_jwt="$(zenfw::fs::env::get "${env_file}" "JWT_SECRET" 2>/dev/null || true)"
+	if [[ -z "${secret_jwt}" ]]; then
+		zenfw::fs::env::set "${env_file}" "JWT_SECRET" "$(openssl rand -hex 32)"
+	fi
+	secret_cookie="$(zenfw::fs::env::get "${env_file}" "COOKIE_SECRET" 2>/dev/null || true)"
+	if [[ -z "${secret_cookie}" ]]; then
+		zenfw::fs::env::set "${env_file}" "COOKIE_SECRET" "$(openssl rand -hex 32)"
+	fi
+	zenfw::permission::private::set "${env_file}" "${username}" "${username}"
+	_tracearr_migrate || true
+	zenfw::proxy::generate "${app_name}" "${default_port}" "${url_base}" true "${username}"
+	zenfw::service::generate "${app_name}" false false
+	zenfw::service::manage start "${service_unit}"
+}
+
+_update() {
+	zenfw::service::manage stop "${service_unit}"
+	_ensure_tracearr_deps
+	rm -rf "${install_dir:?}"/* "${install_dir:?}"/.[!.]* 2>/dev/null || true
+	zenfw::git::clone "${app_repo}" "${install_dir}" "$(app::update_branch)"
+	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
+	_tracearr_provision
+	_config
+	app::lifecycle::record_effective_branch
+	zenfw::software::backup::create "${app_name}" "user" "${data_dir}" "${username}"
+}
+
+_ensure_tracearr_deps() {
+	zenfw::dependency::apt::install_inline "redis-server" || true
+	zenfw::dependency::apt::install_inline "postgresql" || true
+	zenfw::dependency::apt::install_inline "postgresql-contrib" || true
+	zenfw::dependency::apt::install_inline "postgresql-client" || true
+	zenfw::dependency::apt::install_inline "build-essential" || true
+	if command -v systemctl >/dev/null 2>&1; then
+		systemctl start redis-server 2>/dev/null || systemctl start redis 2>/dev/null || true
+		systemctl enable redis-server 2>/dev/null || systemctl enable redis 2>/dev/null || true
+		systemctl start postgresql 2>/dev/null || true
+		systemctl enable postgresql 2>/dev/null || true
+	fi
+}
+
+_ensure_redis() {
+	if command -v redis-cli >/dev/null 2>&1; then
+		redis-cli ping >/dev/null 2>&1 || {
+			printf '[%s] redis-cli ping failed — start redis-server or set REDIS_URL\n' "${app_name}" >&2
+		}
+	else
+		printf '[%s] redis-cli missing — install redis-server or point REDIS_URL elsewhere\n' "${app_name}" >&2
+	fi
+}
+
+_ensure_postgres_db() {
+	local db_name="${1:?}"
+	if ! id -u postgres >/dev/null 2>&1; then
+		printf '[%s] postgres system user missing — set DATABASE_URL in %s (TimescaleDB recommended)\n' \
+			"${app_name}" "${env_file}" >&2
+		return 0
+	fi
+	su -s /bin/bash postgres -c "psql -tAc \"SELECT 1 FROM pg_roles WHERE rolname='${username}'\"" 2>/dev/null | grep -q 1 || \
+		su -s /bin/bash postgres -c "createuser -s '${username}'" 2>/dev/null || \
+		su -s /bin/bash postgres -c "psql -c \"CREATE ROLE \\\"${username}\\\" LOGIN SUPERUSER\"" 2>/dev/null || true
+	su -s /bin/bash postgres -c "psql -tAc \"SELECT 1 FROM pg_database WHERE datname='${db_name}'\"" 2>/dev/null | grep -q 1 || \
+		su -s /bin/bash postgres -c "createdb -O '${username}' '${db_name}'" 2>/dev/null || true
+	# Best-effort extensions (Timescale may be absent on stock apt Postgres).
+	su -s /bin/bash "${username}" -c "psql -d '${db_name}' -c 'CREATE EXTENSION IF NOT EXISTS pg_trgm'" 2>/dev/null || true
+	su -s /bin/bash "${username}" -c "psql -d '${db_name}' -c 'CREATE EXTENSION IF NOT EXISTS timescaledb'" 2>/dev/null || \
+		printf '[%s] TimescaleDB extension unavailable — plain Postgres OK short-term; install timescale for production analytics\n' \
+			"${app_name}" >&2
+}
+
+_tracearr_provision() {
+	local build_env
+	zenfw::workspace::pnpm::prepare "${username}"
+	cat >"${install_dir}/.npmrc" <<'EOF'
+engine-strict=false
+strict-dep-builds=false
+block-exotic-subdeps=false
+use-node-version=22.22.1
+manage-package-manager-versions=true
+EOF
+	zenfw::permission::read_exec::set "${install_dir}/.npmrc" "${username}" "${username}"
+	build_env="PNPM_HOME=/home/${username}/.local/share/pnpm CI=true HUSKY=0"
+	build_env+=" NEXT_TELEMETRY_DISABLED=1 NODE_OPTIONS=--max-old-space-size=6144"
+	zenfw::workspace::node::build "${install_dir}" "${username}" build "${build_env}" || {
+		printf '[%s] pnpm build (turbo) failed\n' "${app_name}" >&2
+		return 1
+	}
+	test -f "${install_dir}/apps/server/dist/index.js" || {
+		printf '[%s] apps/server/dist/index.js missing after build\n' "${app_name}" >&2
+		return 1
+	}
+	# SPA assets expected beside PROJECT_ROOT/apps/web/dist in production.
+	test -d "${install_dir}/apps/web/dist" || \
+		printf '[%s] warning: apps/web/dist missing — UI may 404 until web build succeeds\n' "${app_name}" >&2
+	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
+}
+
+_tracearr_migrate() {
+	local build_env
+	build_env="PNPM_HOME=/home/${username}/.local/share/pnpm CI=true HUSKY=0"
+	build_env+=" NODE_OPTIONS=--max-old-space-size=4096"
+	# Load DATABASE_URL from env file for migrate.
+	build_env+=" $(grep -E '^(DATABASE_URL|REDIS_URL|JWT_SECRET|COOKIE_SECRET)=' "${env_file}" 2>/dev/null | tr '\n' ' ' || true)"
+	zenfw::workspace::user::run "${username}" "${install_dir}" \
+		"export ${build_env}; export PATH=\"\${PNPM_HOME}/bin:\${PNPM_HOME}:\$PATH\"; pnpm --filter @tracearr/server db:migrate" || {
+		printf '[%s] db:migrate failed — check DATABASE_URL / Postgres\n' "${app_name}" >&2
+		return 1
+	}
+}
