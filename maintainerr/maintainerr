@@ -1,0 +1,150 @@
+#!/usr/bin/env bash
+[[ -n "${KRATE_HANDLER_CONTEXT_FILE:-}" && -f "${KRATE_HANDLER_CONTEXT_FILE}" ]] && . "${KRATE_HANDLER_CONTEXT_FILE}"
+# @file applications/apps/maintainerr/maintainerr
+# @project KRATE
+# @description Maintainerr — git clone, corepack yarn + turbo build; start mirrors docker/start.sh.
+# shellcheck disable=SC2154
+set -euo pipefail
+
+_add() {
+	rm -rf "${install_dir:?}" 2>/dev/null || true
+	mkdir -p "${install_dir}"
+	zenfw::git::clone "${app_repo}" "${install_dir}" "$(app::update_branch)"
+	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
+	_maintainerr_provision
+	_config
+	app::lifecycle::record_effective_branch
+}
+
+_config() {
+	local default_port
+	mkdir -p "${data_dir}/logs" "${data_dir}/overlays/fonts" "${data_dir}/overlays/images" "$(dirname "${env_file}")"
+	zenfw::permission::read_exec::set "${data_dir}" "${username}" "${username}"
+	default_port="${service_default_port//[^0-9]/}"
+	: "${default_port:?}"
+	zenfw::fs::env::set "${env_file}" "UI_PORT" "${default_port}"
+	zenfw::fs::env::set "${env_file}" "UI_HOSTNAME" "127.0.0.1"
+	zenfw::fs::env::set "${env_file}" "DATA_DIR" "${data_dir}"
+	zenfw::fs::env::set "${env_file}" "NODE_ENV" "production"
+	# Subpath support when not on a dedicated subdomain (BASE_PATH rewritten at boot like upstream start.sh).
+	if [[ -n "${url_base:-}" && "${url_base}" != "/" ]]; then
+		zenfw::fs::env::set "${env_file}" "BASE_PATH" "${url_base}"
+	fi
+	zenfw::permission::private::set "${env_file}" "${username}" "${username}"
+	_write_maintainerr_run
+	zenfw::proxy::generate "${app_name}" "${default_port}" "${url_base}" true "${username}"
+	zenfw::service::generate "${app_name}" false false
+	zenfw::service::manage start "${service_unit}"
+}
+
+_update() {
+	zenfw::service::manage stop "${service_unit}"
+	rm -rf "${install_dir:?}"/* "${install_dir:?}"/.[!.]* 2>/dev/null || true
+	zenfw::git::clone "${app_repo}" "${install_dir}" "$(app::update_branch)"
+	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
+	_maintainerr_provision
+	_config
+	app::lifecycle::record_effective_branch
+	zenfw::software::backup::create "${app_name}" "user" "${data_dir}" "${username}"
+}
+
+_maintainerr_node_path_prefix() {
+	# Put pnpm-managed Node on PATH (same pattern as overseerr yarn builds).
+	local cmd
+	cmd="export PNPM_HOME='/home/${username}/.local/share/pnpm'; export CI=true HUSKY=0;"
+	cmd+=" export NODE_OPTIONS=--max-old-space-size=6144;"
+	cmd+=" export PATH=\"\${PNPM_HOME}/bin:\${PNPM_HOME}:\$PATH\";"
+	cmd+=" if [ -x \"\${PNPM_HOME}/nodejs/current/bin/node\" ]; then export PATH=\"\${PNPM_HOME}/nodejs/current/bin:\$PATH\";"
+	cmd+=" elif [ -d \"\${PNPM_HOME}/nodejs\" ]; then _nb=\$(find \"\${PNPM_HOME}/nodejs\" -maxdepth 3 -type f -name node 2>/dev/null | head -n1);"
+	cmd+=" [ -n \"\$_nb\" ] && export PATH=\"\${_nb%/*}:\$PATH\"; fi;"
+	printf '%s' "${cmd}"
+}
+
+_maintainerr_provision() {
+	local yarn_cmd build_env
+	zenfw::workspace::pnpm::prepare "${username}"
+	# Upstream engines.node >=26; fall back to 22.x via .npmrc when 26 is unavailable locally.
+	cat >"${install_dir}/.npmrc" <<'EOF'
+engine-strict=false
+strict-dep-builds=false
+block-exotic-subdeps=false
+use-node-version=22.22.1
+manage-package-manager-versions=true
+EOF
+	zenfw::permission::read_exec::set "${install_dir}/.npmrc" "${username}" "${username}"
+	build_env="PNPM_HOME=/home/${username}/.local/share/pnpm CI=true HUSKY=0"
+	build_env+=" NODE_OPTIONS=--max-old-space-size=6144"
+	zenfw::workspace::pnpm::node "${install_dir}" "${username}" "${build_env}"
+	# Seed Vite base-path placeholder so docker/start.sh-style rewrite works at boot.
+	printf 'VITE_BASE_PATH=/__PATH_PREFIX__\n' >"${install_dir}/apps/ui/.env"
+	zenfw::permission::read_exec::set "${install_dir}/apps/ui/.env" "${username}" "${username}"
+	yarn_cmd="$(_maintainerr_node_path_prefix)"
+	# Best-effort: corepack yarn (packageManager yarn@4.x) + turbo build.
+	zenfw::workspace::user::run "${username}" "${install_dir}" \
+		"${yarn_cmd} corepack enable && corepack prepare yarn@stable --activate && yarn install --network-timeout 1000000" || {
+		printf '[%s] yarn install failed (best-effort; check Node/canvas/sharp deps)\n' "${app_name}" >&2
+		return 1
+	}
+	zenfw::workspace::user::run "${username}" "${install_dir}" \
+		"${yarn_cmd} yarn turbo build" || {
+		printf '[%s] yarn turbo build failed\n' "${app_name}" >&2
+		return 1
+	}
+	# Mirror Dockerfile: stage UI under apps/server/dist/ui for start.sh copy.
+	mkdir -p "${install_dir}/apps/server/dist/ui"
+	if [[ -d "${install_dir}/apps/ui/dist" ]]; then
+		cp -a "${install_dir}/apps/ui/dist/." "${install_dir}/apps/server/dist/ui/"
+	fi
+	test -f "${install_dir}/apps/server/dist/main.js" -o -f "${install_dir}/apps/server/dist/main" || \
+		test -f "${install_dir}/apps/server/dist/src/main.js" || {
+		# Nest often emits dist/main.js
+		find "${install_dir}/apps/server/dist" -type f -name 'main.js' -print -quit | grep -q . || {
+			printf '[%s] server dist/main.js missing after turbo build\n' "${app_name}" >&2
+			return 1
+		}
+	}
+	_write_maintainerr_run
+	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
+}
+
+_write_maintainerr_run() {
+	# Mirrors Maintainerr docker/start.sh: stage UI into DATA_DIR/ui, rewrite BASE_PATH, exec node.
+	cat >"${install_dir}/maintainerr-run" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+DATA_DIR="${DATA_DIR:?}"
+BASE_PATH_REPLACE="${BASE_PATH:-}"
+BUNDLED_UI_DIR="${ROOT}/apps/server/dist/ui"
+SERVED_UI_DIR="${DATA_DIR}/ui"
+SERVER_DIR="${ROOT}/apps/server"
+
+if [[ -d "${SERVED_UI_DIR}" ]]; then
+	chmod -R u+w "${SERVED_UI_DIR}" 2>/dev/null || true
+fi
+rm -rf "${SERVED_UI_DIR}"
+mkdir -p "${SERVED_UI_DIR}"
+if [[ -d "${BUNDLED_UI_DIR}" ]]; then
+	cp -R "${BUNDLED_UI_DIR}/." "${SERVED_UI_DIR}/" || {
+		printf 'Failed to stage UI into %s\n' "${SERVED_UI_DIR}" >&2
+		exit 1
+	}
+	chmod -R u+w "${SERVED_UI_DIR}" 2>/dev/null || true
+	if command -v find >/dev/null && command -v sed >/dev/null; then
+		find "${SERVED_UI_DIR}" -type f -print0 | xargs -0 sed -i "s,/__PATH_PREFIX__,${BASE_PATH_REPLACE},g" || true
+	fi
+fi
+
+cd "${SERVER_DIR}" || exit 1
+main_js="dist/main.js"
+[[ -f "${main_js}" ]] || main_js="dist/src/main.js"
+[[ -f "${main_js}" ]] || {
+	printf 'Maintainerr server bundle missing under %s/dist\n' "${SERVER_DIR}" >&2
+	exit 1
+}
+npm_package_version="$(node -p "require('./package.json').version" 2>/dev/null || true)"
+export npm_package_version
+exec node "${main_js}"
+EOF
+	chmod 0755 "${install_dir}/maintainerr-run"
+}
