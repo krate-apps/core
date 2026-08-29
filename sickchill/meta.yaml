@@ -1,0 +1,17 @@
+id: sickchill
+name: SickChill
+description: "Automatic TV show library manager for NZB and torrents."
+links:
+  homepage: https://sickchill.github.io
+  documentation: https://github.com/SickChill/SickChill/wiki
+  source: https://github.com/SickChill/SickChill
+  krate_docs: https://krate.github.io/docs/software/official/sickchill
+tier: free
+category: media
+install_mode: local
+autocomplete_options:
+  - -b
+ui_options:
+  branches:
+    - main
+    - beta
