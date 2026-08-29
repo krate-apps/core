@@ -1,0 +1,17 @@
+id: crossseed
+name: cross-seed
+description: "Fully-automatic cross-seeding with Torznab; daemon with web UI and HTTP API."
+links:
+  homepage: https://www.cross-seed.org
+  documentation: https://www.cross-seed.org/docs/basics/getting-started
+  source: https://github.com/cross-seed/cross-seed
+  krate_docs: https://krate.github.io/docs/software/official/crossseed
+tier: free
+category: tools
+install_mode: local
+autocomplete_options:
+  - -b
+ui_options:
+  branches:
+    - main
+    - beta

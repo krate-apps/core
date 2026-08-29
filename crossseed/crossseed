@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+[[ -n "${KRATE_HANDLER_CONTEXT_FILE:-}" && -f "${KRATE_HANDLER_CONTEXT_FILE}" ]] && . "${KRATE_HANDLER_CONTEXT_FILE}"
+# @file applications/apps/crossseed/crossseed
+# @project KRATE
+# @description cross-seed — npm package in install_dir; daemon + web UI on loopback + Caddy.
+# shellcheck disable=SC2154
+set -euo pipefail
+
+_add() {
+	rm -rf "${install_dir:?}" 2>/dev/null || true
+	mkdir -p "${install_dir}"
+	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
+	_crossseed_provision
+	zenfw::service::generate "${app_name}" true false
+	_config
+}
+
+_config() {
+	local default_port config_js base_path bin
+	mkdir -p "${data_dir}" "$(dirname "${env_file}")"
+	zenfw::permission::read_exec::set "${data_dir}" "${username}" "${username}"
+	default_port="${service_default_port//[^0-9]/}"
+	: "${default_port:?}"
+	bin="${install_dir}/node_modules/.bin/cross-seed"
+	config_js="${data_dir}/config.js"
+	base_path="${url_base%/}"
+	[[ "${base_path}" == "/" ]] && base_path=""
+	if [[ ! -f "${config_js}" ]]; then
+		zenfw::workspace::user::run "${username}" "${install_dir}" \
+			"CONFIG_DIR='${data_dir}' '${bin}' gen-config" || {
+			printf '[%s] cross-seed gen-config failed\n' "${app_name}" >&2
+			return 1
+		}
+	fi
+	_crossseed_patch_config "${config_js}" "${default_port}"
+	zenfw::fs::env::set "${env_file}" "PORT" "${default_port}"
+	zenfw::fs::env::set "${env_file}" "CONFIG_DIR" "${data_dir}"
+	zenfw::fs::env::set "${env_file}" "NODE_ENV" "production"
+	zenfw::fs::env::set "${env_file}" "CROSSSEED_BASE_PATH" "${base_path}"
+	zenfw::permission::private::set "${env_file}" "${username}" "${username}"
+	zenfw::permission::read_exec::set "${data_dir}" "${username}" "${username}"
+	# Web UI + API served by daemon (upstream default :2468); proxy enabled.
+	zenfw::proxy::generate "${app_name}" "${default_port}" "${url_base}" true "${username}"
+	zenfw::service::generate "${app_name}" false false
+	zenfw::service::manage start "${service_unit}" || zenfw::service::manage restart "${service_unit}"
+}
+
+_update() {
+	zenfw::service::manage stop "${service_unit}"
+	_crossseed_provision
+	_config
+	zenfw::software::backup::create "${app_name}" "user" "${data_dir}" "${username}"
+}
+
+_crossseed_provision() {
+	local build_env
+	mkdir -p "${install_dir}"
+	cat >"${install_dir}/package.json" <<'EOF'
+{
+  "name": "krate-crossseed",
+  "private": true,
+  "description": "KRATE-managed cross-seed install"
+}
+EOF
+	cat >"${install_dir}/.npmrc" <<'EOF'
+engine-strict=false
+fund=false
+audit=false
+EOF
+	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
+	build_env="CI=true HUSKY=0 NODE_ENV=production"
+	zenfw::workspace::user::run "${username}" "${install_dir}" \
+		"${build_env} npm install cross-seed@latest" || {
+		printf '[%s] npm install cross-seed@latest failed\n' "${app_name}" >&2
+		return 1
+	}
+	test -x "${install_dir}/node_modules/.bin/cross-seed"
+	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
+}
+
+# Align config.js listen settings with KRATE autogen port / loopback.
+_crossseed_patch_config() {
+	local config_js="${1:?}" port="${2:?}"
+	[[ -f "${config_js}" ]] || return 0
+	python3 - "${config_js}" "${port}" <<'PY'
+import pathlib
+import re
+import sys
+
+path = pathlib.Path(sys.argv[1])
+port = sys.argv[2]
+text = path.read_text(encoding="utf-8")
+# Match common template forms: port: 2468 / port: Number(process.env...)
+if re.search(r"(?m)^\s*port\s*:", text):
+    text = re.sub(r"(?m)^(\s*port\s*:\s*)[^,\n]+", rf"\g<1>{port}", text, count=1)
+else:
+    text = re.sub(r"(?m)^(module\.exports\s*=\s*\{)", rf"\1\n  port: {port},", text, count=1)
+if re.search(r"(?m)^\s*host\s*:", text):
+    text = re.sub(r"(?m)^(\s*host\s*:\s*)[^,\n]+", r'\g<1>"127.0.0.1"', text, count=1)
+else:
+    text = re.sub(r"(?m)^(module\.exports\s*=\s*\{)", r'\1\n  host: "127.0.0.1",', text, count=1)
+path.write_text(text, encoding="utf-8")
+PY
+}
