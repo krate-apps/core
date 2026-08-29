@@ -1,0 +1,73 @@
+id: tunarr
+multi_user: true
+runtime:
+  kind: systemd
+  service_template: tunarr@.service
+dependencies:
+  apt:
+    common:
+      packages: curl ca-certificates ffmpeg
+install:
+  layout:
+    backup_dir: /home/%i/.krate/backups/tunarr
+    data_dir: /home/%i/.config/tunarr
+    install_dir: /opt/%i/tunarr
+    temp_dir: /home/%i/tmp/tunarr
+  release:
+    # Matches tunarr-v*-linux-x64.tar.gz
+    asset: linux-x64.tar.gz
+  executable:
+    - /opt/%i/tunarr/tunarr
+systemd:
+  unit:
+    TimeoutStopSec: 40
+    Type: simple
+    Restart: on-failure
+    RestartSec: "10"
+    WorkingDirectory: /opt/%i/tunarr
+  environment:
+    inline:
+      TMPDIR: /home/%i/tmp/tunarr
+      HOME: /home/%i
+      PATH: /opt/%i/tunarr:/usr/local/bin:/usr/bin:/bin
+    file:
+      path: /home/%i/.krate/applications/tunarr.env
+      mode: "0600"
+      variables:
+        TUNARR_BIND_ADDR: 127.0.0.1
+        TUNARR_SERVER_PORT: "{default_port}"
+        PORT: "{default_port}"
+  exec:
+    pre:
+      - /bin/mkdir -p /home/%i/tmp/tunarr /home/%i/.config/tunarr
+    start:
+      - /opt/%i/tunarr/tunarr
+      - server
+      - -p
+      - ${PORT}
+      - -d
+      - /home/%i/.config/tunarr
+files:
+  service: /etc/systemd/system/tunarr@.service
+  config:
+    - /home/%i/.krate/applications/tunarr.env
+  proxy:
+    - /etc/caddy/softwares/%i.tunarr.caddy
+  binary:
+    - /opt/%i/tunarr/tunarr
+autogen:
+  - default_port
+security:
+  network: true
+  filesystem:
+    read_write:
+      - /home/%i/.config/tunarr
+      - /home/%i/tmp/tunarr
+      - /home/%i/.krate/backups/tunarr
+      - /home/%i/.krate/applications
+    read_only:
+      - /opt/%i/tunarr
+version:
+  probes:
+    - type: file
+      path: "{install_dir}/tunarr"

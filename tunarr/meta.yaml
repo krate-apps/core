@@ -1,0 +1,17 @@
+id: tunarr
+name: Tunarr
+description: "Create live TV channels from your Plex/Jellyfin libraries."
+links:
+  homepage: https://tunarr.com/
+  documentation: https://tunarr.com/docs
+  source: https://github.com/chrisbenincasa/tunarr
+  krate_docs: https://krate.github.io/docs/software/official/tunarr
+tier: free
+category: tools
+install_mode: local
+autocomplete_options:
+  - -b
+ui_options:
+  branches:
+    - main
+    - beta
