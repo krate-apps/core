@@ -1,0 +1,18 @@
+id: x2go
+name: X2Go
+description: "Remote desktop via X2Go (apt x2goserver; no web UI — connect with an X2Go client over SSH)."
+links:
+  homepage: https://wiki.x2go.org/
+  documentation: https://wiki.x2go.org/doku.php
+  source: https://code.x2go.org/gitweb?p=x2goserver.git
+  krate_docs: https://krate.github.io/docs/software/official/x2go
+tier: free
+category: tools
+install_mode: local
+autocomplete_options:
+  - -b
+ui_options:
+  branches:
+    - main
+    - beta
+  subdomain: false

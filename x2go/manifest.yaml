@@ -1,0 +1,60 @@
+id: x2go
+multi_user: true
+runtime:
+  kind: systemd
+  service_template: x2go@.service
+dependencies:
+  apt:
+    common:
+      packages: x2goserver x2goserver-xsession xfce4 ca-certificates
+install:
+  layout:
+    backup_dir: /home/%i/.krate/backups/x2go
+    data_dir: /home/%i/.config/x2go
+    install_dir: /opt/%i/x2go
+    temp_dir: /home/%i/tmp/x2go
+  executable:
+    - /usr/bin/x2golistsessions
+systemd:
+  unit:
+    TimeoutStopSec: 30
+    Type: oneshot
+    RemainAfterExit: "true"
+    WorkingDirectory: /home/%i/.config/x2go
+  environment:
+    inline:
+      TMPDIR: /home/%i/tmp/x2go
+      HOME: /home/%i
+    file:
+      path: /home/%i/.krate/applications/x2go.env
+      mode: "0600"
+  exec:
+    pre:
+      - /bin/mkdir -p /home/%i/tmp/x2go /home/%i/.config/x2go
+    start:
+      - /opt/%i/x2go/x2go-verify
+files:
+  service: /etc/systemd/system/x2go@.service
+  config:
+    - /home/%i/.config/x2go/README
+    - /home/%i/.krate/applications/x2go.env
+  binary:
+    - /usr/bin/x2golistsessions
+    - /opt/%i/x2go/x2go-verify
+autogen: []
+security:
+  network: true
+  filesystem:
+    read_write:
+      - /home/%i/.config/x2go
+      - /home/%i/tmp/x2go
+      - /home/%i/.krate/backups/x2go
+      - /home/%i/.krate/applications
+      - /opt/%i/x2go
+    read_only: []
+version:
+  probes:
+    - type: executable
+      cmd: /usr/bin/x2golistsessions
+      args: --help
+      requires: inactive
