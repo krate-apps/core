@@ -1,0 +1,68 @@
+id: ytdlsub
+multi_user: true
+runtime:
+  kind: systemd
+  service_template: ytdlsub@.service
+dependencies:
+  apt:
+    common:
+      packages: curl ca-certificates ffmpeg
+install:
+  layout:
+    backup_dir: /home/%i/.krate/backups/ytdlsub
+    data_dir: /home/%i/.config/ytdlsub
+    install_dir: /opt/%i/ytdlsub
+    temp_dir: /home/%i/tmp/ytdlsub
+  release:
+    # Exact release asset name (linux amd64 binary).
+    asset: ytdl-sub
+  executable:
+    - /opt/%i/ytdlsub/ytdl-sub
+systemd:
+  unit:
+    TimeoutStopSec: 600
+    Type: oneshot
+    RemainAfterExit: "false"
+    WorkingDirectory: /home/%i/.config/ytdlsub
+  environment:
+    inline:
+      TMPDIR: /home/%i/tmp/ytdlsub
+      HOME: /home/%i
+    file:
+      path: /home/%i/.krate/applications/ytdlsub.env
+      mode: "0600"
+  exec:
+    pre:
+      - /bin/mkdir -p /home/%i/tmp/ytdlsub /home/%i/.config/ytdlsub
+    start:
+      - /opt/%i/ytdlsub/ytdl-sub
+      - --config
+      - /home/%i/.config/ytdlsub/config.yaml
+      - sub
+      - /home/%i/.config/ytdlsub/subscriptions.yaml
+files:
+  service: /etc/systemd/system/ytdlsub@.service
+  config:
+    - /home/%i/.config/ytdlsub/config.yaml
+    - /home/%i/.config/ytdlsub/subscriptions.yaml
+    - /home/%i/.krate/applications/ytdlsub.env
+  binary:
+    - /opt/%i/ytdlsub/ytdl-sub
+autogen: []
+security:
+  network: true
+  filesystem:
+    read_write:
+      - /home/%i/.config/ytdlsub
+      - /home/%i/tmp/ytdlsub
+      - /home/%i/.krate/backups/ytdlsub
+      - /home/%i/.krate/applications
+      - /home/%i/media
+    read_only:
+      - /opt/%i/ytdlsub
+version:
+  probes:
+    - type: executable
+      cmd: "{install_dir}/ytdl-sub"
+      args: --version
+      requires: inactive

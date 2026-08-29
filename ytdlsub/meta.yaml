@@ -1,0 +1,18 @@
+id: ytdlsub
+name: ytdl-sub
+description: "Automate yt-dlp downloads and metadata for media libraries (CLI; no web UI)."
+links:
+  homepage: https://ytdl-sub.readthedocs.io/
+  documentation: https://ytdl-sub.readthedocs.io/en/latest/
+  source: https://github.com/jmbannon/ytdl-sub
+  krate_docs: https://krate.github.io/docs/software/official/ytdlsub
+tier: free
+category: media
+install_mode: local
+autocomplete_options:
+  - -b
+ui_options:
+  branches:
+    - main
+    - beta
+  subdomain: false

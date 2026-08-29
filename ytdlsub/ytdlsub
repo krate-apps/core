@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+[[ -n "${KRATE_HANDLER_CONTEXT_FILE:-}" && -f "${KRATE_HANDLER_CONTEXT_FILE}" ]] && . "${KRATE_HANDLER_CONTEXT_FILE}"
+# @file applications/apps/ytdlsub/ytdlsub
+# @project KRATE
+# @description ytdl-sub — GitHub release linux amd64 binary; oneshot CLI (no proxy / no UI).
+# shellcheck disable=SC2154
+set -euo pipefail
+
+_add() {
+	_fetch_binary
+	zenfw::service::generate "${app_name}" true false
+	_config
+}
+
+_config() {
+	local config_file subs_file
+	mkdir -p "${data_dir}" "$(dirname "${env_file}")"
+	zenfw::permission::read_exec::set "${data_dir}" "${username}" "${username}"
+	config_file="${data_dir}/config.yaml"
+	subs_file="${data_dir}/subscriptions.yaml"
+	if [[ ! -f "${config_file}" ]]; then
+		cat >"${config_file}" <<EOF
+# ytdl-sub — edit working_directory / overrides, then:
+#   systemctl start ytdlsub@${username}
+# Docs: https://ytdl-sub.readthedocs.io/
+configuration:
+  working_directory: "${data_dir}/.ytdl-sub-working-directory"
+EOF
+	fi
+	if [[ ! -f "${subs_file}" ]]; then
+		cat >"${subs_file}" <<'EOF'
+# Subscriptions — each entry imports a preset. Example:
+# __preset__:
+#   overrides:
+#     tv_show_directory: "/home/USER/media/tv"
+# Plex TV Show by Date:
+#   = Documentaries:
+#     "Example Channel": "https://www.youtube.com/@example"
+__preset__:
+  overrides: {}
+EOF
+	fi
+	[[ -f "${env_file}" ]] || : >"${env_file}"
+	zenfw::permission::private::set "${env_file}" "${username}" "${username}"
+	zenfw::permission::read_exec::set "${data_dir}" "${username}" "${username}"
+	# No web UI / no Caddy. Oneshot: start once after install (user schedules via timer/cron).
+	zenfw::service::manage start "${service_unit}" 2>/dev/null || true
+}
+
+_update() {
+	_fetch_binary
+	zenfw::software::backup::create "${app_name}" "user" "${data_dir}" "${username}"
+}
+
+_fetch_binary() {
+	local tmpdir bin
+	tmpdir="$(mktemp -d)"
+	zenfw::git::release::get "${tmpdir}" "${app_repo}" "${is_prerelease}" "$(app::cfg install.release.asset)"
+	mkdir -p "${install_dir}"
+	if [[ -f "${tmpdir}/ytdl-sub" ]]; then
+		bin="${tmpdir}/ytdl-sub"
+	else
+		bin="$(find "${tmpdir}" -type f -name ytdl-sub -print -quit 2>/dev/null || true)"
+	fi
+	[[ -n "${bin}" && -f "${bin}" ]] || {
+		printf '[%s] ytdl-sub binary missing after release download\n' "${app_name}" >&2
+		rm -rf "${tmpdir}"
+		return 1
+	}
+	mv "${bin}" "${install_dir}/ytdl-sub"
+	chmod 0755 "${install_dir}/ytdl-sub"
+	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
+	rm -rf "${tmpdir}"
+}
