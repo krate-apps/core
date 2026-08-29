@@ -1,0 +1,81 @@
+id: rclone
+multi_user: true
+runtime:
+  kind: systemd
+  service_template: rclone@.service
+dependencies:
+  apt:
+    common:
+      packages: curl ca-certificates unzip
+install:
+  layout:
+    backup_dir: /home/%i/.krate/backups/rclone
+    data_dir: /home/%i/.config/rclone
+    install_dir: /opt/%i/rclone
+    temp_dir: /home/%i/tmp/rclone
+  release:
+    # Matches rclone-*-linux-amd64.zip
+    asset: linux-amd64.zip
+  executable:
+    - /opt/%i/rclone/rclone
+systemd:
+  unit:
+    TimeoutStopSec: 30
+    Type: simple
+    Restart: on-failure
+    RestartSec: "10"
+    WorkingDirectory: /opt/%i/rclone
+  environment:
+    inline:
+      TMPDIR: /home/%i/tmp/rclone
+      HOME: /home/%i
+      RCLONE_CONFIG: /home/%i/.config/rclone/rclone.conf
+    file:
+      path: /home/%i/.krate/applications/rclone.env
+      mode: "0600"
+      variables:
+        RCLONE_CONFIG: /home/%i/.config/rclone/rclone.conf
+        RCLONE_RC_ADDR: "127.0.0.1:{default_port}"
+        RCLONE_RC_USER: "%i"
+        RCLONE_RC_PASS: ""
+        RCLONE_RC_BASEURL: ""
+  exec:
+    pre:
+      - /bin/mkdir -p /home/%i/tmp/rclone /home/%i/.config/rclone
+    start:
+      - /opt/%i/rclone/rclone
+      - rcd
+      - --config=/home/%i/.config/rclone/rclone.conf
+      - --rc-addr=${RCLONE_RC_ADDR}
+      - --rc-user=${RCLONE_RC_USER}
+      - --rc-pass=${RCLONE_RC_PASS}
+      - --rc-baseurl=${RCLONE_RC_BASEURL}
+      - --rc-web-gui
+      - --rc-web-gui-no-open-browser
+files:
+  service: /etc/systemd/system/rclone@.service
+  config:
+    - /home/%i/.config/rclone/rclone.conf
+    - /home/%i/.krate/applications/rclone.env
+  proxy:
+    - /etc/caddy/softwares/%i.rclone.caddy
+  binary:
+    - /opt/%i/rclone/rclone
+autogen:
+  - default_port
+security:
+  network: true
+  filesystem:
+    read_write:
+      - /home/%i/.config/rclone
+      - /home/%i/tmp/rclone
+      - /home/%i/.krate/backups/rclone
+      - /home/%i/.krate/applications
+    read_only:
+      - /opt/%i/rclone
+version:
+  probes:
+    - type: executable
+      cmd: "{install_dir}/rclone"
+      args: version
+      requires: active
