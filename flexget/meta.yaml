@@ -1,0 +1,17 @@
+id: flexget
+name: FlexGet
+description: "Multipurpose automation for torrents, NZBs, and feeds; daemon with optional web UI."
+links:
+  homepage: https://flexget.com/
+  documentation: https://flexget.com/
+  source: https://github.com/Flexget/Flexget
+  krate_docs: https://krate.github.io/docs/software/official/flexget
+tier: free
+category: tools
+install_mode: local
+autocomplete_options:
+  - -b
+ui_options:
+  branches:
+    - main
+    - beta
