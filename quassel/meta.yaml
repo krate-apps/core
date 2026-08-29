@@ -1,0 +1,18 @@
+id: quassel
+name: Quassel
+description: "Distributed IRC client core (apt quassel-core; no web UI — connect with a Quassel client)."
+links:
+  homepage: https://quassel-irc.org/
+  documentation: https://bugs.quassel-irc.org/projects/quassel-irc/wiki
+  source: https://github.com/quassel/quassel
+  krate_docs: https://krate.github.io/docs/software/official/quassel
+tier: free
+category: network
+install_mode: local
+autocomplete_options:
+  - -b
+ui_options:
+  branches:
+    - main
+    - beta
+  subdomain: false
