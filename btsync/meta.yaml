@@ -1,0 +1,17 @@
+id: btsync
+name: Resilio Sync
+description: "Proprietary Resilio Sync (formerly BitTorrent Sync) — peer-to-peer file sync with WebUI."
+links:
+  homepage: https://www.resilio.com/sync/
+  documentation: https://help.resilio.com/
+  source: https://www.resilio.com/sync/
+  krate_docs: https://krate.github.io/docs/software/official/btsync
+tier: free
+category: network
+install_mode: local
+autocomplete_options:
+  - -b
+ui_options:
+  branches:
+    - main
+    - beta
