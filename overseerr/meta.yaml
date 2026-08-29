@@ -1,0 +1,17 @@
+id: overseerr
+name: Overseerr
+description: "Request management and media discovery for the Plex ecosystem."
+links:
+  homepage: https://overseerr.dev
+  documentation: https://docs.overseerr.dev
+  source: https://github.com/sct/overseerr
+  krate_docs: https://krate.github.io/docs/software/official/overseerr
+tier: free
+category: workflow
+install_mode: local
+autocomplete_options:
+  - -b
+ui_options:
+  branches:
+    - main
+    - beta
