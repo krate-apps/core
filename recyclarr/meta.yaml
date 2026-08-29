@@ -1,0 +1,18 @@
+id: recyclarr
+name: Recyclarr
+description: "Syncs TRaSH guides to Sonarr and Radarr (no web UI)."
+links:
+  homepage: https://github.com/recyclarr/recyclarr
+  documentation: https://recyclarr.dev/
+  source: https://github.com/recyclarr/recyclarr
+  krate_docs: https://krate.github.io/docs/software/official/recyclarr
+tier: free
+category: tools
+install_mode: local
+autocomplete_options:
+  - -b
+ui_options:
+  branches:
+    - main
+    - beta
+  subdomain: false
