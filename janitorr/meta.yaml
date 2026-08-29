@@ -1,0 +1,18 @@
+id: janitorr
+name: Janitorr
+description: "Cleans Radarr/Sonarr/Seerr/Jellyfin libraries by age and disk space (Spring Boot JAR from source; no web UI — edit application.yml under data_dir; v2+ has no HTTP listener)."
+links:
+  homepage: https://github.com/Schaka/janitorr
+  documentation: https://github.com/Schaka/janitorr/wiki
+  source: https://github.com/Schaka/janitorr
+  krate_docs: https://krate.github.io/docs/software/official/janitorr
+tier: free
+category: tools
+install_mode: local
+autocomplete_options:
+  - -b
+ui_options:
+  branches:
+    - main
+    - beta
+  subdomain: false

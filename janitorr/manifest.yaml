@@ -1,0 +1,65 @@
+id: janitorr
+multi_user: true
+runtime:
+  kind: systemd
+  service_template: janitorr@.service
+dependencies:
+  apt:
+    common:
+      packages: git curl ca-certificates
+install:
+  release:
+    branches:
+      main: main
+      beta: develop
+  layout:
+    backup_dir: /home/%i/.krate/backups/janitorr
+    data_dir: /home/%i/.config/janitorr
+    install_dir: /opt/%i/janitorr
+    temp_dir: /home/%i/tmp/janitorr
+  executable:
+    - /opt/%i/janitorr/janitorr-run
+systemd:
+  unit:
+    TimeoutStopSec: 60
+    Type: simple
+    Restart: on-failure
+    RestartSec: "10"
+    WorkingDirectory: /opt/%i/janitorr
+  environment:
+    inline:
+      TMPDIR: /home/%i/tmp/janitorr
+      HOME: /home/%i
+    file:
+      path: /home/%i/.krate/applications/janitorr.env
+      mode: "0600"
+      variables:
+        SPRING_CONFIG_ADDITIONAL_LOCATION: "optional:file:/home/%i/.config/janitorr/"
+  exec:
+    pre:
+      - /bin/mkdir -p /home/%i/tmp/janitorr /home/%i/.config/janitorr /home/%i/.config/janitorr/logs
+    start:
+      - /opt/%i/janitorr/janitorr-run
+files:
+  service: /etc/systemd/system/janitorr@.service
+  config:
+    - /home/%i/.krate/applications/janitorr.env
+    - /home/%i/.config/janitorr/application.yml
+  binary:
+    - /opt/%i/janitorr/janitorr.jar
+    - /opt/%i/janitorr/janitorr-run
+autogen: []
+security:
+  network: true
+  filesystem:
+    read_write:
+      - /home/%i/.config/janitorr
+      - /home/%i/tmp/janitorr
+      - /home/%i/.krate/backups/janitorr
+      - /home/%i/.krate/applications
+    read_only:
+      - /opt/%i/janitorr
+version:
+  probes:
+    - type: file
+      path: "{install_dir}/janitorr.jar"

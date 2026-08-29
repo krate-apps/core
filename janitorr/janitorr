@@ -1,0 +1,138 @@
+#!/usr/bin/env bash
+[[ -n "${KRATE_HANDLER_CONTEXT_FILE:-}" && -f "${KRATE_HANDLER_CONTEXT_FILE}" ]] && . "${KRATE_HANDLER_CONTEXT_FILE}"
+# @file applications/apps/janitorr/janitorr
+# @project KRATE
+# @description Janitorr — git clone + ./gradlew bootJar; Spring Boot JAR; no web UI / no proxy.
+# shellcheck disable=SC2154
+set -euo pipefail
+
+_add() {
+	_ensure_jdk
+	_build_jar
+	zenfw::service::generate "${app_name}" true false
+	_config
+	app::lifecycle::record_effective_branch
+}
+
+_config() {
+	local default_port
+	mkdir -p "${data_dir}/logs" "$(dirname "${env_file}")"
+	zenfw::permission::read_exec::set "${data_dir}" "${username}" "${username}"
+	_seed_application_yml
+	[[ -f "${env_file}" ]] || : >"${env_file}"
+	# Spring Boot loads additional config from data_dir (application.yml lives there).
+	zenfw::fs::env::set "${env_file}" "SPRING_CONFIG_ADDITIONAL_LOCATION" "optional:file:${data_dir}/"
+	# Optional: SERVER_PORT only matters on older builds that still embed Tomcat/actuator.
+	default_port="${service_default_port:-}"
+	default_port="${default_port//[^0-9]/}"
+	if [[ -n "${default_port}" ]]; then
+		zenfw::fs::env::set "${env_file}" "SERVER_PORT" "${default_port}"
+	fi
+	zenfw::permission::private::set "${env_file}" "${username}" "${username}"
+	_write_janitorr_run
+	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
+	# No web UI / no Caddy (v2+ removed the HTTP listener entirely).
+	zenfw::service::manage start "${service_unit}" 2>/dev/null || \
+		zenfw::service::manage restart "${service_unit}" 2>/dev/null || true
+}
+
+_update() {
+	zenfw::service::manage stop "${service_unit}"
+	_ensure_jdk
+	_build_jar
+	_config
+	app::lifecycle::record_effective_branch
+	zenfw::software::backup::create "${app_name}" "user" "${data_dir}" "${username}"
+}
+
+_ensure_jdk() {
+	# Prefer OpenJDK 25 (upstream toolchain); fall back to 21.
+	if zenfw::dependency::apt::install_inline "openjdk-25-jdk-headless" 2>/dev/null; then
+		:
+	elif zenfw::dependency::apt::install_inline "openjdk-21-jdk-headless" 2>/dev/null; then
+		:
+	else
+		printf '[%s] neither openjdk-25-jdk-headless nor openjdk-21-jdk-headless available\n' "${app_name}" >&2
+		return 1
+	fi
+	command -v java >/dev/null 2>&1 || {
+		printf '[%s] java binary missing after apt install\n' "${app_name}" >&2
+		return 1
+	}
+}
+
+_build_jar() {
+	local srcdir jar
+	srcdir="$(mktemp -d)"
+	mkdir -p "${install_dir}"
+	zenfw::git::clone "${app_repo}" "${srcdir}" "$(app::update_branch)"
+	chmod +x "${srcdir}/gradlew" 2>/dev/null || true
+	(
+		cd "${srcdir}"
+		./gradlew --no-daemon bootJar
+	) || {
+		printf '[%s] ./gradlew bootJar failed\n' "${app_name}" >&2
+		rm -rf "${srcdir}"
+		return 1
+	}
+	jar="$(find "${srcdir}/build/libs" -type f -name '*.jar' ! -name '*-plain.jar' -print -quit 2>/dev/null || true)"
+	[[ -n "${jar}" && -f "${jar}" ]] || {
+		printf '[%s] bootJar output missing under build/libs\n' "${app_name}" >&2
+		rm -rf "${srcdir}"
+		return 1
+	}
+	mv -f "${jar}" "${install_dir}/janitorr.jar"
+	chmod 0644 "${install_dir}/janitorr.jar"
+	_write_janitorr_run
+	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
+	rm -rf "${srcdir}"
+}
+
+_seed_application_yml() {
+	local yml="${data_dir}/application.yml" template
+	[[ -f "${yml}" ]] && return 0
+	# Prefer upstream template from a shallow clone tip if already built; else minimal stub.
+	template="$(find /tmp -path '*/janitorr*/src/main/resources/application-template.yml' -print -quit 2>/dev/null || true)"
+	if [[ -z "${template}" || ! -f "${template}" ]]; then
+		# Fetch template once without full build tree.
+		if curl -fsSL -o "${yml}.tmp" \
+			"https://raw.githubusercontent.com/Schaka/janitorr/$(app::update_branch)/src/main/resources/application-template.yml" 2>/dev/null; then
+			mv -f "${yml}.tmp" "${yml}"
+		else
+			cat >"${yml}" <<'EOF'
+# Janitorr — copy settings from upstream application-template.yml and edit before relying on deletes.
+# Docs: https://github.com/Schaka/janitorr/wiki
+# Dry-run stays on until you intentionally disable it.
+application:
+  dry-run: true
+logging:
+  level:
+    com.github.schaka: INFO
+  file:
+    name: "logs/janitorr.log"
+EOF
+		fi
+	else
+		cp "${template}" "${yml}"
+	fi
+	# Point file logging into data_dir/logs when template uses /logs.
+	if grep -q '/logs/janitorr.log' "${yml}" 2>/dev/null; then
+		sed -i "s|/logs/janitorr.log|${data_dir}/logs/janitorr.log|g" "${yml}" || true
+	fi
+	zenfw::permission::read_exec::set "${data_dir}" "${username}" "${username}"
+}
+
+_write_janitorr_run() {
+	cat >"${install_dir}/janitorr-run" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+jar="$(dirname "$0")/janitorr.jar"
+[[ -f "${jar}" ]] || {
+	printf 'janitorr.jar missing at %s\n' "${jar}" >&2
+	exit 1
+}
+# SPRING_CONFIG_ADDITIONAL_LOCATION and optional SERVER_PORT come from the unit env file.
+exec java -Djava.awt.headless=true -jar "${jar}"
+EOF
+	chmod 0755 "${install_dir}/janitorr-run"
+}
