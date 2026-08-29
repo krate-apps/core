@@ -1,0 +1,18 @@
+id: reiverr
+name: Reiverr
+description: "Combined UI for Jellyfin, TMDB, Radarr and Sonarr."
+links:
+  homepage: https://github.com/aleksilassila/reiverr
+  documentation: https://github.com/aleksilassila/reiverr#readme
+  source: https://github.com/aleksilassila/reiverr
+  krate_docs: https://krate.github.io/docs/software/official/reiverr
+tier: free
+category: workflow
+install_mode: local
+autocomplete_options:
+  - -b
+ui_options:
+  branches:
+    - main
+    - beta
+
