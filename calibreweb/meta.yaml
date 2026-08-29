@@ -1,0 +1,17 @@
+id: calibreweb
+name: Calibre-Web
+description: "Web UI for browsing, reading and downloading eBooks from a Calibre library. Optional apt package 'calibre' provides ebook-convert for on-the-fly conversion."
+links:
+  homepage: https://github.com/janeczku/calibre-web
+  documentation: https://github.com/janeczku/calibre-web/wiki
+  source: https://github.com/janeczku/calibre-web
+  krate_docs: https://krate.github.io/docs/software/official/calibreweb
+tier: free
+category: media
+install_mode: local
+autocomplete_options:
+  - -b
+ui_options:
+  branches:
+    - main
+    - beta
