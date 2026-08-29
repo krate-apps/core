@@ -1,0 +1,72 @@
+id: magazarr
+multi_user: true
+runtime:
+  kind: systemd
+  service_template: magazarr@.service
+dependencies:
+  apt:
+    common:
+      packages: git curl ca-certificates
+install:
+  layout:
+    backup_dir: /home/%i/.krate/backups/magazarr
+    data_dir: /home/%i/.config/magazarr
+    install_dir: /opt/%i/magazarr
+    temp_dir: /home/%i/tmp/magazarr
+  executable:
+    - /opt/%i/magazarr/.venv/bin/magazarr
+systemd:
+  unit:
+    TimeoutStopSec: 20
+    Type: simple
+    Restart: on-failure
+    RestartSec: "10"
+    WorkingDirectory: /opt/%i/magazarr
+  environment:
+    inline:
+      TMPDIR: /home/%i/tmp/magazarr
+      HOME: /home/%i
+      PYTHONUNBUFFERED: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+    file:
+      path: /home/%i/.krate/applications/magazarr.env
+      mode: "0600"
+      variables:
+        LISTEN: 127.0.0.1
+        PORT: "{default_port}"
+        MAGAZARR_CONFIG_DIR: /home/%i/.config/magazarr/config
+        LOG_LEVEL: INFO
+  exec:
+    pre:
+      - /bin/mkdir -p /home/%i/tmp/magazarr /home/%i/.config/magazarr/config /home/%i/.config/magazarr/library /home/%i/.cache/uv /home/%i/.local/share/uv
+    start:
+      - /opt/%i/magazarr/.venv/bin/magazarr
+files:
+  service: /etc/systemd/system/magazarr@.service
+  config:
+    - /home/%i/.krate/applications/magazarr.env
+    - /home/%i/.config/magazarr/config/settings.json
+  proxy:
+    - /etc/caddy/softwares/%i.magazarr.caddy
+  binary:
+    - /opt/%i/magazarr/.venv/bin/magazarr
+autogen:
+  - default_port
+security:
+  network: true
+  filesystem:
+    read_write:
+      - /home/%i/.config/magazarr
+      - /home/%i/tmp/magazarr
+      - /home/%i/.cache/uv
+      - /home/%i/.local/share/uv
+      - /home/%i/.krate/backups/magazarr
+      - /home/%i/.krate/applications
+      - /opt/%i/magazarr/.venv
+    read_only:
+      - /opt/%i/magazarr
+version:
+  probes:
+    - type: pip
+      venv: "{install_dir}/.venv"
+      package: magazarr

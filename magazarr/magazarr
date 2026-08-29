@@ -1,0 +1,132 @@
+#!/usr/bin/env bash
+[[ -n "${KRATE_HANDLER_CONTEXT_FILE:-}" && -f "${KRATE_HANDLER_CONTEXT_FILE}" ]] && . "${KRATE_HANDLER_CONTEXT_FILE}"
+# @file applications/apps/magazarr/magazarr
+# @project KRATE
+# @description Magazarr — git clone, uv sync, Bottle web UI (:8090 default) + Caddy proxy.
+# shellcheck disable=SC2154
+set -euo pipefail
+
+_add() {
+	zenfw::workspace::uv::install
+	rm -rf "${install_dir:?}" 2>/dev/null || true
+	mkdir -p "${install_dir}"
+	zenfw::git::clone "${app_repo}" "${install_dir}" "$(app::update_branch)"
+	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
+	_magazarr_provision_runtime
+	_config
+}
+
+_config() {
+	local default_port config_dir library_dir settings_file
+	default_port="${service_default_port//[^0-9]/}"
+	: "${default_port:?}"
+	config_dir="${data_dir}/config"
+	library_dir="${data_dir}/library"
+	mkdir -p "${config_dir}" "${library_dir}" "$(dirname "${env_file}")"
+	[[ -f "${env_file}" ]] || : >"${env_file}"
+	zenfw::fs::env::set "${env_file}" "LISTEN" "127.0.0.1"
+	zenfw::fs::env::set "${env_file}" "PORT" "${default_port}"
+	zenfw::fs::env::set "${env_file}" "MAGAZARR_CONFIG_DIR" "${config_dir}"
+	zenfw::fs::env::set "${env_file}" "LOG_LEVEL" "INFO"
+	settings_file="${config_dir}/settings.json"
+	_magazarr_seed_settings "${settings_file}" "${library_dir}"
+	zenfw::permission::read_exec::set "${data_dir}" "${username}" "${username}"
+	zenfw::permission::private::set "${env_file}" "${username}" "${username}"
+	zenfw::permission::exec_exec::set "${install_dir}/.venv" "${username}" "${username}"
+	zenfw::proxy::generate "${app_name}" "${default_port}" "${url_base}" true "${username}"
+	zenfw::service::generate "${app_name}" false false
+	zenfw::service::manage start "${service_unit}" || zenfw::service::manage restart "${service_unit}"
+}
+
+_update() {
+	zenfw::service::manage stop "${service_unit}"
+	rm -rf "${install_dir:?}"/* "${install_dir:?}"/.[!.]* 2>/dev/null || true
+	zenfw::git::clone "${app_repo}" "${install_dir}" "$(app::update_branch)"
+	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
+	_magazarr_provision_runtime
+	_config
+	zenfw::software::backup::create "${app_name}" "user" "${data_dir}" "${username}"
+}
+
+_magazarr_provision_runtime() {
+	printf '3.12\n' >"${install_dir}/.python-version"
+	zenfw::workspace::user::run "${username}" "${install_dir}" "uv python install 3.12" || {
+		printf '[%s] uv python install 3.12 failed\n' "${app_name}" >&2
+		return 1
+	}
+	if [[ -f "${install_dir}/uv.lock" ]]; then
+		zenfw::workspace::user::run "${username}" "${install_dir}" "UV_PYTHON=3.12 uv sync --frozen" || \
+			zenfw::workspace::user::run "${username}" "${install_dir}" "UV_PYTHON=3.12 uv sync" || {
+			printf '[%s] uv sync failed in %s\n' "${app_name}" "${install_dir}" >&2
+			return 1
+		}
+	else
+		zenfw::workspace::user::run "${username}" "${install_dir}" "UV_PYTHON=3.12 uv sync" || {
+			printf '[%s] uv sync failed in %s\n' "${app_name}" "${install_dir}" >&2
+			return 1
+		}
+	fi
+	test -x "${install_dir}/.venv/bin/magazarr"
+	zenfw::permission::exec_exec::set "${install_dir}/.venv" "${username}" "${username}"
+}
+
+# Seed settings.json with library path and Quasarr sibling URL/API key when available.
+_magazarr_seed_settings() {
+	local settings_file="${1:?}" library_dir="${2:?}"
+	local quasarr_env quasarr_port quasarr_url quasarr_key=""
+	quasarr_env="/home/${username}/.krate/applications/quasarr.env"
+	quasarr_port="$(zenfw::fs::env::get "${quasarr_env}" "PORT" 2>/dev/null | tr -cd '0-9' || true)"
+	[[ -n "${quasarr_port}" ]] && quasarr_url="http://127.0.0.1:${quasarr_port}" || quasarr_url="http://127.0.0.1:8080"
+	# Quasarr prints the API key at first run; optional file under its data dir.
+	if [[ -f "/home/${username}/.config/quasarr/api_key" ]]; then
+		quasarr_key="$(tr -d '[:space:]' <"/home/${username}/.config/quasarr/api_key" || true)"
+	fi
+	python3 - "${settings_file}" "${library_dir}" "${quasarr_url}" "${quasarr_key}" <<'PY'
+import json
+import os
+import sys
+
+path, library_dir, quasarr_url, quasarr_key = sys.argv[1:5]
+defaults = {
+    "quasarr_url": quasarr_url,
+    "quasarr_external_url": "",
+    "quasarr_api_key": quasarr_key,
+    "discord_webhook_url": "",
+    "quasarr_search_category": "7000",
+    "quasarr_download_category": "docs",
+    "past_days": 45,
+    "min_size_mb": 1,
+    "max_size_mb": 0,
+    "library_dir": library_dir,
+    "import_root": "",
+    "automation_interval_minutes": 60,
+    "import_check_interval_minutes": 1,
+    "opds_auth_enabled": False,
+    "opds_username": "",
+    "opds_password": "",
+    "opds_page_size": 50,
+}
+data = {}
+if os.path.isfile(path):
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f) or {}
+    except (OSError, json.JSONDecodeError):
+        data = {}
+merged = dict(defaults)
+merged.update({k: v for k, v in data.items() if k in defaults})
+# Always keep library under KRATE data_dir unless user already set a custom absolute path outside defaults.
+if not merged.get("library_dir"):
+    merged["library_dir"] = library_dir
+elif merged["library_dir"] in ("library", "/library"):
+    merged["library_dir"] = library_dir
+if quasarr_key and not data.get("quasarr_api_key"):
+    merged["quasarr_api_key"] = quasarr_key
+if quasarr_url and (not data.get("quasarr_url") or data.get("quasarr_url") in ("http://127.0.0.1:8080", "http://localhost:8080")):
+    merged["quasarr_url"] = quasarr_url
+os.makedirs(os.path.dirname(path), exist_ok=True)
+with open(path, "w", encoding="utf-8") as f:
+    json.dump(merged, f, indent=2, sort_keys=True)
+    f.write("\n")
+PY
+}
