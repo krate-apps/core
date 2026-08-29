@@ -1,0 +1,17 @@
+id: listenarr
+name: Listenarr
+description: "Automated audiobook collection management (Sonarr-style for audiobooks)."
+links:
+  homepage: https://github.com/Listenarrs/Listenarr
+  documentation: https://github.com/Listenarrs/Listenarr#readme
+  source: https://github.com/Listenarrs/Listenarr
+  krate_docs: https://krate.github.io/docs/software/official/listenarr
+tier: free
+category: media
+install_mode: local
+autocomplete_options:
+  - -b
+ui_options:
+  branches:
+    - main
+    - beta
