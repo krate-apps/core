@@ -1,0 +1,17 @@
+id: medusa
+name: Medusa
+description: "Automatic TV show library manager for NZB and torrents (PyMedusa)."
+links:
+  homepage: https://pymedusa.com
+  documentation: https://github.com/pymedusa/Medusa/wiki
+  source: https://github.com/pymedusa/Medusa
+  krate_docs: https://krate.github.io/docs/software/official/medusa
+tier: free
+category: media
+install_mode: local
+autocomplete_options:
+  - -b
+ui_options:
+  branches:
+    - main
+    - beta

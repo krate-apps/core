@@ -1,0 +1,116 @@
+#!/usr/bin/env bash
+[[ -n "${KRATE_HANDLER_CONTEXT_FILE:-}" && -f "${KRATE_HANDLER_CONTEXT_FILE}" ]] && . "${KRATE_HANDLER_CONTEXT_FILE}"
+# @file applications/apps/medusa/medusa
+# @project KRATE
+# @description Medusa (PyMedusa) — git clone, uv/venv + requirements; web UI on loopback + Caddy.
+# shellcheck disable=SC2154
+set -euo pipefail
+
+_add() {
+	zenfw::workspace::uv::install
+	rm -rf "${install_dir:?}" 2>/dev/null || true
+	mkdir -p "${install_dir}"
+	zenfw::git::clone "${app_repo}" "${install_dir}" "$(app::update_branch)"
+	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
+	_medusa_provision_runtime
+	zenfw::service::generate "${app_name}" true false
+	_config
+}
+
+_config() {
+	local default_port config_file http_root
+	mkdir -p "${data_dir}" "$(dirname "${env_file}")"
+	zenfw::permission::read_exec::set "${data_dir}" "${username}" "${username}"
+	default_port="${service_default_port//[^0-9]/}"
+	: "${default_port:?}"
+	config_file="${data_dir}/config.ini"
+	http_root="${url_base}"
+	[[ "${http_root}" == */ ]] || http_root="${http_root}/"
+	[[ "${http_root}" == /* ]] || http_root="/${http_root}"
+	[[ "${http_root}" == "/" ]] && http_root=""
+	if [[ ! -f "${config_file}" ]]; then
+		cat >"${config_file}" <<EOF
+[General]
+web_port = ${default_port}
+web_host = 127.0.0.1
+web_root = ${http_root}
+launch_browser = 0
+EOF
+	else
+		_medusa_patch_ini "${config_file}" "${default_port}" "${http_root}"
+	fi
+	zenfw::fs::env::set "${env_file}" "PORT" "${default_port}"
+	zenfw::permission::private::set "${env_file}" "${username}" "${username}"
+	zenfw::permission::read_exec::set "${data_dir}" "${username}" "${username}"
+	zenfw::permission::exec_exec::set "${install_dir}/.venv" "${username}" "${username}"
+	zenfw::proxy::generate "${app_name}" "${default_port}" "${url_base}" true "${username}"
+	zenfw::service::manage start "${service_unit}" || zenfw::service::manage restart "${service_unit}"
+}
+
+_update() {
+	zenfw::service::manage stop "${service_unit}"
+	rm -rf "${install_dir:?}"/* "${install_dir:?}"/.[!.]* 2>/dev/null || true
+	zenfw::git::clone "${app_repo}" "${install_dir}" "$(app::update_branch)"
+	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
+	_medusa_provision_runtime
+	_config
+	zenfw::software::backup::create "${app_name}" "user" "${data_dir}" "${username}"
+}
+
+_medusa_provision_runtime() {
+	printf '3.12\n' >"${install_dir}/.python-version"
+	zenfw::workspace::user::run "${username}" "${install_dir}" "uv python install 3.12" || {
+		printf '[%s] uv python install 3.12 failed\n' "${app_name}" >&2
+		return 1
+	}
+	if [[ -f "${install_dir}/uv.lock" ]]; then
+		zenfw::workspace::user::run "${username}" "${install_dir}" "UV_PYTHON=3.12 uv sync --frozen" || \
+			zenfw::workspace::user::run "${username}" "${install_dir}" "UV_PYTHON=3.12 uv sync" || {
+			printf '[%s] uv sync failed; falling back to requirements.txt\n' "${app_name}" >&2
+			zenfw::workspace::venv::create "${install_dir}" "${username}" false
+			[[ -f "${install_dir}/requirements.txt" ]] || {
+				printf '[%s] requirements.txt missing in %s\n' "${app_name}" "${install_dir}" >&2
+				return 1
+			}
+			zenfw::workspace::user::run "${username}" "${install_dir}" \
+				"UV_PYTHON=3.12 uv pip install -r requirements.txt" || {
+				printf '[%s] uv pip install -r requirements.txt failed\n' "${app_name}" >&2
+				return 1
+			}
+		}
+	else
+		[[ -f "${install_dir}/requirements.txt" ]] || {
+			printf '[%s] requirements.txt missing in %s\n' "${app_name}" "${install_dir}" >&2
+			return 1
+		}
+		zenfw::workspace::venv::create "${install_dir}" "${username}" false
+		zenfw::workspace::user::run "${username}" "${install_dir}" \
+			"UV_PYTHON=3.12 uv pip install -r requirements.txt" || {
+			printf '[%s] uv pip install -r requirements.txt failed\n' "${app_name}" >&2
+			return 1
+		}
+	fi
+	test -f "${install_dir}/start.py"
+	test -x "${install_dir}/.venv/bin/python"
+	zenfw::permission::exec_exec::set "${install_dir}/.venv" "${username}" "${username}"
+}
+
+_medusa_patch_ini() {
+	local config_file="${1:?}" port="${2:?}" http_root="${3:?}"
+	python3 - "${config_file}" "${port}" "${http_root}" <<'PY'
+import configparser
+import sys
+
+path, port, http_root = sys.argv[1], sys.argv[2], sys.argv[3]
+cfg = configparser.ConfigParser()
+cfg.read(path)
+if not cfg.has_section("General"):
+    cfg.add_section("General")
+cfg.set("General", "web_port", str(port))
+cfg.set("General", "web_host", "127.0.0.1")
+cfg.set("General", "web_root", http_root)
+cfg.set("General", "launch_browser", "0")
+with open(path, "w", encoding="utf-8") as fh:
+    cfg.write(fh)
+PY
+}
