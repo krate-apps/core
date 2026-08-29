@@ -1,0 +1,66 @@
+id: airsonic
+multi_user: true
+runtime:
+  kind: systemd
+  service_template: airsonic@.service
+dependencies:
+  apt:
+    common:
+      packages: openjdk-17-jre-headless ffmpeg lame curl ca-certificates
+install:
+  layout:
+    backup_dir: /home/%i/.krate/backups/airsonic
+    data_dir: /home/%i/.config/airsonic
+    install_dir: /opt/%i/airsonic
+    temp_dir: /home/%i/tmp/airsonic
+  release:
+    asset: airsonic.war
+  executable:
+    - /opt/%i/airsonic/airsonic-run
+systemd:
+  unit:
+    TimeoutStopSec: 60
+    Type: simple
+    Restart: on-failure
+    RestartSec: "10"
+    WorkingDirectory: /opt/%i/airsonic
+  environment:
+    inline:
+      TMPDIR: /home/%i/tmp/airsonic
+      HOME: /home/%i
+    file:
+      path: /home/%i/.krate/applications/airsonic.env
+      mode: "0600"
+      variables:
+        AIRSONIC_PORT: "{default_port}"
+        AIRSONIC_HOME: /home/%i/.config/airsonic
+  exec:
+    pre:
+      - /bin/mkdir -p /home/%i/tmp/airsonic /home/%i/.config/airsonic
+    start:
+      - /opt/%i/airsonic/airsonic-run
+files:
+  service: /etc/systemd/system/airsonic@.service
+  config:
+    - /home/%i/.krate/applications/airsonic.env
+  proxy:
+    - /etc/caddy/softwares/%i.airsonic.caddy
+  binary:
+    - /opt/%i/airsonic/airsonic.war
+    - /opt/%i/airsonic/airsonic-run
+autogen:
+  - default_port
+security:
+  network: true
+  filesystem:
+    read_write:
+      - /home/%i/.config/airsonic
+      - /home/%i/tmp/airsonic
+      - /home/%i/.krate/backups/airsonic
+      - /home/%i/.krate/applications
+    read_only:
+      - /opt/%i/airsonic
+version:
+  probes:
+    - type: file
+      path: "{install_dir}/airsonic.war"

@@ -1,0 +1,17 @@
+id: airsonic
+name: Airsonic
+description: "Airsonic-Advanced — self-hosted music streamer (Subsonic-compatible API)."
+links:
+  homepage: https://github.com/airsonic-advanced/airsonic-advanced
+  documentation: https://github.com/airsonic-advanced/airsonic-advanced/wiki
+  source: https://github.com/airsonic-advanced/airsonic-advanced
+  krate_docs: https://krate.github.io/docs/software/official/airsonic
+tier: free
+category: streaming
+install_mode: local
+autocomplete_options:
+  - -b
+ui_options:
+  branches:
+    - main
+    - beta
