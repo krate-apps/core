@@ -1,0 +1,86 @@
+id: sickgear
+multi_user: true
+runtime:
+  kind: systemd
+  service_template: sickgear@.service
+dependencies:
+  apt:
+    common:
+      packages: git curl ca-certificates python3 build-essential mediainfo unrar
+install:
+  release:
+    branches:
+      main: main
+      beta: dev
+  layout:
+    backup_dir: /home/%i/.krate/backups/sickgear
+    data_dir: /home/%i/.config/sickgear
+    install_dir: /opt/%i/sickgear
+    temp_dir: /home/%i/tmp/sickgear
+  executable:
+    - /opt/%i/sickgear/.venv/bin/python
+systemd:
+  unit:
+    TimeoutStopSec: 30
+    Type: simple
+    KillSignal: SIGINT
+    Restart: on-failure
+    RestartSec: "10"
+    WorkingDirectory: /opt/%i/sickgear
+  environment:
+    inline:
+      TMPDIR: /home/%i/tmp/sickgear
+      HOME: /home/%i
+      PYTHONUNBUFFERED: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+    file:
+      path: /home/%i/.krate/applications/sickgear.env
+      mode: "0600"
+      variables:
+        PORT: "{default_port}"
+  exec:
+    pre:
+      - /bin/mkdir -p /home/%i/tmp/sickgear /home/%i/.config/sickgear /home/%i/.cache/uv /home/%i/.local/share/uv
+    start:
+      - /opt/%i/sickgear/.venv/bin/python
+      - /opt/%i/sickgear/sickgear.py
+      - --systemd
+      - --nolaunch
+      - --datadir
+      - /home/%i/.config/sickgear
+      - --config
+      - /home/%i/.config/sickgear/config.ini
+      - --port
+      - ${PORT}
+files:
+  service: /etc/systemd/system/sickgear@.service
+  config:
+    - /home/%i/.config/sickgear/config.ini
+    - /home/%i/.krate/applications/sickgear.env
+  database:
+    - /home/%i/.config/sickgear/sickbeard.db
+  proxy:
+    - /etc/caddy/softwares/%i.sickgear.caddy
+  binary:
+    - /opt/%i/sickgear/.venv/bin/python
+autogen:
+  - default_port
+security:
+  network: true
+  filesystem:
+    read_write:
+      - /home/%i/.config/sickgear
+      - /home/%i/tmp/sickgear
+      - /home/%i/.cache/uv
+      - /home/%i/.local/share/uv
+      - /home/%i/.krate/backups/sickgear
+      - /home/%i/.krate/applications
+      - /opt/%i/sickgear/.venv
+    read_only:
+      - /opt/%i/sickgear
+version:
+  probes:
+    - type: file
+      path: "{install_dir}/sickgear.py"
+    - type: file
+      path: "{install_dir}/.venv/bin/python"

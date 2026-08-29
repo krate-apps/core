@@ -1,0 +1,17 @@
+id: sickgear
+name: SickGear
+description: "Stable TV show PVR for Usenet and BitTorrent (SickBeard descendant)."
+links:
+  homepage: https://github.com/SickGear/SickGear
+  documentation: https://github.com/SickGear/SickGear/wiki
+  source: https://github.com/SickGear/SickGear
+  krate_docs: https://krate.github.io/docs/software/official/sickgear
+tier: free
+category: media
+install_mode: local
+autocomplete_options:
+  - -b
+ui_options:
+  branches:
+    - main
+    - beta
