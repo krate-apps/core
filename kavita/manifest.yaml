@@ -1,0 +1,64 @@
+id: kavita
+multi_user: true
+runtime:
+  kind: systemd
+  service_template: kavita@.service
+dependencies:
+  apt:
+    common:
+      packages: curl ca-certificates
+install:
+  layout:
+    backup_dir: /home/%i/.krate/backups/kavita
+    data_dir: /home/%i/.config/kavita
+    install_dir: /opt/%i/kavita
+    temp_dir: /home/%i/tmp/kavita
+  release:
+    asset: kavita-linux-x64.tar.gz
+  executable:
+    - /opt/%i/kavita/Kavita
+systemd:
+  unit:
+    TimeoutStopSec: 40
+    Type: simple
+    Restart: on-failure
+    RestartSec: "10"
+    WorkingDirectory: /opt/%i/kavita
+  environment:
+    inline:
+      TMPDIR: /home/%i/tmp/kavita
+      HOME: /home/%i
+      DOTNET_BUNDLE_EXTRACT_BASE_DIR: /home/%i/tmp/kavita
+    file:
+      path: /home/%i/.krate/applications/kavita.env
+      mode: "0600"
+  exec:
+    pre:
+      - /bin/mkdir -p /home/%i/tmp/kavita /home/%i/.config/kavita/config
+    start:
+      - /opt/%i/kavita/Kavita
+files:
+  service: /etc/systemd/system/kavita@.service
+  config:
+    - /home/%i/.krate/applications/kavita.env
+    - /home/%i/.config/kavita/config/appsettings.json
+  proxy:
+    - /etc/caddy/softwares/%i.kavita.caddy
+  binary:
+    - /opt/%i/kavita/Kavita
+autogen:
+  - default_port
+security:
+  network: true
+  filesystem:
+    read_write:
+      - /home/%i/.config/kavita
+      - /home/%i/tmp/kavita
+      - /home/%i/.krate/backups/kavita
+      - /home/%i/.krate/applications
+      - /opt/%i/kavita
+    read_only: []
+version:
+  probes:
+    - type: file
+      path: "{install_dir}/Kavita"

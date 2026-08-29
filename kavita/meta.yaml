@@ -1,0 +1,17 @@
+id: kavita
+name: Kavita
+description: "Self-hosted digital library for comics, manga and books."
+links:
+  homepage: https://www.kavitareader.com/
+  documentation: https://wiki.kavitareader.com/
+  source: https://github.com/Kareadita/Kavita
+  krate_docs: https://krate.github.io/docs/software/official/kavita
+tier: free
+category: tools
+install_mode: local
+autocomplete_options:
+  - -b
+ui_options:
+  branches:
+    - main
+    - beta
