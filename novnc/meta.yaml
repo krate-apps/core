@@ -1,0 +1,17 @@
+id: novnc
+name: noVNC
+description: "Browser VNC client (TigerVNC + websockify + noVNC; localhost-only VNC with SecurityTypes None)."
+links:
+  homepage: https://novnc.com/
+  documentation: https://github.com/novnc/noVNC
+  source: https://github.com/novnc/noVNC
+  krate_docs: https://krate.github.io/docs/software/official/novnc
+tier: free
+category: tools
+install_mode: local
+autocomplete_options:
+  - -b
+ui_options:
+  branches:
+    - main
+    - beta

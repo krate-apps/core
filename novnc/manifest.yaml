@@ -1,0 +1,65 @@
+id: novnc
+multi_user: true
+runtime:
+  kind: systemd
+  service_template: novnc@.service
+dependencies:
+  apt:
+    common:
+      packages: novnc websockify tigervnc-standalone-server curl ca-certificates
+install:
+  layout:
+    backup_dir: /home/%i/.krate/backups/novnc
+    data_dir: /home/%i/.config/novnc
+    install_dir: /opt/%i/novnc
+    temp_dir: /home/%i/tmp/novnc
+  executable:
+    - /opt/%i/novnc/novnc-run
+systemd:
+  unit:
+    TimeoutStopSec: 30
+    Type: simple
+    Restart: on-failure
+    RestartSec: "10"
+    WorkingDirectory: /opt/%i/novnc
+  environment:
+    inline:
+      TMPDIR: /home/%i/tmp/novnc
+      HOME: /home/%i
+    file:
+      path: /home/%i/.krate/applications/novnc.env
+      mode: "0600"
+      variables:
+        PORT: "{default_port}"
+        VNC_PORT: "1{default_port}"
+        VNC_GEOMETRY: 1280x720
+  exec:
+    pre:
+      - /bin/mkdir -p /home/%i/tmp/novnc /home/%i/.config/novnc /opt/%i/novnc
+    start:
+      - /opt/%i/novnc/novnc-run
+files:
+  service: /etc/systemd/system/novnc@.service
+  config:
+    - /home/%i/.krate/applications/novnc.env
+  proxy:
+    - /etc/caddy/softwares/%i.novnc.caddy
+  binary:
+    - /opt/%i/novnc/novnc-run
+autogen:
+  - default_port
+security:
+  network: true
+  filesystem:
+    read_write:
+      - /home/%i/.config/novnc
+      - /home/%i/tmp/novnc
+      - /home/%i/.krate/backups/novnc
+      - /home/%i/.krate/applications
+      - /opt/%i/novnc
+    read_only:
+      - /usr/share/novnc
+version:
+  probes:
+    - type: file
+      path: "{install_dir}/novnc-run"
