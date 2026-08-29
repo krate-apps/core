@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+[[ -n "${KRATE_HANDLER_CONTEXT_FILE:-}" && -f "${KRATE_HANDLER_CONTEXT_FILE}" ]] && . "${KRATE_HANDLER_CONTEXT_FILE}"
+# @file applications/apps/labelarr/labelarr
+# @project KRATE
+# @description Labelarr — GitHub release binary; Plex/TMDB labels, no web UI, no proxy
+# shellcheck disable=SC2154
+set -euo pipefail
+
+_add() {
+	_fetch_binary
+	zenfw::service::generate "${app_name}" true false
+	_config
+}
+
+_config() {
+	mkdir -p "${data_dir}"
+	zenfw::permission::read_exec::set "${data_dir}" "${username}" "${username}"
+	mkdir -p "$(dirname "${env_file}")"
+	[[ -f "${env_file}" ]] || : > "${env_file}"
+	zenfw::fs::env::set "${env_file}" "DATA_DIR" "${data_dir}"
+	zenfw::fs::env::set "${env_file}" "PLEX_SERVER" "127.0.0.1"
+	zenfw::fs::env::set "${env_file}" "PLEX_PORT" "32400"
+	# Optional: discover Plex token / Radarr / Sonarr when sibling installs exist.
+	_wire_plex_env || true
+	_wire_servarr_env || true
+	zenfw::permission::private::set "${env_file}" "${username}" "${username}"
+	zenfw::service::manage restart "${service_unit}"
+}
+
+_update() {
+	zenfw::service::manage stop "${service_unit}"
+	_fetch_binary
+	zenfw::service::manage restart "${service_unit}"
+	zenfw::software::backup::create "${app_name}" "user" "${install_dir}" "${username}"
+}
+
+# Best-effort: read PlexOnlineToken from a local Plex Preferences.xml if present.
+_wire_plex_env() {
+	local prefs token existing
+	existing="$(zenfw::fs::env::get "${env_file}" "PLEX_TOKEN" || true)"
+	[[ -z "${existing}" ]] || return 0
+	prefs="/home/${username}/.config/plex/PlexMediaServer/Library/Application Support/Plex Media Server/Preferences.xml"
+	[[ -f "${prefs}" ]] || return 0
+	token="$(sed -n 's/.*PlexOnlineToken="\([^"]*\)".*/\1/p' "${prefs}" | head -n1 || true)"
+	[[ -n "${token}" ]] || return 0
+	zenfw::fs::env::set "${env_file}" "PLEX_TOKEN" "${token}"
+}
+
+# Optional Radarr/Sonarr integration for TMDb ID lookup when siblings are installed.
+_wire_servarr_env() {
+	local sibling_env apikey port
+	sibling_env="/home/${username}/.krate/applications/radarr.env"
+	if [[ -f "${sibling_env}" ]]; then
+		apikey="$(zenfw::fs::env::get "${sibling_env}" "RADARR__AUTH__APIKEY" || true)"
+		port="$(zenfw::fs::env::get "${sibling_env}" "RADARR__SERVER__PORT" || true)"
+		if [[ -n "${apikey}" && -n "${port}" ]]; then
+			zenfw::fs::env::set "${env_file}" "USE_RADARR" "true"
+			zenfw::fs::env::set "${env_file}" "RADARR_URL" "http://127.0.0.1:${port}"
+			zenfw::fs::env::set "${env_file}" "RADARR_API_KEY" "${apikey}"
+		fi
+	fi
+	sibling_env="/home/${username}/.krate/applications/sonarr.env"
+	if [[ -f "${sibling_env}" ]]; then
+		apikey="$(zenfw::fs::env::get "${sibling_env}" "SONARR__AUTH__APIKEY" || true)"
+		port="$(zenfw::fs::env::get "${sibling_env}" "SONARR__SERVER__PORT" || true)"
+		if [[ -n "${apikey}" && -n "${port}" ]]; then
+			zenfw::fs::env::set "${env_file}" "USE_SONARR" "true"
+			zenfw::fs::env::set "${env_file}" "SONARR_URL" "http://127.0.0.1:${port}"
+			zenfw::fs::env::set "${env_file}" "SONARR_API_KEY" "${apikey}"
+		fi
+	fi
+}
+
+_fetch_binary() {
+	local tmpdir bin
+	tmpdir="$(mktemp -d)"
+	zenfw::git::release::get "${tmpdir}" "${app_repo}" "${is_prerelease}" "$(app::cfg install.release.asset)"
+	mkdir -p "${install_dir}"
+	if [[ -f "${tmpdir}/labelarr-linux-amd64" ]]; then
+		mv "${tmpdir}/labelarr-linux-amd64" "${install_dir}/labelarr"
+	elif [[ -f "${tmpdir}/labelarr" ]]; then
+		mv "${tmpdir}/labelarr" "${install_dir}/labelarr"
+	else
+		bin="$(find "${tmpdir}" -type f -name 'labelarr*' ! -name '*.exe' -print -quit || true)"
+		[[ -n "${bin}" ]] && mv "${bin}" "${install_dir}/labelarr"
+	fi
+	chmod 0755 "${install_dir}/labelarr"
+	rm -rf "${tmpdir}"
+}
