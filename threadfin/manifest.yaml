@@ -1,0 +1,73 @@
+id: threadfin
+multi_user: true
+runtime:
+  kind: systemd
+  service_template: threadfin@.service
+dependencies:
+  apt:
+    common:
+      packages: curl ca-certificates ffmpeg
+install:
+  layout:
+    backup_dir: /home/%i/.krate/backups/threadfin
+    data_dir: /home/%i/.config/threadfin
+    install_dir: /opt/%i/threadfin
+    temp_dir: /home/%i/tmp/threadfin
+  release:
+    # Prefer Threadfin_linux_amd64 over Threadfin_linux_amd64_glibc_*_compat.
+    asset: Threadfin_linux_amd64
+  executable:
+    - /opt/%i/threadfin/Threadfin
+systemd:
+  unit:
+    TimeoutStopSec: 20
+    Type: simple
+    Restart: on-failure
+    RestartSec: "10"
+    WorkingDirectory: /opt/%i/threadfin
+  environment:
+    inline:
+      TMPDIR: /home/%i/tmp/threadfin
+      HOME: /home/%i
+    file:
+      path: /home/%i/.krate/applications/threadfin.env
+      mode: "0600"
+      variables:
+        PORT: "{default_port}"
+  exec:
+    pre:
+      - /bin/mkdir -p /home/%i/tmp/threadfin /home/%i/.config/threadfin /tmp/threadfin
+    start:
+      - /opt/%i/threadfin/Threadfin
+      - -port
+      - ${PORT}
+      - -bind
+      - 127.0.0.1
+      - -config
+      - /home/%i/.config/threadfin
+files:
+  service: /etc/systemd/system/threadfin@.service
+  config:
+    - /home/%i/.krate/applications/threadfin.env
+    - /home/%i/.config/threadfin/settings.json
+  proxy:
+    - /etc/caddy/softwares/%i.threadfin.caddy
+  binary:
+    - /opt/%i/threadfin/Threadfin
+autogen:
+  - default_port
+security:
+  network: true
+  filesystem:
+    read_write:
+      - /home/%i/.config/threadfin
+      - /home/%i/tmp/threadfin
+      - /home/%i/.krate/backups/threadfin
+      - /home/%i/.krate/applications
+      - /tmp/threadfin
+    read_only:
+      - /opt/%i/threadfin
+version:
+  probes:
+    - type: file
+      path: "{install_dir}/Threadfin"
