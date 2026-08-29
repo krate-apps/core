@@ -1,0 +1,74 @@
+id: scraparr
+multi_user: true
+runtime:
+  kind: systemd
+  service_template: scraparr@.service
+dependencies:
+  apt:
+    common:
+      packages: git curl ca-certificates
+install:
+  layout:
+    backup_dir: /home/%i/.krate/backups/scraparr
+    data_dir: /home/%i/.config/scraparr
+    install_dir: /opt/%i/scraparr
+    temp_dir: /home/%i/tmp/scraparr
+  executable:
+    - /opt/%i/scraparr/.venv/bin/python
+systemd:
+  unit:
+    TimeoutStopSec: 20
+    Type: simple
+    Restart: on-failure
+    RestartSec: "10"
+    WorkingDirectory: /opt/%i/scraparr
+    # Upstream hardcodes /scraparr/config/config.yaml (Docker path).
+    BindPaths: /home/%i/.config/scraparr:/scraparr/config:mkdir
+  environment:
+    inline:
+      TMPDIR: /home/%i/tmp/scraparr
+      HOME: /home/%i
+      PYTHONUNBUFFERED: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONPATH: /opt/%i/scraparr/src
+    file:
+      path: /home/%i/.krate/applications/scraparr.env
+      mode: "0600"
+      variables:
+        SCRAPARR_CONFIG: /home/%i/.config/scraparr/config.yaml
+        GENERAL_ADDRESS: 127.0.0.1
+        GENERAL_PORT: "{default_port}"
+  exec:
+    pre:
+      - /bin/mkdir -p /home/%i/tmp/scraparr /home/%i/.config/scraparr /home/%i/.cache/uv /home/%i/.local/share/uv
+    start:
+      - /opt/%i/scraparr/.venv/bin/python
+      - -m
+      - scraparr.scraparr
+files:
+  service: /etc/systemd/system/scraparr@.service
+  config:
+    - /home/%i/.config/scraparr/config.yaml
+    - /home/%i/.krate/applications/scraparr.env
+  binary:
+    - /opt/%i/scraparr/.venv/bin/python
+autogen:
+  - default_port
+security:
+  network: true
+  filesystem:
+    read_write:
+      - /home/%i/.config/scraparr
+      - /home/%i/tmp/scraparr
+      - /home/%i/.cache/uv
+      - /home/%i/.local/share/uv
+      - /home/%i/.krate/backups/scraparr
+      - /home/%i/.krate/applications
+      - /opt/%i/scraparr/.venv
+    read_only:
+      - /opt/%i/scraparr
+version:
+  probes:
+    - type: pip
+      venv: "{install_dir}/.venv"
+      package: scraparr

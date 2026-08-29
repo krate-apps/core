@@ -1,0 +1,18 @@
+id: scraparr
+name: Scraparr
+description: "Prometheus metrics from *arr and related apps."
+links:
+  homepage: https://github.com/thecfu/scraparr
+  documentation: https://github.com/thecfu/scraparr#readme
+  source: https://github.com/thecfu/scraparr
+  krate_docs: https://krate.github.io/docs/software/official/scraparr
+tier: free
+category: monitoring
+install_mode: local
+autocomplete_options:
+  - -b
+ui_options:
+  branches:
+    - main
+    - beta
+  subdomain: false
