@@ -1,0 +1,18 @@
+id: jdownloader
+name: JDownloader
+description: "JDownloader 2 headless download manager (JAR + OpenJDK; control via MyJDownloader — no web proxy)."
+links:
+  homepage: https://jdownloader.org/
+  documentation: https://support.jdownloader.org/
+  source: https://svn.jdownloader.org/projects/jdownloader
+  krate_docs: https://krate.github.io/docs/software/official/jdownloader
+tier: free
+category: download
+install_mode: local
+autocomplete_options:
+  - -b
+ui_options:
+  branches:
+    - main
+    - beta
+  subdomain: false

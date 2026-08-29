@@ -1,0 +1,62 @@
+id: jdownloader
+multi_user: true
+runtime:
+  kind: systemd
+  service_template: jdownloader@.service
+dependencies:
+  apt:
+    common:
+      packages: openjdk-17-jre-headless curl ca-certificates
+install:
+  layout:
+    backup_dir: /home/%i/.krate/backups/jdownloader
+    data_dir: /home/%i/.config/jdownloader
+    install_dir: /opt/%i/jdownloader
+    temp_dir: /home/%i/tmp/jdownloader
+  executable:
+    - /opt/%i/jdownloader/JDownloader.jar
+systemd:
+  unit:
+    TimeoutStopSec: 60
+    Type: simple
+    Restart: on-failure
+    RestartSec: "10"
+    WorkingDirectory: /opt/%i/jdownloader
+  environment:
+    inline:
+      TMPDIR: /home/%i/tmp/jdownloader
+      HOME: /home/%i
+      JAVA_TOOL_OPTIONS: "-Djava.awt.headless=true"
+    file:
+      path: /home/%i/.krate/applications/jdownloader.env
+      mode: "0600"
+  exec:
+    pre:
+      - /bin/mkdir -p /home/%i/tmp/jdownloader /home/%i/.config/jdownloader /opt/%i/jdownloader
+    start:
+      - /usr/bin/java
+      - -Djava.awt.headless=true
+      - -jar
+      - /opt/%i/jdownloader/JDownloader.jar
+files:
+  service: /etc/systemd/system/jdownloader@.service
+  config:
+    - /home/%i/.krate/applications/jdownloader.env
+  binary:
+    - /opt/%i/jdownloader/JDownloader.jar
+autogen: []
+security:
+  network: true
+  filesystem:
+    read_write:
+      - /home/%i/.config/jdownloader
+      - /home/%i/tmp/jdownloader
+      - /home/%i/.krate/backups/jdownloader
+      - /home/%i/.krate/applications
+      - /opt/%i/jdownloader
+      - /home/%i/downloads
+    read_only: []
+version:
+  probes:
+    - type: file
+      path: "{install_dir}/JDownloader.jar"
