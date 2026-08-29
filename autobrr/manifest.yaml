@@ -1,0 +1,57 @@
+id: autobrr
+multi_user: true
+runtime:
+  kind: systemd
+  service_template: autobrr@.service
+install:
+  layout:
+    backup_dir: /home/%i/.krate/backups/autobrr
+    data_dir: /home/%i/.config/autobrr
+    install_dir: /opt/%i/autobrr
+    temp_dir: /home/%i/tmp/autobrr
+  release:
+    asset: linux_x86_64.tar.gz
+  executable:
+    - /opt/%i/autobrr/autobrr
+    - /opt/%i/autobrr/autobrrctl
+systemd:
+  unit:
+    TimeoutStopSec: 20
+    Type: simple
+  environment:
+    inline:
+      TMPDIR: /home/%i/tmp/autobrr
+  exec:
+    pre:
+      - /bin/mkdir -p /home/%i/tmp/autobrr
+    start:
+      - /opt/%i/autobrr/autobrr
+      - --config=/home/%i/.config/autobrr
+files:
+  service: /etc/systemd/system/autobrr@.service
+  config:
+    - /home/%i/.config/autobrr/config.toml
+  database:
+    - /home/%i/.config/autobrr/autobrr.db
+  proxy:
+    - /etc/caddy/softwares/%i.autobrr.caddy
+  binary:
+    - /opt/%i/autobrr/autobrr
+autogen:
+  - apikey
+  - default_port
+security:
+  network: true
+  filesystem:
+    read_write:
+      - /home/%i/.config/autobrr
+      - /home/%i/tmp/autobrr
+      - /home/%i/.krate/backups/autobrr
+    read_only:
+      - /opt/%i/autobrr
+version:
+  probes:
+    - type: executable
+      cmd: "{install_dir}/autobrr"
+      args: version
+      requires: active
