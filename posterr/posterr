@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+[[ -n "${KRATE_HANDLER_CONTEXT_FILE:-}" && -f "${KRATE_HANDLER_CONTEXT_FILE}" ]] && . "${KRATE_HANDLER_CONTEXT_FILE}"
+# @file applications/apps/posterr/posterr
+# @project KRATE
+# @description Posterr — git clone + npm (not poster-binaries.zip); Express UI on loopback + Caddy.
+# shellcheck disable=SC2154
+set -euo pipefail
+
+_add() {
+	rm -rf "${install_dir:?}" 2>/dev/null || true
+	mkdir -p "${install_dir}"
+	zenfw::git::clone "${app_repo}" "${install_dir}" "$(app::update_branch)"
+	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
+	_posterr_provision
+	_config
+	app::lifecycle::record_effective_branch
+}
+
+_config() {
+	local default_port base_path index_js
+	mkdir -p "${data_dir}/config" "${data_dir}/custom" "$(dirname "${env_file}")"
+	zenfw::permission::read_exec::set "${data_dir}" "${username}" "${username}"
+	default_port="${service_default_port//[^0-9]/}"
+	: "${default_port:?}"
+	base_path="${url_base:-}"
+	[[ "${base_path}" == "/" ]] && base_path=""
+	# Persist settings / custom assets under data_dir.
+	rm -rf "${install_dir}/config"
+	ln -sfn "${data_dir}/config" "${install_dir}/config"
+	if [[ -d "${install_dir}/public/custom" && ! -L "${install_dir}/public/custom" ]]; then
+		if [[ ! -e "${data_dir}/custom/.seeded" ]]; then
+			cp -a "${install_dir}/public/custom/." "${data_dir}/custom/" 2>/dev/null || true
+			: >"${data_dir}/custom/.seeded"
+		fi
+		rm -rf "${install_dir}/public/custom"
+	fi
+	mkdir -p "${install_dir}/public"
+	ln -sfn "${data_dir}/custom" "${install_dir}/public/custom"
+	# Upstream listens on PORT only (all interfaces); bind loopback for Caddy when possible.
+	index_js="${install_dir}/index.js"
+	if [[ -f "${index_js}" ]] && grep -q 'app.listen(PORT' "${index_js}" 2>/dev/null; then
+		if ! grep -q 'process.env.HOST' "${index_js}" 2>/dev/null; then
+			sed -i 's|app.listen(PORT, () => {|app.listen(PORT, process.env.HOST || '\''127.0.0.1'\'', () => {|' "${index_js}"
+		fi
+	fi
+	zenfw::fs::env::set "${env_file}" "PORT" "${default_port}"
+	zenfw::fs::env::set "${env_file}" "HOST" "127.0.0.1"
+	zenfw::fs::env::set "${env_file}" "BASEPATH" "${base_path}"
+	zenfw::fs::env::set "${env_file}" "NODE_ENV" "production"
+	zenfw::permission::private::set "${env_file}" "${username}" "${username}"
+	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
+	zenfw::proxy::generate "${app_name}" "${default_port}" "${url_base}" true "${username}"
+	zenfw::service::generate "${app_name}" false false
+	zenfw::service::manage start "${service_unit}"
+}
+
+_update() {
+	zenfw::service::manage stop "${service_unit}"
+	rm -rf "${install_dir:?}"/* "${install_dir:?}"/.[!.]* 2>/dev/null || true
+	zenfw::git::clone "${app_repo}" "${install_dir}" "$(app::update_branch)"
+	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
+	_posterr_provision
+	_config
+	app::lifecycle::record_effective_branch
+	zenfw::software::backup::create "${app_name}" "user" "${data_dir}" "${username}"
+}
+
+_posterr_provision() {
+	local build_env
+	cat >"${install_dir}/.npmrc" <<'EOF'
+engine-strict=false
+fund=false
+audit=false
+EOF
+	zenfw::permission::read_exec::set "${install_dir}/.npmrc" "${username}" "${username}"
+	build_env="CI=true HUSKY=0 NODE_ENV=production"
+	if [[ -f "${install_dir}/package-lock.json" ]]; then
+		zenfw::workspace::user::run "${username}" "${install_dir}" \
+			"${build_env} npm ci --omit=dev" || \
+			zenfw::workspace::user::run "${username}" "${install_dir}" \
+				"${build_env} npm install --omit=dev" || {
+			printf '[%s] npm install failed\n' "${app_name}" >&2
+			return 1
+		}
+	else
+		zenfw::workspace::user::run "${username}" "${install_dir}" \
+			"${build_env} npm install --omit=dev" || {
+			printf '[%s] npm install failed\n' "${app_name}" >&2
+			return 1
+		}
+	fi
+	test -f "${install_dir}/index.js"
+	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
+}

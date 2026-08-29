@@ -1,0 +1,73 @@
+id: posterr
+multi_user: true
+runtime:
+  kind: systemd
+  service_template: posterr@.service
+dependencies:
+  apt:
+    common:
+      packages: git curl ca-certificates build-essential python3
+install:
+  release:
+    branches:
+      main: master
+      beta: master
+  layout:
+    backup_dir: /home/%i/.krate/backups/posterr
+    data_dir: /home/%i/.config/posterr
+    install_dir: /opt/%i/posterr
+    temp_dir: /home/%i/tmp/posterr
+  executable:
+    - /usr/bin/node
+systemd:
+  unit:
+    TimeoutStopSec: 40
+    Type: simple
+    Restart: on-failure
+    RestartSec: "10"
+    WorkingDirectory: /opt/%i/posterr
+  environment:
+    inline:
+      TMPDIR: /home/%i/tmp/posterr
+      NODE_ENV: production
+      PATH: /usr/local/bin:/usr/bin:/bin
+    file:
+      path: /home/%i/.krate/applications/posterr.env
+      mode: "0600"
+      variables:
+        PORT: "{default_port}"
+        HOST: "127.0.0.1"
+        BASEPATH: "{url_base}"
+        NODE_ENV: production
+  exec:
+    pre:
+      - /bin/mkdir -p /home/%i/tmp/posterr /home/%i/.config/posterr/config /home/%i/.config/posterr/custom
+    start:
+      - /usr/bin/node
+      - index.js
+files:
+  service: /etc/systemd/system/posterr@.service
+  config:
+    - /home/%i/.krate/applications/posterr.env
+    - /home/%i/.config/posterr/config/settings.json
+  proxy:
+    - /etc/caddy/softwares/%i.posterr.caddy
+  binary:
+    - /usr/bin/node
+autogen:
+  - default_port
+security:
+  network: true
+  filesystem:
+    read_write:
+      - /home/%i/.config/posterr
+      - /home/%i/tmp/posterr
+      - /home/%i/.krate/backups/posterr
+      - /home/%i/.krate/applications
+      - /opt/%i/posterr
+    read_only: []
+version:
+  probes:
+    - type: file
+      path: "{install_dir}/package.json"
+      field: version
