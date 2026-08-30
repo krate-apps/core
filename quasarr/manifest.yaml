@@ -9,6 +9,10 @@ dependencies:
     common:
       packages: git curl ca-certificates
 install:
+  release:
+    branches:
+      main: main
+      beta: dev
   layout:
     backup_dir: /home/%i/.krate/backups/quasarr
     data_dir: /home/%i/.config/quasarr
