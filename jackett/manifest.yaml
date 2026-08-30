@@ -11,6 +11,9 @@ install:
     temp_dir: /home/%i/tmp/jackett
   release:
     asset: LinuxAMDx64.tar.gz
+    branches:
+      main: release
+      beta: prerelease
   executable:
     - /opt/%i/jackett/jackett
 systemd:

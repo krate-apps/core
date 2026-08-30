@@ -1,6 +1,6 @@
 id: jackett
 name: Jackett
-description: Jackett application.
+description: "Torrent and NZB indexer proxy."
 links:
   homepage: https://github.com/Jackett/Jackett
   documentation: https://github.com/Jackett/Jackett/wiki
