@@ -1,6 +1,6 @@
 id: prowlarr
 name: Prowlarr
-description: Prowlarr application.
+description: "Indexer manager for the *arr stack."
 links:
   homepage: https://prowlarr.com/
   documentation: https://wiki.servarr.com/Prowlarr
