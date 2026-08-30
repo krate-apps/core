@@ -9,7 +9,7 @@ links:
   source: https://github.com/FlareSolverr/FlareSolverr
   krate_docs: https://krate.github.io/docs/software/community/flaresolverr
 tier: free
-category: indexers
+category: proxy
 install_mode: local
 autocomplete_options:
   - -b
