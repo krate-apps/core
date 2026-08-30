@@ -2,14 +2,12 @@
 [[ -n "${KRATE_HANDLER_CONTEXT_FILE:-}" && -f "${KRATE_HANDLER_CONTEXT_FILE}" ]] && . "${KRATE_HANDLER_CONTEXT_FILE}"
 # @file applications/community/seerr/seerr
 # @project KRATE
-# @description Seerr — git clone, pnpm build (Node via .npmrc), production server.
+# @description Seerr — GitHub release source (main) or git develop (beta); pnpm build.
 # shellcheck disable=SC2154
 set -euo pipefail
 
 _add() {
-	rm -rf "${install_dir:?}" 2>/dev/null || true
-	mkdir -p "${install_dir}"
-	zenfw::git::clone "${app_repo}" "${install_dir}" "$(app::update_branch)"
+	_seerr_fetch "${install_dir}"
 	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
 	_seerr_provision
 	_config
@@ -46,13 +44,25 @@ _config() {
 
 _update() {
 	zenfw::service::manage stop "${service_unit}"
-	rm -rf "${install_dir:?}"/* "${install_dir:?}"/.[!.]* 2>/dev/null || true
-	zenfw::git::clone "${app_repo}" "${install_dir}" "$(app::update_branch)"
+	_seerr_fetch "${install_dir}"
 	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
 	_seerr_provision
 	_config
 	app::lifecycle::record_effective_branch
 	zenfw::software::backup::create "${app_name}" "user" "${data_dir}" "${username}"
+}
+
+_seerr_fetch() {
+	local dest="${1:?}"
+	local branch
+	branch="$(app::update_branch)"
+	rm -rf "${dest:?}" 2>/dev/null || true
+	mkdir -p "${dest}"
+	if [[ "${branch}" == "release" ]]; then
+		zenfw::git::release::get "${dest}" "${app_repo}" false source
+	else
+		zenfw::git::clone "${app_repo}" "${dest}" "${branch}"
+	fi
 }
 
 _seerr_provision() {

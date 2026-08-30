@@ -9,4 +9,9 @@ links:
 tier: free
 category: workflow
 install_mode: local
+autocomplete_options:
+  - -b
 ui_options:
+  branches:
+    - main
+    - beta
