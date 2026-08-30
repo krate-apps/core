@@ -7,7 +7,7 @@ links:
   source: https://github.com/wizarrrr/wizarr
   krate_docs: https://krate.github.io/docs/software/official/wizarr
 tier: free
-category: streaming
+category: management
 install_mode: local
 password_constraints:
   min_length: 8

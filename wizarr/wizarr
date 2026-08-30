@@ -2,7 +2,7 @@
 [[ -n "${KRATE_HANDLER_CONTEXT_FILE:-}" && -f "${KRATE_HANDLER_CONTEXT_FILE}" ]] && . "${KRATE_HANDLER_CONTEXT_FILE}"
 # @file applications/community/wizarr/wizarr
 # @project KRATE
-# @description Wizarr — git clone (main only), uv sync, subpath patch (ProxyFix + htmx), gunicorn.
+# @description Wizarr — GitHub release source (main) or git main (beta); uv sync, subpath patch, gunicorn.
 # shellcheck disable=SC2154
 set -euo pipefail
 
@@ -75,12 +75,16 @@ _update() {
 }
 
 _wizarr_clone() {
-	if [[ "${is_prerelease:-false}" == "true" || "${branch:-main}" == "beta" ]]; then
-		branch="main"
-		is_prerelease=false
-		app::lifecycle::record_branch main false
+	local dest="${install_dir}"
+	local mapped
+	mapped="$(app::update_branch)"
+	rm -rf "${dest:?}" 2>/dev/null || true
+	mkdir -p "${dest}"
+	if [[ "${mapped}" == "release" ]]; then
+		zenfw::git::release::get "${dest}" "${app_repo}" false source
+	else
+		zenfw::git::clone "${app_repo}" "${dest}" "${mapped}"
 	fi
-	zenfw::git::clone "${app_repo}" "${install_dir}" "$(app::update_branch)"
 }
 
 _wizarr_provision() {

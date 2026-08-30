@@ -9,6 +9,9 @@ dependencies:
       packages: git curl ca-certificates
 install:
   release:
+    branches:
+      main: release
+      beta: main
   layout:
     backup_dir: /home/%i/.krate/backups/wizarr
     data_dir: /home/%i/.config/wizarr
