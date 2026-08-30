@@ -11,7 +11,7 @@ install:
   release:
     asset: release.tar.gz
     branches:
-      beta: dev
+      main: release
   layout:
     backup_dir: /home/%i/.krate/backups/trailarr
     data_dir: /home/%i/.config/trailarr
