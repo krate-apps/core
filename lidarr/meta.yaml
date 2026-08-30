@@ -1,6 +1,6 @@
 id: lidarr
 name: Lidarr
-description: Lidarr application.
+description: "Music collection manager for Usenet and torrents (Servarr)."
 links:
   homepage: https://lidarr.audio/
   documentation: https://wiki.servarr.com/Lidarr

@@ -16,8 +16,8 @@ install:
   release:
     asset: linux-core-x64.tar.gz
     branches:
-      main: master
-      beta: develop
+      main: release
+      beta: prerelease
   executable:
     - /opt/%i/lidarr/Lidarr
     - /opt/%i/lidarr/fpcalc

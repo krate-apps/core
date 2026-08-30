@@ -23,7 +23,11 @@ _config() {
 	apikey="${service_apikey}"
 	default_port="${service_default_port}"
 	ssl_port="${service_ssl_port}"
-	update_branch="$(app::update_branch)"
+	if [[ "${is_prerelease:-false}" == "true" ]]; then
+		update_branch="develop"
+	else
+		update_branch="master"
+	fi
 	zenfw::fs::env::set "${env_file}" "${_EVP}__APP__INSTANCENAME" "${instance_name}"
 	zenfw::fs::env::set "${env_file}" "${_EVP}__AUTH__APIKEY" "${apikey}"
 	zenfw::fs::env::set "${env_file}" "${_EVP}__SERVER__PORT" "${default_port}"
