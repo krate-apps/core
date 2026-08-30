@@ -1,11 +1,11 @@
 id: requestrr
 name: Requestrr
-description: Requestrr application.
+description: "Discord and Telegram bot for Sonarr and Radarr requests."
 links:
   homepage: https://github.com/thomst08/requestrr/wiki
   documentation: https://github.com/thomst08/requestrr/wiki
   source: https://github.com/thomst08/requestrr
-  krate_docs: https://krate.github.io/docs/software/community/requestrr
+  krate_docs: https://krate.github.io/docs/software/official/requestrr
 tier: free
 category: workflow
 install_mode: local
@@ -14,9 +14,4 @@ password_constraints:
   max_length: 128
   require_upper: false
   require_digit: false
-autocomplete_options:
-  - -b
 ui_options:
-  branches:
-    - main
-    - beta
