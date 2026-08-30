@@ -10,6 +10,7 @@ dependencies:
 install:
   release:
     branches:
+      main: main
       beta: development
   layout:
     backup_dir: /home/%i/.krate/backups/kapowarr
