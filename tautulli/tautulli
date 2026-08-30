@@ -2,13 +2,13 @@
 [[ -n "${KRATE_HANDLER_CONTEXT_FILE:-}" && -f "${KRATE_HANDLER_CONTEXT_FILE}" ]] && . "${KRATE_HANDLER_CONTEXT_FILE}"
 # @file applications/apps-community/tautulli/tautulli
 # @project KRATE
-# @description Tautulli — app handler (Python source via git release, INI config, no Servarr API).
+# @description Tautulli — GitHub release source (main) or git nightly (beta); INI config.
 # shellcheck disable=SC2154
 set -euo pipefail
 
 _add() {
 	zenfw::workspace::uv::install
-	zenfw::git::release::get "${install_dir}" "${app_repo}" "${is_prerelease}" "source"
+	_tautulli_fetch "${install_dir}"
 	printf '3.13\n' > "${install_dir}/.python-version"
 	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
 	zenfw::workspace::user::run "${username}" "${install_dir}" "uv python install 3.13" || true
@@ -17,6 +17,19 @@ _add() {
 	zenfw::permission::exec_exec::set "${install_dir}/.venv" "${username}" "${username}"
 	zenfw::service::generate "${app_name}" true false
 	_config
+}
+
+_tautulli_fetch() {
+	local dest="${1:?}"
+	local branch
+	branch="$(app::update_branch)"
+	rm -rf "${dest:?}" 2>/dev/null || true
+	mkdir -p "${dest}"
+	if [[ "${branch}" == "release" ]]; then
+		zenfw::git::release::get "${dest}" "${app_repo}" false source
+	else
+		zenfw::git::clone "${app_repo}" "${dest}" "${branch}"
+	fi
 }
 
 _tautulli_install_venv_deps() {
@@ -79,7 +92,7 @@ _config() {
 
 _update() {
 	zenfw::service::manage stop "${service_unit}"
-	zenfw::git::release::get "${install_dir}" "${app_repo}" "${is_prerelease}" "source"
+	_tautulli_fetch "${install_dir}"
 	printf '3.13\n' > "${install_dir}/.python-version"
 	zenfw::workspace::venv::create "${install_dir}" "${username}" false
 	_tautulli_install_venv_deps || return 1

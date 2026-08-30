@@ -8,6 +8,10 @@ dependencies:
     common:
       packages: git python3.13 python3.13-venv python3.13-dev build-essential
 install:
+  release:
+    branches:
+      main: release
+      beta: nightly
   layout:
     install_dir: /opt/%i/tautulli
     data_dir: /home/%i/.config/tautulli

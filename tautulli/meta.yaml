@@ -1,11 +1,11 @@
 id: tautulli
 name: Tautulli
-description: Tautulli application.
+description: "Plex watch statistics and notifications."
 links:
   homepage: https://tautulli.com/
   documentation: https://github.com/Tautulli/Tautulli/wiki
   source: https://github.com/Tautulli/Tautulli
-  krate_docs: https://krate.github.io/docs/software/community/tautulli
+  krate_docs: https://krate.github.io/docs/software/official/tautulli
 tier: free
 category: monitoring
 install_mode: local
