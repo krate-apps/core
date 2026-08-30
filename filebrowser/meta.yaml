@@ -1,22 +1,17 @@
 id: filebrowser
 name: Filebrowser
-description: Filebrowser application.
+description: "Web file manager for the user home directory."
 links:
   homepage: https://filebrowser.org/
   documentation: https://filebrowser.org/
   source: https://github.com/filebrowser/filebrowser
-  krate_docs: https://krate.github.io/docs/software/community/filebrowser
+  krate_docs: https://krate.github.io/docs/software/official/filebrowser
 tier: free
-category: network
+category: cloud
 install_mode: local
 password_constraints:
   min_length: 8
   max_length: 128
   require_upper: false
   require_digit: false
-autocomplete_options:
-  - -b
 ui_options:
-  branches:
-    - main
-    - beta

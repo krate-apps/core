@@ -7,7 +7,7 @@
 set -euo pipefail
 
 _add() {
-	zenfw::git::release::get "${install_dir}" "${app_repo}" "${is_prerelease}" "$(app::cfg install.release.asset)"
+	zenfw::git::release::get "${install_dir}" "${app_repo}" false "$(app::cfg install.release.asset)"
 	zenfw::service::generate "${app_name}" true false
 	_config
 }
@@ -55,7 +55,7 @@ _config() {
 
 _update() {
 	zenfw::service::manage stop "${service_unit}"
-	zenfw::git::release::get "${install_dir}" "${app_repo}" "${is_prerelease}" "$(app::cfg install.release.asset)"
+	zenfw::git::release::get "${install_dir}" "${app_repo}" false "$(app::cfg install.release.asset)"
 	zenfw::service::manage restart "${service_unit}"
 	zenfw::software::backup::create "${app_name}" "user" "${install_dir}" "${username}"
 }
