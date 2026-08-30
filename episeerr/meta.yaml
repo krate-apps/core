@@ -7,7 +7,7 @@ links:
   source: https://github.com/Vansmak/episeerr
   krate_docs: https://krate.github.io/docs/software/official/episeerr
 tier: free
-category: tools
+category: automation
 install_mode: local
 password_constraints:
   min_length: 8
