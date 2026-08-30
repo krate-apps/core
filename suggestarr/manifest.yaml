@@ -10,7 +10,7 @@ dependencies:
 install:
   release:
     branches:
-      beta: nightly
+      main: release
   layout:
     backup_dir: /home/%i/.krate/backups/suggestarr
     data_dir: /home/%i/.config/suggestarr

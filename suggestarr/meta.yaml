@@ -7,16 +7,11 @@ links:
   source: https://github.com/giuseppe99barchetta/SuggestArr
   krate_docs: https://krate.github.io/docs/software/official/suggestarr
 tier: free
-category: tools
+category: workflow
 install_mode: local
 password_constraints:
   min_length: 8
   max_length: 128
   require_upper: false
   require_digit: false
-autocomplete_options:
-  - -b
 ui_options:
-  branches:
-    - main
-    - beta

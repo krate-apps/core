@@ -2,15 +2,13 @@
 [[ -n "${KRATE_HANDLER_CONTEXT_FILE:-}" && -f "${KRATE_HANDLER_CONTEXT_FILE}" ]] && . "${KRATE_HANDLER_CONTEXT_FILE}"
 # @file applications/community/suggestarr/suggestarr
 # @project KRATE
-# @description SuggestArr — git clone, npm client build, Python venv (api_service), uvicorn ASGI.
+# @description SuggestArr — GitHub release source, npm client build, Python venv (api_service), uvicorn ASGI.
 # shellcheck disable=SC2154
 set -euo pipefail
 
 _add() {
 	zenfw::workspace::uv::install
-	rm -rf "${install_dir:?}" 2>/dev/null || true
-	mkdir -p "${install_dir}"
-	zenfw::git::clone "${app_repo}" "${install_dir}" "$(app::update_branch)"
+	_suggestarr_fetch "${install_dir}"
 	_suggestarr_provision
 	zenfw::service::generate "${app_name}" false false
 	_config
@@ -57,12 +55,18 @@ _secure() {
 
 _update() {
 	zenfw::service::manage stop "${service_unit}"
-	rm -rf "${install_dir:?}"/* "${install_dir:?}"/.[!.]* 2> /dev/null || true
-	zenfw::git::clone "${app_repo}" "${install_dir}" "$(app::update_branch)"
+	_suggestarr_fetch "${install_dir}"
 	_suggestarr_provision
 	_config
 	_secure
 	zenfw::software::backup::create "${app_name}" "user" "${data_dir}" "${username}"
+}
+
+_suggestarr_fetch() {
+	local dest="${1:?}"
+	rm -rf "${dest:?}" 2>/dev/null || true
+	mkdir -p "${dest}"
+	zenfw::git::release::get "${dest}" "${app_repo}" false source
 }
 
 _suggestarr_provision() {
