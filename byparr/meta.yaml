@@ -9,7 +9,7 @@ links:
   source: https://github.com/ThePhaseless/Byparr
   krate_docs: https://krate.github.io/docs/software/community/byparr
 tier: free
-category: indexers
+category: proxy
 install_mode: local
 autocomplete_options:
   - -b
