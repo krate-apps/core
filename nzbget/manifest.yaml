@@ -21,6 +21,9 @@ install:
     nzb_dir: /home/%i/download-clients/nzbget/nzb
   release:
     asset: amd64.deb
+    branches:
+      main: release
+      beta: prerelease
   executable:
     - /opt/%i/nzbget/usr/bin/nzbget
 systemd:
