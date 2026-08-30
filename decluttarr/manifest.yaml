@@ -10,7 +10,7 @@ dependencies:
 install:
   release:
     branches:
-      main: latest
+      main: release
       beta: dev
   layout:
     backup_dir: /home/%i/.krate/backups/decluttarr
