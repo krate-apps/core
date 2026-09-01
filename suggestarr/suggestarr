@@ -2,7 +2,7 @@
 [[ -n "${KRATE_HANDLER_CONTEXT_FILE:-}" && -f "${KRATE_HANDLER_CONTEXT_FILE}" ]] && . "${KRATE_HANDLER_CONTEXT_FILE}"
 # @file applications/community/suggestarr/suggestarr
 # @project KRATE
-# @description SuggestArr — GitHub release source, npm client build, Python venv (api_service), uvicorn ASGI.
+# @description SuggestArr — GitHub release source, pnpm client build, Python venv (api_service), uvicorn ASGI.
 # shellcheck disable=SC2154
 set -euo pipefail
 
@@ -67,6 +67,29 @@ _suggestarr_fetch() {
 	rm -rf "${dest:?}" 2>/dev/null || true
 	mkdir -p "${dest}"
 	zenfw::git::release::get "${dest}" "${app_repo}" false source
+	_suggestarr_write_version
+}
+
+# /api/health has no version; uv venv has no pip for the pip probe.
+_suggestarr_write_version() {
+	local ver
+	ver="$(
+		curl -fsSL "https://api.github.com/repos/${app_repo}/releases?per_page=20" | python3 -c "
+import json, sys
+want_pre = sys.argv[1] == 'true'
+rels = json.load(sys.stdin)
+for rel in rels:
+    if rel.get('draft'):
+        continue
+    if bool(rel.get('prerelease')) == want_pre:
+        print((rel.get('tag_name') or '').lstrip('v'))
+        raise SystemExit(0)
+if rels:
+    print((rels[0].get('tag_name') or '').lstrip('v'))
+" "${is_prerelease:-false}"
+	)" || ver=""
+	[[ -n "${ver}" ]] || return 0
+	printf '%s\n' "${ver}" >"${install_dir}/VERSION"
 }
 
 _suggestarr_provision() {

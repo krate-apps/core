@@ -68,10 +68,5 @@ security:
       - /opt/%i/suggestarr
 version:
   probes:
-    - type: http_json
-      url: "http://127.0.0.1:{default_port}{root_url}/api/health"
-      field: version
-      requires: active
-    - type: pip
-      venv: "{install_dir}/.venv"
-      package: suggestarr
+    - type: file
+      path: "{install_dir}/VERSION"
