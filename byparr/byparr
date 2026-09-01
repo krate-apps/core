@@ -41,10 +41,6 @@ _update() {
 
 _byparr_provision_runtime() {
 	printf '3.14\n' > "${install_dir}/.python-version"
-	zenfw::workspace::user::run "${username}" "${install_dir}" "uv python install 3.14" || {
-		printf '[%s] uv python install 3.14 failed\n' "${app_name}" >&2
-		return 1
-	}
 	zenfw::workspace::user::run "${username}" "${install_dir}" "UV_PYTHON=3.14 uv sync --frozen" || {
 		printf '[%s] uv sync failed in %s\n' "${app_name}" "${install_dir}" >&2
 		return 1
