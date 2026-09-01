@@ -18,12 +18,14 @@ _add() {
 
 _config() {
 	local default_port
-	mkdir -p "${data_dir}/db" "${data_dir}/logs" "${data_dir}/temp_downloads"
+	mkdir -p "${data_dir}/db" "${data_dir}/logs" "${data_dir}/temp_downloads" "$(dirname "${env_file}")"
 	zenfw::permission::read_exec::set "${data_dir}" "${username}" "${username}"
 	default_port="${service_default_port}"
 	zenfw::fs::env::set "${env_file}" "PORT" "${default_port}"
 	zenfw::fs::env::set "${env_file}" "URL_BASE" "${url_base}"
+	zenfw::permission::private::set "${env_file}" "${username}" "${username}"
 	zenfw::proxy::generate "${app_name}" "${default_port}" "${url_base}" true "${username}"
+	systemctl reset-failed "${service_unit}" >/dev/null 2>&1 || true
 	zenfw::service::manage start "${service_unit}"
 }
 
@@ -37,6 +39,16 @@ _update() {
 }
 
 _kapowarr_provision_venv() {
+	# venv::build globs requirements*.txt; stash the dev extra so only runtime deps install.
+	printf '3.12\n' >"${install_dir}/.python-version"
+	if [[ -f "${install_dir}/requirements-dev.txt" ]]; then
+		mv -f "${install_dir}/requirements-dev.txt" "${install_dir}/.krate-requirements-dev.txt"
+	fi
 	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
 	zenfw::workspace::venv::create "${install_dir}" "${username}" true
+	[[ -x "${install_dir}/.venv/bin/python" ]] || {
+		printf '[%s] venv python missing after uv create/build\n' "${app_name}" >&2
+		return 1
+	}
+	zenfw::permission::exec_exec::set "${install_dir}/.venv" "${username}" "${username}"
 }
