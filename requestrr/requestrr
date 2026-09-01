@@ -10,6 +10,7 @@ set -euo pipefail
 
 _add() {
 	zenfw::git::release::get "${install_dir}" "${app_repo}" false "$(app::cfg install.release.asset)"
+	_requestrr_write_version
 	zenfw::service::generate "${app_name}" true false
 	_config
 	_secure
@@ -45,8 +46,31 @@ _config() {
 _update() {
 	zenfw::service::manage stop "${service_unit}"
 	zenfw::git::release::get "${install_dir}" "${app_repo}" false "$(app::cfg install.release.asset)"
+	_requestrr_write_version
 	zenfw::service::manage restart "${service_unit}"
 	zenfw::software::backup::create "${app_name}" "user" "${install_dir}" "${username}"
+}
+
+# --version starts the host and yields "Starting", not a version string.
+_requestrr_write_version() {
+	local ver
+	ver="$(
+		curl -fsSL "https://api.github.com/repos/${app_repo}/releases?per_page=20" | python3 -c "
+import json, sys
+want_pre = sys.argv[1] == 'true'
+rels = json.load(sys.stdin)
+for rel in rels:
+    if rel.get('draft'):
+        continue
+    if bool(rel.get('prerelease')) == want_pre:
+        print((rel.get('tag_name') or '').lstrip('v'))
+        raise SystemExit(0)
+if rels:
+    print((rels[0].get('tag_name') or '').lstrip('v'))
+" "${is_prerelease:-false}"
+	)" || ver=""
+	[[ -n "${ver}" ]] || return 0
+	printf '%s\n' "${ver}" >"${install_dir}/VERSION"
 }
 
 # POST /api/auth/register on first boot; must run before UI login. Hit loopback to skip Caddy auth.

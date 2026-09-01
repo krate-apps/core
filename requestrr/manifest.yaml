@@ -64,7 +64,5 @@ security:
       - /opt/%i/requestrr
 version:
   probes:
-    - type: executable
-      cmd: "{install_dir}/Requestrr.WebApi"
-      args: --version
-      requires: active
+    - type: file
+      path: "{install_dir}/VERSION"
