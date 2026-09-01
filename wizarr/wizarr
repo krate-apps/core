@@ -85,6 +85,35 @@ _wizarr_clone() {
 	else
 		zenfw::git::clone "${app_repo}" "${dest}" "${mapped}"
 	fi
+	_wizarr_write_version
+}
+
+# uv venvs have no pip; pip show wizarr always fails.
+_wizarr_write_version() {
+	local ver=""
+	if [[ -d "${install_dir}/.git" ]]; then
+		ver="$(git -C "${install_dir}" describe --tags --abbrev=0 2>/dev/null || true)"
+		ver="${ver#v}"
+	fi
+	if [[ -z "${ver}" ]]; then
+		ver="$(
+			curl -fsSL "https://api.github.com/repos/${app_repo}/releases?per_page=20" | python3 -c "
+import json, sys
+want_pre = sys.argv[1] == 'true'
+rels = json.load(sys.stdin)
+for rel in rels:
+    if rel.get('draft'):
+        continue
+    if bool(rel.get('prerelease')) == want_pre:
+        print((rel.get('tag_name') or '').lstrip('v'))
+        raise SystemExit(0)
+if rels:
+    print((rels[0].get('tag_name') or '').lstrip('v'))
+" "${is_prerelease:-false}"
+		)" || ver=""
+	fi
+	[[ -n "${ver}" ]] || return 0
+	printf '%s\n' "${ver}" >"${install_dir}/VERSION"
 }
 
 _wizarr_provision() {

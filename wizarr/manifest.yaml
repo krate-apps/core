@@ -73,6 +73,5 @@ security:
       - /opt/%i/wizarr
 version:
   probes:
-    - type: pip
-      venv: "{install_dir}/.venv"
-      package: wizarr
+    - type: file
+      path: "{install_dir}/VERSION"
