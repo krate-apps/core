@@ -68,7 +68,5 @@ security:
       - /opt/%i/tautulli
 version:
   probes:
-    - type: http_json
-      url: "http://127.0.0.1:{default_port}{root_url}/api/v2/info?apikey={apikey}"
-      field: version
-      requires: active
+    - type: file
+      path: "{install_dir}/VERSION"
