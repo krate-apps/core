@@ -1,5 +1,7 @@
 id: sabnzbd
 multi_user: true
+proxy:
+  loopback_xff: true
 runtime:
   kind: systemd
   service_template: sabnzbd@.service
