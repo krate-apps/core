@@ -1,5 +1,7 @@
 id: transmission
 multi_user: true
+proxy:
+  portal_auth: true
 runtime:
   kind: systemd
   service_template: transmission@.service
