@@ -1,5 +1,7 @@
 id: nzbget
 multi_user: true
+proxy:
+  mode: strip_prefix
 runtime:
   kind: systemd
   service_template: nzbget@.service
