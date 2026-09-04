@@ -1,5 +1,10 @@
 id: deluge
 multi_user: true
+proxy:
+  mode: strip_prefix
+  portal_auth: true
+  loopback_xff: true
+  x_deluge_base: true
 runtime:
   kind: systemd
   service_template: deluge@.service
