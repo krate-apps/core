@@ -1,0 +1,24 @@
+id: prowlarr
+name: Prowlarr
+description: "Indexer manager for the *arr stack."
+links:
+  homepage: https://prowlarr.com/
+  documentation: https://wiki.servarr.com/Prowlarr
+  source: https://github.com/Prowlarr/Prowlarr
+  krate_docs: https://runkrate.com/docs/software/official/prowlarr
+tier: free
+category: indexers
+install_mode: local
+password_constraints:
+  min_length: 8
+  max_length: 128
+  require_upper: false
+  require_digit: false
+autocomplete_options:
+  - -b
+ui_options:
+  branches:
+    options:
+      - main
+      - beta
+    label: app.branch
