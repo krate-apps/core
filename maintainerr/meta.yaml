@@ -1,0 +1,19 @@
+id: maintainerr
+name: Maintainerr
+description: "Library maintenance rules for Plex/Jellyfin (pnpm turbo monorepo; Node 22.x; sharp/canvas native deps; mirrors docker/start.sh UI staging)."
+links:
+  homepage: https://github.com/Maintainerr/Maintainerr
+  documentation: https://github.com/Maintainerr/Maintainerr#readme
+  source: https://github.com/Maintainerr/Maintainerr
+  krate_docs: https://runkrate.com/docs/software/official/maintainerr
+tier: pro
+category: automation
+install_mode: local
+autocomplete_options:
+  - -b
+ui_options:
+  branches:
+    options:
+      - main
+      - beta
+    label: app.branch
