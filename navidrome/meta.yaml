@@ -1,0 +1,19 @@
+id: navidrome
+name: Navidrome
+description: "Self-hosted music server and streamer compatible with Subsonic/Airsonic clients."
+links:
+  homepage: https://www.navidrome.org/
+  documentation: https://www.navidrome.org/docs/
+  source: https://github.com/navidrome/navidrome
+  krate_docs: https://runkrate.com/docs/software/official/navidrome
+tier: pro
+category: streaming
+install_mode: local
+autocomplete_options:
+  - -b
+ui_options:
+  branches:
+    options:
+      - main
+      - beta
+    label: app.branch
