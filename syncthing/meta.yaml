@@ -1,0 +1,19 @@
+id: syncthing
+name: Syncthing
+description: "Continuous file synchronization between devices (GUI on loopback via Caddy)."
+links:
+  homepage: https://syncthing.net/
+  documentation: https://docs.syncthing.net/
+  source: https://github.com/syncthing/syncthing
+  krate_docs: https://runkrate.com/docs/software/official/syncthing
+tier: pro
+category: cloud
+install_mode: local
+autocomplete_options:
+  - -b
+ui_options:
+  branches:
+    options:
+      - main
+      - beta
+    label: app.branch
