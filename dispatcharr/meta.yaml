@@ -1,0 +1,17 @@
+id: dispatcharr
+name: Dispatcharr
+description: "Self-hosted IPTV and EPG management with proxying for Plex, Jellyfin and Emby."
+links:
+  homepage: https://github.com/Dispatcharr/Dispatcharr
+  documentation: https://dispatcharr.github.io/Dispatcharr-Docs/
+  source: https://github.com/Dispatcharr/Dispatcharr
+  krate_docs: https://runkrate.com/docs/software/official/dispatcharr
+tier: pro
+category: streaming
+install_mode: local
+password_constraints:
+  min_length: 8
+  max_length: 128
+  require_upper: false
+  require_digit: false
+ui_options:

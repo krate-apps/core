@@ -1,0 +1,136 @@
+--- a/frontend/index.html	2026-06-05 20:38:49.000000000 +0200
++++ b/frontend/index.html	2026-06-06 13:50:24.681994191 +0200
+@@ -2,26 +2,26 @@
+ <html lang="en">
+   <head>
+     <meta charset="UTF-8" />
+-    <link rel="icon" type="image/png" href="/logo.png" />
++    <link rel="icon" type="image/png" href="logo.png" />
+ 
+     <link
+       rel="apple-touch-icon"
+       sizes="180x180"
+-      href="/static/apple-touch-icon.png"
++      href="static/apple-touch-icon.png"
+     />
+     <link
+       rel="icon"
+       type="image/png"
+       sizes="32x32"
+-      href="/static/favicon-32x32.png"
++      href="static/favicon-32x32.png"
+     />
+     <link
+       rel="icon"
+       type="image/png"
+       sizes="16x16"
+-      href="/static/favicon-16x16.png"
++      href="static/favicon-16x16.png"
+     />
+-    <link rel="manifest" href="/static/site.webmanifest" />
++    <link rel="manifest" href="static/site.webmanifest" />
+ 
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+     <title>Dispatcharr</title>
+--- a/frontend/vite.config.js	2026-06-05 20:38:49.000000000 +0200
++++ b/frontend/vite.config.js	2026-06-06 13:50:24.682994216 +0200
+@@ -1,9 +1,11 @@
+-import { defineConfig } from 'vite';
++import { defineConfig, loadEnv } from 'vite';
+ import react from '@vitejs/plugin-react-swc';
+ 
+ // https://vite.dev/config/
+-export default defineConfig({
+-  // The base URL for the build, adjust this to match your desired path
++export default defineConfig(({ mode }) => {
++  const env = loadEnv(mode, process.cwd(), '');
++  return {
++  base: env.VITE_BASE || '/',
+   plugins: [react()],
+ 
+   // publicDir: '/data',
+@@ -32,4 +34,5 @@
+     setupFiles: ['./src/test/setupTests.js'],
+     globals: true,
+   },
++};
+ });
+--- a/frontend/src/api.js	2026-06-05 20:38:49.000000000 +0200
++++ b/frontend/src/api.js	2026-06-06 13:50:24.683994241 +0200
+@@ -19,7 +19,7 @@
+ // If needed, you can set a base host or keep it empty if relative requests
+ const host = import.meta.env.DEV
+   ? `http://${window.location.hostname}:5656`
+-  : '';
++  : (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
+ 
+ const errorNotification = (message, error) => {
+   let errorMessage = '';
+@@ -201,7 +201,7 @@
+       if (error.status === 401 || error.message?.includes('does not exist')) {
+         localStorage.removeItem('token');
+         localStorage.removeItem('refreshToken');
+-        window.location.href = '/login'; // Redirect to login
++        window.location.href = (import.meta.env.BASE_URL || '/') + 'login'; // Redirect to login
+       }
+       throw error;
+     }
+--- a/frontend/src/App.jsx	2026-06-05 20:38:49.000000000 +0200
++++ b/frontend/src/App.jsx	2026-06-06 13:50:24.683994241 +0200
+@@ -73,7 +73,7 @@
+         if (error.status === 401) {
+           localStorage.removeItem('token');
+           localStorage.removeItem('refreshToken');
+-          window.location.href = '/login';
++          window.location.href = (import.meta.env.BASE_URL || '/') + 'login';
+         }
+       }
+     }
+@@ -111,7 +111,7 @@
+       withNormalizeCSS
+     >
+       <WebsocketProvider>
+-        <Router>
++        <Router basename={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+           <AppShell
+             header={{
+               height: 0,
+--- a/frontend/src/WebSocket.jsx	2026-06-05 20:38:49.000000000 +0200
++++ b/frontend/src/WebSocket.jsx	2026-06-06 13:50:24.684994266 +0200
+@@ -82,9 +82,10 @@
+     } else {
+       // In production mode, use the same port as the main application
+       // This allows nginx to handle the WebSocket forwarding
++      const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
+       return appPort
+-        ? `${protocol}//${host}:${appPort}/ws/?token=${accessToken}`
+-        : `${protocol}//${host}/ws/?token=${accessToken}`;
++        ? `${protocol}//${host}:${appPort}${base}/ws/?token=${accessToken}`
++        : `${protocol}//${host}${base}/ws/?token=${accessToken}`;
+     }
+   }, [env_mode, accessToken]);
+ 
+--- a/frontend/src/store/auth.jsx	2026-06-05 20:38:49.000000000 +0200
++++ b/frontend/src/store/auth.jsx	2026-06-06 13:50:24.684994266 +0200
+@@ -215,12 +215,15 @@
+ 
+   // Action to logout
+   logout: async () => {
+-    // Call backend logout endpoint to log the event
+-    try {
+-      await API.logout();
+-    } catch (error) {
+-      // Continue with logout even if API call fails
+-      console.error('Logout API call failed:', error);
++    // Skip server logout when there is no session (avoids 401 noise on login page).
++    const accessToken = get().accessToken || localStorage.getItem('accessToken');
++    if (accessToken) {
++      try {
++        await API.logout();
++      } catch (error) {
++        // Continue with logout even if API call fails
++        console.error('Logout API call failed:', error);
++      }
+     }
+ 
+     set({
