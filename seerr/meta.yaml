@@ -1,0 +1,19 @@
+id: seerr
+name: Seerr
+description: "Media request and discovery for Jellyfin, Plex and Emby."
+links:
+  homepage: https://github.com/seerr-team/seerr
+  documentation: https://github.com/seerr-team/seerr#readme
+  source: https://github.com/seerr-team/seerr
+  krate_docs: https://runkrate.com/docs/software/official/seerr
+tier: pro
+category: workflow
+install_mode: local
+autocomplete_options:
+  - -b
+ui_options:
+  branches:
+    options:
+      - main
+      - beta
+    label: app.branch
