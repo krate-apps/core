@@ -1,0 +1,24 @@
+id: lidarr
+name: Lidarr
+description: "Music collection manager for Usenet and torrents (Servarr)."
+links:
+  homepage: https://lidarr.audio/
+  documentation: https://wiki.servarr.com/Lidarr
+  source: https://github.com/Lidarr/Lidarr
+  krate_docs: https://runkrate.com/docs/software/official/lidarr
+tier: pro
+category: media
+install_mode: local
+password_constraints:
+  min_length: 8
+  max_length: 128
+  require_upper: false
+  require_digit: false
+autocomplete_options:
+  - -b
+ui_options:
+  branches:
+    options:
+      - main
+      - beta
+    label: app.branch
