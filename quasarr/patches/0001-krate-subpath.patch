@@ -1,0 +1,117 @@
+--- a/quasarr/providers/html_templates.py	2026-06-06 20:54:59.000000000 +0200
++++ b/quasarr/providers/html_templates.py	2026-06-07 03:33:20.278545580 +0200
+@@ -2,6 +2,8 @@
+ # Quasarr
+ # Project by https://github.com/rix1337
+ 
++import json
++import os
+ import time
+ 
+ import quasarr.providers.html_images as images
+@@ -20,6 +22,8 @@
+         except Exception:
+             api_key = ""
+ 
++    krate_url_base = (os.environ.get("QUASARR_URL_BASE") or "").rstrip("/")
++
+     head = (
+         '''
+     <head>
+@@ -378,16 +382,37 @@
+         + repr(api_key)
+         + """;
+ 
++            window.QUASARR_URL_BASE = """
++        + json.dumps(krate_url_base)
++        + """;
++
++            function quasarrUrl(p) {
++                if (typeof p !== 'string' || p.charAt(0) !== '/') return p;
++                const b = window.QUASARR_URL_BASE || '';
++                if (!b || p.indexOf(b + '/') === 0 || p === b) return p;
++                return b + p;
++            }
++
++            window.quasarrUrl = quasarrUrl;
++
++
+             document.addEventListener('DOMContentLoaded', function() {
+                 const h1 = document.querySelector('h1');
+                 if (h1) {
+                     h1.onclick = function() {
+-                        window.location.href = '/';
++                        window.location.href = quasarrUrl('/');
+                     };
+                 }
+ 
++                document.querySelectorAll('form[action^="/"]').forEach(function(form) {
++                    const action = form.getAttribute('action');
++                    if (action && action.charAt(0) === '/') {
++                        form.action = quasarrUrl(action);
++                    }
++                });
++
+                 if (window.QUASARR_API_KEY) {
+-                    document.querySelectorAll('form[action^="/api"]').forEach(function(form) {
++                    document.querySelectorAll('form[action*="/api"]').forEach(function(form) {
+                         if (form.querySelector('input[name="apikey"]')) {
+                             return;
+                         }
+@@ -410,7 +435,7 @@
+                 }
+ 
+                 requestOptions.headers = headers;
+-                return fetch(path, requestOptions);
++                return fetch(quasarrUrl(path), requestOptions);
+             }
+         </script>
+     </head>"""
+@@ -512,7 +537,7 @@
+ 
+ def render_form(header, form="", script="", footer_content=""):
+     content = f'''
+-    <h1 onclick="window.location.href='/'"><img src="{images.logo}" type="image/webp" alt="Quasarr logo" class="logo"/>Quasarr</h1>
++    <h1 onclick="window.location.href=quasarrUrl('/')"><img src="{images.logo}" type="image/webp" alt="Quasarr logo" class="logo"/>Quasarr</h1>
+     <h2>{header}</h2>
+     {form}
+     {script}
+@@ -536,12 +561,12 @@
+                     btn.innerText = 'Continue';
+                     btn.disabled = false;
+                     btn.className = 'btn-primary';
+-                    btn.onclick = () => window.location.href = '/';
++                    btn.onclick = () => window.location.href = quasarrUrl('/');
+                 }}
+             }}, 1000);
+         </script>
+     """
+-    content = f'''<h1 onclick="window.location.href='/'"><img src="{images.logo}" type="image/webp" alt="Quasarr logo" class="logo"/>Quasarr</h1>
++    content = f'''<h1 onclick="window.location.href=quasarrUrl('/')"><img src="{images.logo}" type="image/webp" alt="Quasarr logo" class="logo"/>Quasarr</h1>
+     <h2>{message}</h2>
+     {optional_text}
+     {button_html}
+@@ -552,9 +577,9 @@
+ 
+ def render_success_no_wait(message, optional_text=""):
+     button_html = render_button(
+-        "Continue", "primary", {"onclick": "window.location.href='/'"}
++        "Continue", "primary", {"onclick": "window.location.href=quasarrUrl('/')"}
+     )
+-    content = f'''<h1 onclick="window.location.href='/'"><img src="{images.logo}" type="image/webp" alt="Quasarr logo" class="logo"/>Quasarr</h1>
++    content = f'''<h1 onclick="window.location.href=quasarrUrl('/')"><img src="{images.logo}" type="image/webp" alt="Quasarr logo" class="logo"/>Quasarr</h1>
+     <h2>{message}</h2>
+     {optional_text}
+     {button_html}
+@@ -564,9 +589,9 @@
+ 
+ def render_fail(message):
+     button_html = render_button(
+-        "Back", "secondary", {"onclick": "window.location.href='/'"}
++        "Back", "secondary", {"onclick": "window.location.href=quasarrUrl('/')"}
+     )
+-    return render_centered_html(f"""<h1 onclick="window.location.href='/'"><img src="{images.logo}" type="image/webp" alt="Quasarr logo" class="logo"/>Quasarr</h1>
++    return render_centered_html(f"""<h1 onclick="window.location.href=quasarrUrl('/')"><img src="{images.logo}" type="image/webp" alt="Quasarr logo" class="logo"/>Quasarr</h1>
+         <h2>{message}</h2>
+         {button_html}
+     """)

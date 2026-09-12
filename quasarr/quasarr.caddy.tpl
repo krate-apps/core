@@ -1,0 +1,32 @@
+# Quasarr: Bottle at / only — strip_prefix + Location rewrite; /api/* at root via Referer.
+@app_route_{{ROUTE_TAG}}_slash {
+	path {{BASE}}
+}
+redir @app_route_{{ROUTE_TAG}}_slash {{BASE_SLASH}} 302
+@app_route_{{ROUTE_TAG}} {
+	path {{BASE}} {{BASE_SLASH}} {{BASE_SLASH}}*
+}
+route @app_route_{{ROUTE_TAG}} {
+	uri strip_prefix {{BASE}}
+	reverse_proxy 127.0.0.1:{{PORT}} {
+		flush_interval -1
+		header_up Host {host}
+		header_up Accept-Encoding identity
+		header_down -x-webkit-csp
+		header_down -content-security-policy
+		header_down Location ^/(.*)$ "{{BASE_SLASH}}$1"
+	}
+}
+@app_route_{{ROUTE_TAG}}_api_ref {
+	path /api /api/*
+	header_regexp Referer .*{{BASE}}.*
+}
+route @app_route_{{ROUTE_TAG}}_api_ref {
+	reverse_proxy 127.0.0.1:{{PORT}} {
+		flush_interval -1
+		header_up Host {host}
+		header_up Accept-Encoding identity
+		header_down -x-webkit-csp
+		header_down -content-security-policy
+	}
+}
