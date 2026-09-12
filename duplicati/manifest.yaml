@@ -1,0 +1,78 @@
+id: duplicati
+multi_user: true
+proxy:
+  mode: strip_prefix
+  rewrite_location: true
+runtime:
+  kind: systemd
+  service_template: duplicati@.service
+dependencies:
+  apt:
+    common:
+      packages: curl ca-certificates unzip
+install:
+  layout:
+    backup_dir: /home/%i/.krate/backups/duplicati
+    data_dir: /home/%i/.config/duplicati
+    install_dir: /opt/%i/duplicati
+    temp_dir: /home/%i/.tmp/duplicati
+  release:
+    # Matches duplicati-*-linux-x64-gui.zip (self-contained + web UI)
+    asset: linux-x64-gui.zip
+    branches:
+      main: stable
+      beta: beta
+  executable:
+    - /opt/%i/duplicati/duplicati-server
+systemd:
+  unit:
+    TimeoutStopSec: 60
+    Type: simple
+    Restart: on-failure
+    RestartSec: "10"
+    WorkingDirectory: /opt/%i/duplicati
+  environment:
+    inline:
+      TMPDIR: /home/%i/.tmp/duplicati
+      HOME: /home/%i
+      DOTNET_BUNDLE_EXTRACT_BASE_DIR: /home/%i/.tmp/duplicati
+    file:
+      path: /home/%i/.krate/applications/duplicati.env
+      mode: "0600"
+      variables:
+        DUPLICATI_PORT: "{default_port}"
+        DUPLICATI_HOME: /home/%i/.config/duplicati
+  exec:
+    pre:
+      - /bin/mkdir -p /home/%i/.tmp/duplicati /home/%i/.config/duplicati
+    start:
+      - /opt/%i/duplicati/duplicati-server
+      - --webservice-port=${DUPLICATI_PORT}
+      - --webservice-interface=127.0.0.1
+      - --server-datafolder=${DUPLICATI_HOME}
+      - --webservice-allowed-hostnames=*
+      - --webservice-password=${DUPLICATI_PASSWORD}
+files:
+  service: /etc/systemd/system/duplicati@.service
+  config:
+    - /home/%i/.krate/applications/duplicati.env
+  proxy:
+    - /etc/caddy/softwares/%i.duplicati.caddy
+  binary:
+    - /opt/%i/duplicati/duplicati-server
+autogen:
+  - default_port
+security:
+  network: true
+  filesystem:
+    read_write:
+      - /home/%i/.config/duplicati
+      - /home/%i/.tmp/duplicati
+      - /home/%i/.krate/backups/duplicati
+      - /home/%i/.krate/applications
+    read_only:
+      - /opt/%i/duplicati
+version:
+  probes:
+    - type: file
+      path: "{data_dir}/VERSION"
