@@ -1,0 +1,24 @@
+id: jellyfin
+name: Jellyfin
+description: Free software media server for movies, TV, music, and photos.
+links:
+  homepage: https://jellyfin.org/
+  documentation: https://jellyfin.org/docs/
+  source: https://github.com/jellyfin/jellyfin
+  krate_docs: https://runkrate.com/docs/software/community/jellyfin
+tier: free
+category: streaming
+install_mode: local
+password_constraints:
+  min_length: 8
+  max_length: 128
+  require_upper: false
+  require_digit: false
+autocomplete_options:
+  - -b
+ui_options:
+  branches:
+    options:
+      - main
+      - beta
+    label: app.branch
