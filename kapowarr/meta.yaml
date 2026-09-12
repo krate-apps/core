@@ -1,0 +1,24 @@
+id: kapowarr
+name: Kapowarr
+description: "Comic book library builder and manager."
+links:
+  homepage: https://github.com/Casvt/Kapowarr
+  documentation: https://github.com/Casvt/Kapowarr#readme
+  source: https://github.com/Casvt/Kapowarr
+  krate_docs: https://runkrate.com/docs/software/official/kapowarr
+tier: pro
+category: media
+install_mode: local
+password_constraints:
+  min_length: 8
+  max_length: 128
+  require_upper: false
+  require_digit: false
+autocomplete_options:
+  - -b
+ui_options:
+  branches:
+    options:
+      - main
+      - beta
+    label: app.branch
