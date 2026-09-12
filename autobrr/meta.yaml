@@ -1,0 +1,24 @@
+id: autobrr
+name: Autobrr
+description: "Automation for torrent tracker IRC announces and downloads."
+links:
+  homepage: https://autobrr.com
+  documentation: https://autobrr.com/introduction
+  source: https://github.com/autobrr/autobrr
+  krate_docs: https://runkrate.com/docs/software/official/autobrr
+tier: pro
+category: indexers
+install_mode: local
+password_constraints:
+  min_length: 8
+  max_length: 128
+  require_upper: false
+  require_digit: false
+autocomplete_options:
+  - -b
+ui_options:
+  branches:
+    options:
+      - main
+      - beta
+    label: app.branch
