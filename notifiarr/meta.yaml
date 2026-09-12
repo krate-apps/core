@@ -1,0 +1,29 @@
+id: notifiarr
+name: Notifiarr
+description: "Media stack notifications and client monitoring via Notifiarr.com."
+links:
+  homepage: https://notifiarr.com/
+  documentation: https://notifiarr.wiki/
+  source: https://github.com/Notifiarr/notifiarr
+  krate_docs: https://runkrate.com/docs/software/official/notifiarr
+tier: pro
+category: monitoring
+install_mode: local
+password_constraints:
+  min_length: 8
+  max_length: 128
+  require_upper: false
+  require_digit: false
+autocomplete_options:
+  - -b
+  - -k
+  - --notifiarr-api-key
+ui_options:
+  branches:
+    options:
+      - main
+      - beta
+    label: app.branch
+  apikey:
+    enabled: true
+    label: general.api_key
