@@ -1,0 +1,83 @@
+id: nzbget
+multi_user: true
+proxy:
+  mode: strip_prefix
+runtime:
+  kind: systemd
+  service_template: nzbget@.service
+dependencies:
+  apt:
+    common:
+      packages: par2 unrar curl ca-certificates p7zip-full
+install:
+  layout:
+    install_dir: /opt/%i/nzbget
+    data_dir: /home/%i/.config/nzbget
+    backup_dir: /home/%i/.krate/backups/nzbget
+    scripts_dir: /home/%i/.config/nzbget/scripts
+    downloads_dir: /home/%i/medias/nzbget/downloads
+    incomplete_dir: /home/%i/medias/nzbget/incomplete
+    logs_dir: /home/%i/medias/nzbget/logs
+    tmp_dir: /home/%i/medias/nzbget/tmp
+    pool_dir: /home/%i/medias/nzbget/pool
+    nzb_dir: /home/%i/medias/nzbget/nzb
+  release:
+    asset: amd64.deb
+    branches:
+      main: release
+      beta: prerelease
+  executable:
+    - /opt/%i/nzbget/usr/bin/nzbget
+systemd:
+  unit:
+    Restart: on-failure
+    RestartSec: "5"
+    Type: forking
+    PIDFile: /home/%i/.config/nzbget/nzbget.lock
+  exec:
+    pre:
+      - /bin/mkdir
+      - -p
+      - /home/%i/.config/nzbget
+    reload:
+      - /opt/%i/nzbget/usr/bin/nzbget
+      - -O
+      - -c
+      - /home/%i/.config/nzbget/nzbget.conf
+    start:
+      - /opt/%i/nzbget/usr/bin/nzbget
+      - -D
+      - -c
+      - /home/%i/.config/nzbget/nzbget.conf
+    stop:
+      - /opt/%i/nzbget/usr/bin/nzbget
+      - -Q
+      - -c
+      - /home/%i/.config/nzbget/nzbget.conf
+files:
+  service: /etc/systemd/system/nzbget@.service
+  config:
+    - /home/%i/.config/nzbget/nzbget.conf
+  proxy:
+    - /etc/caddy/softwares/%i.nzbget.caddy
+  binary:
+    - /opt/%i/nzbget/usr/bin/nzbget
+autogen:
+  - apikey
+  - default_port
+  - ssl_port
+security:
+  network: true
+  filesystem:
+    read_write:
+      - /home/%i/.config/nzbget
+      - /home/%i/medias/nzbget
+      - /home/%i/.krate/backups/nzbget
+    read_only:
+      - /opt/%i/nzbget
+version:
+  probes:
+    - type: executable
+      cmd: "{install_dir}/nzbget/usr/bin/nzbget"
+      args: --version
+      requires: active
