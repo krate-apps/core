@@ -5,7 +5,7 @@ links:
   homepage: https://github.com/theotherp/nzbhydra2
   documentation: https://github.com/theotherp/nzbhydra2#readme
   source: https://github.com/theotherp/nzbhydra2
-  krate_docs: https://krate.github.io/docs/software/official/nzbhydra2
+  krate_docs: https://runkrate.com/docs/software/official/nzbhydra2
 tier: pro
 category: indexers
 install_mode: local
