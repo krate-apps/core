@@ -5,7 +5,7 @@ links:
   homepage: https://github.com/ManiMatter/decluttarr
   documentation: https://github.com/ManiMatter/decluttarr#readme
   source: https://github.com/ManiMatter/decluttarr
-  krate_docs: https://krate.github.io/docs/software/official/decluttarr
+  krate_docs: https://runkrate.com/docs/software/official/decluttarr
 tier: pro
 category: automation
 install_mode: local
