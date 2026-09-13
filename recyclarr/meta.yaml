@@ -5,7 +5,7 @@ links:
   homepage: https://github.com/recyclarr/recyclarr
   documentation: https://recyclarr.dev/
   source: https://github.com/recyclarr/recyclarr
-  krate_docs: https://krate.github.io/docs/software/official/recyclarr
+  krate_docs: https://runkrate.com/docs/software/official/recyclarr
 tier: pro
 category: automation
 install_mode: local
