@@ -5,7 +5,7 @@ links:
   homepage: https://www.navidrome.org/
   documentation: https://www.navidrome.org/docs/
   source: https://github.com/navidrome/navidrome
-  krate_docs: https://krate.github.io/docs/software/official/navidrome
+  krate_docs: https://runkrate.com/docs/software/official/navidrome
 tier: pro
 category: streaming
 install_mode: local
