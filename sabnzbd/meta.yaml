@@ -4,7 +4,7 @@ description: Free and easy Usenet binary newsreader with web UI and API.
 links:
   homepage: https://sabnzbd.org/
   source: https://github.com/sabnzbd/sabnzbd
-  krate_docs: https://krate.github.io/docs/software/official/sabnzbd
+  krate_docs: https://runkrate.com/docs/software/official/sabnzbd
 tier: pro
 category: download
 install_mode: local
