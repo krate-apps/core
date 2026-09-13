@@ -5,7 +5,7 @@ links:
   homepage: https://jellyfin.org/
   documentation: https://jellyfin.org/docs/
   source: https://github.com/jellyfin/jellyfin
-  krate_docs: https://krate.github.io/docs/software/community/jellyfin
+  krate_docs: https://runkrate.com/docs/software/community/jellyfin
 tier: free
 category: streaming
 install_mode: local
