@@ -5,7 +5,7 @@ links:
   homepage: https://www.cross-seed.org
   documentation: https://www.cross-seed.org/docs/basics/getting-started
   source: https://github.com/cross-seed/cross-seed
-  krate_docs: https://krate.github.io/docs/software/official/cross-seed
+  krate_docs: https://runkrate.com/docs/software/official/cross-seed
 tier: pro
 category: automation
 install_mode: local
