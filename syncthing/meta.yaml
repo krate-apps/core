@@ -5,7 +5,7 @@ links:
   homepage: https://syncthing.net/
   documentation: https://docs.syncthing.net/
   source: https://github.com/syncthing/syncthing
-  krate_docs: https://krate.github.io/docs/software/official/syncthing
+  krate_docs: https://runkrate.com/docs/software/official/syncthing
 tier: pro
 category: cloud
 install_mode: local
