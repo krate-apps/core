@@ -5,7 +5,7 @@ links:
   homepage: https://www.duplicati.com/
   documentation: https://docs.duplicati.com/
   source: https://github.com/duplicati/duplicati
-  krate_docs: https://krate.github.io/docs/software/official/duplicati
+  krate_docs: https://runkrate.com/docs/software/official/duplicati
 tier: pro
 category: cloud
 install_mode: local
