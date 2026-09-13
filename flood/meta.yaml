@@ -5,7 +5,7 @@ links:
   homepage: https://flood.js.org/
   documentation: https://github.com/jesec/flood/wiki
   source: https://github.com/jesec/flood
-  krate_docs: https://krate.github.io/docs/software/community/flood
+  krate_docs: https://runkrate.com/docs/software/community/flood
 tier: pro
 category: download
 install_mode: local
