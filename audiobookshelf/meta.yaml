@@ -5,7 +5,7 @@ links:
   homepage: https://www.audiobookshelf.org
   documentation: https://www.audiobookshelf.org/docs
   source: https://github.com/advplyr/audiobookshelf
-  krate_docs: https://krate.github.io/docs/software/official/audiobookshelf
+  krate_docs: https://runkrate.com/docs/software/official/audiobookshelf
 tier: pro
 category: streaming
 install_mode: local
