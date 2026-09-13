@@ -5,7 +5,7 @@ links:
   homepage: https://prowlarr.com/
   documentation: https://wiki.servarr.com/Prowlarr
   source: https://github.com/Prowlarr/Prowlarr
-  krate_docs: https://krate.github.io/docs/software/official/prowlarr
+  krate_docs: https://runkrate.com/docs/software/official/prowlarr
 tier: free
 category: indexers
 install_mode: local
