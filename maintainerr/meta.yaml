@@ -5,7 +5,7 @@ links:
   homepage: https://github.com/Maintainerr/Maintainerr
   documentation: https://github.com/Maintainerr/Maintainerr#readme
   source: https://github.com/Maintainerr/Maintainerr
-  krate_docs: https://krate.github.io/docs/software/official/maintainerr
+  krate_docs: https://runkrate.com/docs/software/official/maintainerr
 tier: pro
 category: automation
 install_mode: local
