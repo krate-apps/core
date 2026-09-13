@@ -5,7 +5,7 @@ links:
   homepage: https://github.com/Dispatcharr/Dispatcharr
   documentation: https://dispatcharr.github.io/Dispatcharr-Docs/
   source: https://github.com/Dispatcharr/Dispatcharr
-  krate_docs: https://krate.github.io/docs/software/official/dispatcharr
+  krate_docs: https://runkrate.com/docs/software/official/dispatcharr
 tier: pro
 category: streaming
 install_mode: local
