@@ -5,7 +5,7 @@ links:
   homepage: https://transmissionbt.com/
   documentation: https://github.com/transmission/transmission
   source: https://github.com/transmission/transmission
-  krate_docs: https://krate.github.io/docs/software/community/transmission
+  krate_docs: https://runkrate.com/docs/software/community/transmission
 tier: pro
 category: download
 install_mode: local
