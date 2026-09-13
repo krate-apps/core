@@ -6,7 +6,7 @@ links:
   homepage: https://emby.media/
   documentation: https://emby.media/support/articles/Quick-Start.html
   source: https://github.com/MediaBrowser/Emby.Releases
-  krate_docs: https://krate.github.io/docs/software/community/emby
+  krate_docs: https://runkrate.com/docs/software/community/emby
 tier: pro
 category: streaming
 install_mode: local
