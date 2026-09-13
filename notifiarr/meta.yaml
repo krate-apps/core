@@ -5,7 +5,7 @@ links:
   homepage: https://notifiarr.com/
   documentation: https://notifiarr.wiki/
   source: https://github.com/Notifiarr/notifiarr
-  krate_docs: https://krate.github.io/docs/software/official/notifiarr
+  krate_docs: https://runkrate.com/docs/software/official/notifiarr
 tier: pro
 category: monitoring
 install_mode: local
