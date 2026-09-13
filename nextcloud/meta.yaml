@@ -5,7 +5,7 @@ links:
   homepage: https://nextcloud.com/
   documentation: https://docs.nextcloud.com/server/latest/admin_manual/
   source: https://github.com/nextcloud/server
-  krate_docs: https://krate.github.io/docs/software/official/nextcloud
+  krate_docs: https://runkrate.com/docs/software/official/nextcloud
 tier: pro
 category: cloud
 install_mode: local
