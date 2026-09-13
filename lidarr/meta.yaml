@@ -5,7 +5,7 @@ links:
   homepage: https://lidarr.audio/
   documentation: https://wiki.servarr.com/Lidarr
   source: https://github.com/Lidarr/Lidarr
-  krate_docs: https://krate.github.io/docs/software/official/lidarr
+  krate_docs: https://runkrate.com/docs/software/official/lidarr
 tier: pro
 category: media
 install_mode: local
