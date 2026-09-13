@@ -5,7 +5,7 @@ links:
   homepage: https://tdarr.io/
   documentation: https://docs.tdarr.io/
   source: https://github.com/HaveAGitGat/Tdarr
-  krate_docs: https://krate.github.io/docs/software/official/tdarr
+  krate_docs: https://runkrate.com/docs/software/official/tdarr
 tier: pro
 category: transcode
 install_mode: local
