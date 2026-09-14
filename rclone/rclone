@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC1090,SC2154
+[[ -n "${KRATE_HANDLER_CONTEXT_FILE:-}" && -f "${KRATE_HANDLER_CONTEXT_FILE}" ]] && . "${KRATE_HANDLER_CONTEXT_FILE}"
+# @file applications/unencrypted/apps/rclone/rclone
+# @project KRATE
+# @description rclone cloud mounts / mergerfs / move — no rcd web UI (manage via zen rclone + Harmony).
+set -euo pipefail
+
+_add() {
+	app::release::install_binaries rclone
+	if command -v zenfw::dependency::apt::install::inline >/dev/null 2>&1; then
+		zenfw::dependency::apt::install::inline mergerfs fuse3 2>/dev/null || true
+	fi
+	_write_verify
+	# No Caddy / no web UI — cloud stack is managed via zen rclone + systemd templates.
+	zenfw::service::generate "${app_name}" false false
+	_config
+	_cloud_stack
+}
+
+_cloud_setup_lib() {
+	local setup="${app_dir}/scripts/rclone-cloud-setup.sh"
+	[[ -f "${setup}" ]] || setup="$(dirname "${BASH_SOURCE[0]}")/scripts/rclone-cloud-setup.sh"
+	# shellcheck source=scripts/rclone-cloud-setup.sh
+	source "${setup}"
+}
+
+_cloud_stack() {
+	_cloud_setup_lib
+	rclone_cloud_setup::install_files
+
+	local preset="${ZEN_SOFT_RCLONE_PRESET:-media}"
+	local mode="${ZEN_SOFT_RCLONE_MODE:-import}"
+	local provider="${ZEN_SOFT_RCLONE_PROVIDER:-import}"
+	local remote="${ZEN_SOFT_RCLONE_REMOTE:-Media}"
+	local team_drive="${ZEN_SOFT_RCLONE_TEAM_DRIVE:-}"
+	local drive_root="${ZEN_SOFT_RCLONE_DRIVE_ROOT:-mydrive}"
+
+	case "${preset}" in
+	media | browse) ;;
+	*) preset="media" ;;
+	esac
+	case "${mode}" in
+	import | wizard) ;;
+	*) mode="import" ;;
+	esac
+	case "${provider}" in
+	import | drive | dropbox | s3 | webdav | onedrive | crypt | kdrive) ;;
+	*) provider="import" ;;
+	esac
+	case "${drive_root}" in
+	mydrive | shared) ;;
+	*) drive_root="mydrive" ;;
+	esac
+
+	rclone_cloud_setup::apply_user \
+		"${username}" "${preset}" "${mode}" "${provider}" "${remote}" "${team_drive}" "${drive_root}"
+}
+
+_write_verify() {
+	mkdir -p "${install_dir}"
+	cat >"${install_dir}/rclone-verify" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+bin="${install_dir}/rclone"
+[[ -x "\${bin}" ]] || { echo "rclone binary missing: \${bin}" >&2; exit 1; }
+"\${bin}" version >/dev/null
+EOF
+	chmod 0755 "${install_dir}/rclone-verify"
+	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
+	zenfw::permission::exec_exec::set "${install_dir}/rclone-verify" "${username}" "${username}" 2>/dev/null || true
+}
+
+_config() {
+	mkdir -p "${data_dir}" "$(dirname "${env_file}")" "/home/${username}/mounts"
+	zenfw::permission::read_exec::set "${data_dir}" "${username}" "${username}"
+	[[ -f "${env_file}" ]] || : >"${env_file}"
+	touch "${data_dir}/rclone.conf"
+	zenfw::fs::env::set "${env_file}" "RCLONE_CONFIG" "${data_dir}/rclone.conf"
+	zenfw::permission::private::set "${env_file}" "${username}" "${username}"
+	zenfw::permission::private::set "${data_dir}/rclone.conf" "${username}" "${username}"
+	_write_verify
+	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
+	# Oneshot verify unit (RemainAfterExit) — not a long-running daemon.
+	zenfw::service::manage start "${service_unit}" 2>/dev/null || true
+}
+
+_update() {
+	zenfw::service::manage stop "${service_unit}" 2>/dev/null || true
+	app::release::install_binaries rclone
+	_config
+	_cloud_setup_lib
+	rclone_cloud_setup::install_files
+	if [[ -n "${ZEN_SOFT_RCLONE_PRESET:-}${ZEN_SOFT_RCLONE_REMOTE:-}" ]]; then
+		_cloud_stack
+	fi
+	zenfw::software::backup::create "${app_name}" "user" "${data_dir}" "${username}"
+}
+
+_remove() {
+	_cloud_setup_lib
+	rclone_cloud_setup::teardown_user "${username}" || true
+}

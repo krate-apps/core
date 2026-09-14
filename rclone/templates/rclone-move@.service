@@ -1,0 +1,17 @@
+[Unit]
+Description=rclone move cache to remote for %i
+Documentation=https://rclone.org/commands/rclone_move/
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# One active move job per instance name; flock in rclone-move.sh also blocks cross-trigger races.
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+Environment=RCLONE_INSTANCE=%i
+ExecStart=/bin/bash /usr/lib/krate/rclone/rclone-move.sh %i
+
+[Install]
+WantedBy=multi-user.target

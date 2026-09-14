@@ -1,0 +1,17 @@
+[Unit]
+Description=mergerfs media union for %i (cache + cloud)
+Documentation=https://github.com/trapexit/mergerfs
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=forking
+Environment=RCLONE_INSTANCE=%i
+ExecStartPre=/usr/lib/krate/rclone/rclone-unit.sh media pre %i
+ExecStart=/usr/lib/krate/rclone/rclone-unit.sh media start %i
+ExecStop=/usr/lib/krate/rclone/rclone-unit.sh media stop %i
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

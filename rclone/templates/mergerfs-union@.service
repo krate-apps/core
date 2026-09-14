@@ -1,0 +1,16 @@
+[Unit]
+Description=mergerfs union of rclone remotes for %i
+Documentation=https://github.com/trapexit/mergerfs
+After=network-online.target
+
+[Service]
+Type=forking
+Environment=RCLONE_INSTANCE=%i
+ExecStartPre=/usr/lib/krate/rclone/rclone-unit.sh union pre %i
+ExecStart=/usr/lib/krate/rclone/rclone-unit.sh union start %i
+ExecStop=/usr/lib/krate/rclone/rclone-unit.sh union stop %i
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

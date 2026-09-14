@@ -1,0 +1,13 @@
+[Unit]
+Description=Periodic rclone move for %i
+Requires=rclone-move@%i.service
+After=rclone-move@%i.service
+
+[Timer]
+OnBootSec=15min
+OnUnitActiveSec=30min
+Persistent=true
+Unit=rclone-move@%i.service
+
+[Install]
+WantedBy=timers.target

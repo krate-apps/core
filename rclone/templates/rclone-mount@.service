@@ -1,0 +1,18 @@
+[Unit]
+Description=rclone FUSE mount (%i)
+Documentation=https://rclone.org/commands/rclone_mount/
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+Environment=RCLONE_INSTANCE=%i
+ExecStartPre=/usr/lib/krate/rclone/rclone-unit.sh mount pre %i
+ExecStart=/usr/lib/krate/rclone/rclone-unit.sh mount start %i
+ExecStop=/usr/lib/krate/rclone/rclone-unit.sh mount stop %i
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target
