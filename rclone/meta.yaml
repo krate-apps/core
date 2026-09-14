@@ -5,8 +5,8 @@ links:
   homepage: https://rclone.org/
   documentation: https://rclone.org/docs/
   source: https://github.com/rclone/rclone
-  krate_docs: https://runkrate.com/docs/software/community/rclone
-tier: free
+  krate_docs: https://runkrate.com/docs/software/official/rclone
+tier: pro
 category: cloud
 install_mode: local
 password_constraints:
