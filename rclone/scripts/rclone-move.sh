@@ -14,9 +14,6 @@ if [[ -f "${RCLONE_STATE_DIR}/mounts/main.env" ]]; then
 	set -a && source "${RCLONE_STATE_DIR}/mounts/main.env" && set +a
 fi
 
-if [[ "${RCLONE_PRESET:-media}" != "media" ]]; then
-	exit 0
-fi
 if [[ "${RCLONE_MOVE_ENABLED:-1}" != "1" ]]; then
 	exit 0
 fi

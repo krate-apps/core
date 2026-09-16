@@ -15,7 +15,6 @@ password_constraints:
   require_upper: false
   require_digit: false
 autocomplete_options:
-  - --rclone-preset
   - --rclone-mode
   - --rclone-provider
   - --rclone-remote
@@ -24,11 +23,6 @@ autocomplete_options:
 ui_options:
   subdomain:
     enabled: false
-  rclone_preset:
-    options:
-      - media
-      - browse
-    label: app.rclone.preset
   rclone_mode:
     options:
       - import

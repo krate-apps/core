@@ -359,6 +359,7 @@ rclone_ctl::apply() {
 		*) shift ;;
 		esac
 	done
+	preset="media"
 	rclone_cloud_setup::install_files
 	rclone_cloud_setup::apply_user "${user}" "${preset}" "${mode}" "${provider}" "${remote}" "${team_drive}" "${drive_root}"
 	local profile="/home/${user}/.krate/applications/rclone-cloud/profile.env"
@@ -621,10 +622,8 @@ print(json.dumps(json.loads(raw[start:])))
 		# shellcheck source=/dev/null
 		set -a && source "${RCLONE_PROFILE}" && set +a
 		systemctl restart "rclone-mount@${user}.service" || true
-		if [[ "${RCLONE_PRESET:-media}" == "media" ]]; then
-			systemctl restart "mergerfs-media@${user}.service" || true
-			systemctl start "rclone-move@${user}.timer" || true
-		fi
+		systemctl restart "mergerfs-media@${user}.service" || true
+		systemctl start "rclone-move@${user}.timer" || true
 	fi
 	python3 - <<PY
 import json
@@ -868,10 +867,8 @@ rclone_ctl::import_conf() {
 		# shellcheck source=/dev/null
 		set -a && source "${RCLONE_PROFILE}" && set +a
 		systemctl restart "rclone-mount@${user}.service" 2>/dev/null || true
-		if [[ "${RCLONE_PRESET:-media}" == "media" ]]; then
-			systemctl restart "mergerfs-media@${user}.service" 2>/dev/null || true
-			systemctl start "rclone-move@${user}.timer" 2>/dev/null || true
-		fi
+		systemctl restart "mergerfs-media@${user}.service" 2>/dev/null || true
+		systemctl start "rclone-move@${user}.timer" 2>/dev/null || true
 	fi
 	python3 - <<PY
 import json

@@ -49,6 +49,9 @@ rclone_cloud_setup::apply_user() {
 	local team_drive="${6:-}"
 	local drive_root="${7:-mydrive}"
 
+	# Legacy "browse" preset removed — always run the media stack.
+	preset="media"
+
 	local home="/home/${user}"
 	local state="${home}/.krate/applications/rclone-cloud"
 	local conf="${home}/.config/rclone/rclone.conf"
@@ -112,11 +115,11 @@ rclone_cloud_setup::apply_user() {
 	fi
 
 	cat >"${state}/profile.env" <<EOF
-RCLONE_PRESET=${preset}
+RCLONE_PRESET=media
 RCLONE_MODE=${mode}
 RCLONE_PROVIDER=${provider}
 RCLONE_DRIVE_ROOT=${drive_root}
-RCLONE_MOVE_ENABLED=$([ "${preset}" = media ] && echo 1 || echo 0)
+RCLONE_MOVE_ENABLED=1
 RCLONE_MOVE_DEST=${remote_spec}
 RCLONE_MOVE_MIN_AGE=${existing_min:-30m}
 RCLONE_MOVE_BWLIMIT=${existing_bw}
@@ -136,21 +139,14 @@ EOF
 	local mount_unit="rclone-mount@${user}.service"
 	systemctl enable "${mount_unit}" || true
 
-	if [[ "${preset}" == "media" ]]; then
-		systemctl enable "mergerfs-media@${user}.service" || true
-		systemctl enable "rclone-move@${user}.timer" || true
-	else
-		systemctl disable --now "mergerfs-media@${user}.service" 2>/dev/null || true
-		systemctl disable --now "rclone-move@${user}.timer" 2>/dev/null || true
-	fi
+	systemctl enable "mergerfs-media@${user}.service" || true
+	systemctl enable "rclone-move@${user}.timer" || true
 
 	# Start mounts only when the remote already exists in conf (import path).
 	if grep -q "^\[${remote}\]" "${conf}" 2>/dev/null; then
 		systemctl restart "${mount_unit}" || true
-		if [[ "${preset}" == "media" ]]; then
-			systemctl restart "mergerfs-media@${user}.service" || true
-			systemctl start "rclone-move@${user}.timer" || true
-		fi
+		systemctl restart "mergerfs-media@${user}.service" || true
+		systemctl start "rclone-move@${user}.timer" || true
 	else
 		echo "rclone remote [${remote}] not in conf yet — complete OAuth (zen rclone oauth-*) or service-account / import-conf, then restart ${mount_unit}" >&2
 	fi
