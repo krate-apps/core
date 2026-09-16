@@ -4,9 +4,26 @@
 set -euo pipefail
 
 SCRIPTS_SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TEMPLATES_SRC="$(cd "${SCRIPTS_SRC}/../templates" && pwd)"
 LIBEXEC_DST="/usr/lib/krate/rclone"
 SYSTEMD_DST="/etc/systemd/system"
+
+# Templates live next to the app (…/rclone/templates) or mirrored under libexec after install.
+# Never `cd` a missing path here — this file is also sourced from /usr/lib/krate/rclone.
+rclone_cloud_setup::resolve_templates() {
+	local c
+	for c in \
+		"${SCRIPTS_SRC}/templates" \
+		"${SCRIPTS_SRC}/../templates" \
+		"${LIBEXEC_DST}/templates"; do
+		if [[ -d "${c}" && -f "${c}/rclone-mount@.service" ]]; then
+			cd "${c}" >/dev/null && pwd && return 0
+		fi
+	done
+	return 1
+}
+
+TEMPLATES_SRC="$(rclone_cloud_setup::resolve_templates || true)"
+
 # shellcheck source=rclone-cloud-lib.sh
 [[ "$(type -t rclone_cloud::parse_instance 2>/dev/null || true)" == "function" ]] || source "${SCRIPTS_SRC}/rclone-cloud-lib.sh"
 
@@ -26,11 +43,31 @@ rclone_cloud_setup::install_files() {
 		"${LIBEXEC_DST}/mergerfs-union-pre.sh" \
 		"${LIBEXEC_DST}/mergerfs-union-start.sh" \
 		"${LIBEXEC_DST}/mergerfs-union-stop.sh"
-	install -m 0644 "${TEMPLATES_SRC}/rclone-mount@.service" "${SYSTEMD_DST}/rclone-mount@.service"
-	install -m 0644 "${TEMPLATES_SRC}/mergerfs-media@.service" "${SYSTEMD_DST}/mergerfs-media@.service"
-	install -m 0644 "${TEMPLATES_SRC}/mergerfs-union@.service" "${SYSTEMD_DST}/mergerfs-union@.service"
-	install -m 0644 "${TEMPLATES_SRC}/rclone-move@.service" "${SYSTEMD_DST}/rclone-move@.service"
-	install -m 0644 "${TEMPLATES_SRC}/rclone-move@.timer" "${SYSTEMD_DST}/rclone-move@.timer"
+
+	# Refresh template resolution (first install from app tree mirrors into libexec).
+	TEMPLATES_SRC="$(rclone_cloud_setup::resolve_templates || true)"
+	if [[ -n "${TEMPLATES_SRC}" ]]; then
+		install -d -m 0755 "${LIBEXEC_DST}/templates"
+		install -m 0644 \
+			"${TEMPLATES_SRC}/rclone-mount@.service" \
+			"${TEMPLATES_SRC}/mergerfs-media@.service" \
+			"${TEMPLATES_SRC}/mergerfs-union@.service" \
+			"${TEMPLATES_SRC}/rclone-move@.service" \
+			"${TEMPLATES_SRC}/rclone-move@.timer" \
+			"${LIBEXEC_DST}/templates/"
+		install -m 0644 "${LIBEXEC_DST}/templates/rclone-mount@.service" "${SYSTEMD_DST}/rclone-mount@.service"
+		install -m 0644 "${LIBEXEC_DST}/templates/mergerfs-media@.service" "${SYSTEMD_DST}/mergerfs-media@.service"
+		install -m 0644 "${LIBEXEC_DST}/templates/mergerfs-union@.service" "${SYSTEMD_DST}/mergerfs-union@.service"
+		install -m 0644 "${LIBEXEC_DST}/templates/rclone-move@.service" "${SYSTEMD_DST}/rclone-move@.service"
+		install -m 0644 "${LIBEXEC_DST}/templates/rclone-move@.timer" "${SYSTEMD_DST}/rclone-move@.timer"
+	elif [[ -f "${SYSTEMD_DST}/rclone-mount@.service" ]]; then
+		# Scripts-only refresh: units already on disk from a prior install.
+		:
+	else
+		echo "rclone cloud templates not found (expected …/rclone/templates or ${LIBEXEC_DST}/templates)" >&2
+		return 1
+	fi
+
 	# FUSE allow_other required for mergerfs/rclone multi-user mounts
 	if [[ -f /etc/fuse.conf ]] && ! grep -qE '^[[:space:]]*user_allow_other' /etc/fuse.conf; then
 		echo 'user_allow_other' >>/etc/fuse.conf
