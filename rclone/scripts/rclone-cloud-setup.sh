@@ -143,11 +143,15 @@ EOF
 	systemctl enable "rclone-move@${user}.timer" || true
 
 	# Start mounts only when the remote already exists in conf (import path).
-	if grep -q "^\[${remote}\]" "${conf}" 2>/dev/null; then
+	if grep -qE "^\[${remote}\]$" "${conf}" 2>/dev/null; then
+		systemctl reset-failed "${mount_unit}" 2>/dev/null || true
 		systemctl restart "${mount_unit}" || true
 		systemctl restart "mergerfs-media@${user}.service" || true
 		systemctl start "rclone-move@${user}.timer" || true
 	else
+		# Avoid Restart=on-failure crash loops against a missing remote (e.g. default Media:).
+		systemctl stop "${mount_unit}" 2>/dev/null || true
+		systemctl reset-failed "${mount_unit}" 2>/dev/null || true
 		echo "rclone remote [${remote}] not in conf yet — complete OAuth (zen rclone oauth-*) or service-account / import-conf, then restart ${mount_unit}" >&2
 	fi
 }

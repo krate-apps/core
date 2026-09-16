@@ -862,17 +862,119 @@ rclone_ctl::import_conf() {
 	else
 		rclone_ctl::fail "import-conf requires --file or --content"
 	fi
-	# Restart mounts if profile exists
-	if [[ -f "${RCLONE_PROFILE}" ]]; then
-		# shellcheck source=/dev/null
-		set -a && source "${RCLONE_PROFILE}" && set +a
-		systemctl restart "rclone-mount@${user}.service" 2>/dev/null || true
-		systemctl restart "mergerfs-media@${user}.service" 2>/dev/null || true
-		systemctl start "rclone-move@${user}.timer" 2>/dev/null || true
+
+	# Prefer crypt remotes for media stack, else first usable non-alias section.
+	local picked="" provider_hint="import"
+	picked="$(python3 - "${RCLONE_CONF}" <<'PY'
+import sys
+conf = sys.argv[1]
+sections = []
+cur = None
+meta = {}
+try:
+    with open(conf, encoding="utf-8") as f:
+        for raw in f:
+            line = raw.strip()
+            if line.startswith("[") and line.endswith("]"):
+                cur = line[1:-1]
+                sections.append(cur)
+                meta[cur] = {"type": "", "url": ""}
+                continue
+            if cur is None or "=" not in line or line.startswith("#"):
+                continue
+            k, v = line.split("=", 1)
+            k = k.strip().lower()
+            v = v.strip()
+            if k == "type":
+                meta[cur]["type"] = v.lower()
+            elif k == "url":
+                meta[cur]["url"] = v
+except FileNotFoundError:
+    pass
+
+def score(name):
+    t = meta.get(name, {}).get("type", "")
+    if t == "alias":
+        return -1
+    if t == "crypt":
+        return 100
+    if t in ("webdav", "drive", "dropbox", "onedrive", "s3"):
+        return 50
+    return 10
+
+cands = [n for n in sections if score(n) >= 0]
+cands.sort(key=lambda n: (-score(n), n))
+print(cands[0] if cands else "")
+PY
+)"
+	if [[ -n "${picked}" ]]; then
+		local rtype typ url
+		rtype="$(python3 - "${RCLONE_CONF}" "${picked}" <<'PY'
+import sys
+conf, remote = sys.argv[1], sys.argv[2]
+section = None
+typ = ""
+url = ""
+with open(conf, encoding="utf-8") as f:
+    for line in f:
+        line = line.strip()
+        if line.startswith("[") and line.endswith("]"):
+            section = line[1:-1]
+            continue
+        if section != remote or "=" not in line:
+            continue
+        k, v = line.split("=", 1)
+        k = k.strip().lower()
+        v = v.strip()
+        if k == "type":
+            typ = v.lower()
+        elif k == "url":
+            url = v
+print(f"{typ}\t{url}")
+PY
+)"
+		typ="${rtype%%$'\t'*}"
+		url="${rtype#*$'\t'}"
+		case "${typ}" in
+		crypt) provider_hint="crypt" ;;
+		webdav)
+			if [[ "${url}" == *kdrive* ]] || [[ "${url}" == *infomaniak* ]]; then
+				provider_hint="kdrive"
+			else
+				provider_hint="webdav"
+			fi
+			;;
+		drive | dropbox | s3 | onedrive) provider_hint="${typ}" ;;
+		*) provider_hint="import" ;;
+		esac
+		# Re-apply media stack bound to the imported remote (updates main.env + starts mounts).
+		rclone_ctl::apply "${user}" --preset media --mode import --provider "${provider_hint}" --remote "${picked}" \
+			--move-dest "${picked}:" >/dev/null || true
+	else
+		systemctl stop "rclone-mount@${user}.service" 2>/dev/null || true
+		systemctl reset-failed "rclone-mount@${user}.service" 2>/dev/null || true
 	fi
-	python3 - <<PY
-import json
-print(json.dumps({"ok": True, "conf": "${RCLONE_CONF}", "imported": True}))
+
+	python3 - "${RCLONE_CONF}" "${picked}" "${provider_hint}" <<'PY'
+import json, sys
+conf, primary, provider = sys.argv[1], sys.argv[2], sys.argv[3]
+names = []
+try:
+    with open(conf, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line.startswith("[") and line.endswith("]"):
+                names.append(line[1:-1])
+except FileNotFoundError:
+    pass
+print(json.dumps({
+    "ok": True,
+    "conf": conf,
+    "imported": True,
+    "primary_remote": primary,
+    "provider": provider,
+    "remotes": names,
+}, ensure_ascii=False))
 PY
 }
 
