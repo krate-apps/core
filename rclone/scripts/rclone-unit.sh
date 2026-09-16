@@ -21,23 +21,78 @@ rclone_unit::fusermount_uz() {
 	fi
 }
 
+rclone_unit::remote_name_from_spec() {
+	local spec="${1:?}"
+	# Media: / Media:Movies / Media → Media
+	spec="${spec%%:*}"
+	printf '%s\n' "${spec}"
+}
+
+# True when the remote section has usable credentials (OAuth token, SA, keys, or WebDAV url).
+rclone_unit::remote_has_auth() {
+	local conf="${1:?}" remote="${2:?}"
+	awk -v r="${remote}" '
+		$0 == "[" r "]" { s = 1; next }
+		/^\[/ { s = 0 }
+		s && /^(token|service_account_file|service_account_credentials|access_key_id|url)[[:space:]]*=/ {
+			found = 1
+		}
+		END { exit found ? 0 : 1 }
+	' "${conf}"
+}
+
+# Fail fast with a journal-visible reason (auth / missing remote / FUSE).
+rclone_unit::mount_preflight() {
+	local remote bin
+	remote="$(rclone_unit::remote_name_from_spec "${RCLONE_REMOTE_SPEC}")"
+	if [[ -z "${remote}" ]]; then
+		echo "rclone mount: empty remote name in RCLONE_REMOTE_SPEC=${RCLONE_REMOTE_SPEC}" >&2
+		exit 1
+	fi
+	if [[ ! -f "${RCLONE_CONF}" ]]; then
+		echo "rclone mount: missing config ${RCLONE_CONF}" >&2
+		exit 1
+	fi
+	if ! grep -qE "^\[${remote}\]$" "${RCLONE_CONF}" 2>/dev/null; then
+		echo "rclone mount: remote [${remote}] not found in ${RCLONE_CONF}" >&2
+		echo "  Fix: zen rclone import-conf ${RCLONE_USER} …  or  zen rclone oauth-begin ${RCLONE_USER} --remote ${remote}" >&2
+		exit 1
+	fi
+	if ! rclone_unit::remote_has_auth "${RCLONE_CONF}" "${remote}"; then
+		echo "rclone mount: remote [${remote}] has no credentials yet (token / service account / keys)" >&2
+		echo "  Fix: zen rclone oauth-complete ${RCLONE_USER} --remote ${remote} --token '…'  or import a ready conf" >&2
+		exit 1
+	fi
+	if grep -qE -- '--allow-other' <<<"${RCLONE_MOUNT_FLAGS:- --allow-other}" &&
+		[[ -f /etc/fuse.conf ]] && ! grep -qE '^[[:space:]]*user_allow_other' /etc/fuse.conf; then
+		echo "rclone mount: --allow-other requires 'user_allow_other' in /etc/fuse.conf" >&2
+		exit 1
+	fi
+	bin="$(rclone_cloud::rclone_bin)"
+	if [[ ! -x "${bin}" ]]; then
+		echo "rclone mount: binary not executable: ${bin}" >&2
+		exit 1
+	fi
+}
+
 rclone_unit::mount_pre() {
 	rclone_cloud::ensure_dirs
 	rclone_cloud::load_mount_env
+	rclone_unit::mount_preflight
 }
 
 rclone_unit::mount_start() {
 	rclone_cloud::load_mount_env
 	rclone_cloud::load_profile
-	local bin log ua
+	rclone_unit::mount_preflight
+	local bin ua
 	bin="$(rclone_cloud::rclone_bin)"
-	log="${RCLONE_LOG_DIR}/mount-${RCLONE_BRANCH}.log"
 	ua="${RCLONE_USER_AGENT:-krate-rclone}"
+	# Log to stderr so journalctl -u rclone-mount@user shows failures (no silent --log-file).
 	local -a args=(
 		mount "${RCLONE_REMOTE_SPEC}" "${RCLONE_REMOTE_MOUNT}"
 		--config="${RCLONE_CONF}"
 		--log-level INFO
-		--log-file "${log}"
 		--user-agent "${ua}"
 	)
 	if [[ -n "${RCLONE_MOUNT_FLAGS:-}" ]]; then
