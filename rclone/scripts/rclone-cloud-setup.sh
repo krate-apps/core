@@ -6,17 +6,21 @@ set -euo pipefail
 SCRIPTS_SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LIBEXEC_DST="/usr/lib/krate/rclone"
 SYSTEMD_DST="/etc/systemd/system"
+KRATE_HOME="${KRATE_HOME:-/opt/Krate}"
 
 # Templates live next to the app (…/rclone/templates) or mirrored under libexec after install.
 # Never `cd` a missing path here — this file is also sourced from /usr/lib/krate/rclone.
 rclone_cloud_setup::resolve_templates() {
-	local c
+	local c home="${KRATE_HOME:-/opt/Krate}"
 	for c in \
 		"${SCRIPTS_SRC}/templates" \
 		"${SCRIPTS_SRC}/../templates" \
-		"${LIBEXEC_DST}/templates"; do
+		"${LIBEXEC_DST}/templates" \
+		"${home}/share/applications/official/rclone/templates" \
+		"${home}/share/applications/community/rclone/templates"; do
 		if [[ -d "${c}" && -f "${c}/rclone-mount@.service" ]]; then
-			cd "${c}" >/dev/null && pwd && return 0
+			# Prefer realpath without failing the whole script on odd layouts.
+			(cd "${c}" && pwd) && return 0
 		fi
 	done
 	return 1
@@ -29,7 +33,14 @@ TEMPLATES_SRC="$(rclone_cloud_setup::resolve_templates || true)"
 
 rclone_cloud_setup::install_files() {
 	install -d -m 0755 "${LIBEXEC_DST}"
-	install -m 0755 "${SCRIPTS_SRC}"/*.sh "${LIBEXEC_DST}/"
+
+	# Refresh template resolution first so we can pull scripts from the same package tree.
+	TEMPLATES_SRC="$(rclone_cloud_setup::resolve_templates || true)"
+	local scripts_from="${SCRIPTS_SRC}"
+	if [[ -n "${TEMPLATES_SRC}" && -d "${TEMPLATES_SRC}/../scripts" ]]; then
+		scripts_from="$(cd "${TEMPLATES_SRC}/../scripts" && pwd)"
+	fi
+	install -m 0755 "${scripts_from}"/*.sh "${LIBEXEC_DST}/"
 	# Ensure management entrypoint is executable even if umask odd
 	chmod 0755 "${LIBEXEC_DST}/rclone-cloud-ctl.sh" "${LIBEXEC_DST}/rclone-unit.sh" 2>/dev/null || true
 	# Drop legacy per-hook scripts from older installs
@@ -44,8 +55,6 @@ rclone_cloud_setup::install_files() {
 		"${LIBEXEC_DST}/mergerfs-union-start.sh" \
 		"${LIBEXEC_DST}/mergerfs-union-stop.sh"
 
-	# Refresh template resolution (first install from app tree mirrors into libexec).
-	TEMPLATES_SRC="$(rclone_cloud_setup::resolve_templates || true)"
 	if [[ -n "${TEMPLATES_SRC}" ]]; then
 		install -d -m 0755 "${LIBEXEC_DST}/templates"
 		install -m 0644 \
