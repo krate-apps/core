@@ -80,4 +80,5 @@ version:
     - type: executable
       cmd: "{install_dir}/nzbget/usr/bin/nzbget"
       args: --version
-      requires: active
+      regex: '(?:version:\s*)?v?([0-9]+\.[0-9]+[^\s]*)'
+      requires: inactive

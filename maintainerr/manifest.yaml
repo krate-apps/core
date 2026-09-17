@@ -80,6 +80,3 @@ version:
     - type: file
       path: "{install_dir}/apps/server/package.json"
       field: version
-    - type: http
-      url: "http://127.0.0.1:{default_port}/api/status"
-      requires: active

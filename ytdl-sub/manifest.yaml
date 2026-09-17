@@ -1,5 +1,7 @@
 id: ytdl-sub
 multi_user: true
+proxy:
+  mode: disabled
 runtime:
   kind: systemd
   service_template: ytdl-sub@.service
@@ -69,4 +71,5 @@ version:
     - type: executable
       cmd: "{install_dir}/ytdl-sub"
       args: --version
+      regex: '(?:ytdl-sub\s+)?([0-9]+\.[0-9]+(?:\.[0-9]+)?[^\s]*)'
       requires: inactive

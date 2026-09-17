@@ -62,4 +62,7 @@ version:
     - type: executable
       cmd: "{install_dir}/notifiarr"
       args: version
-      requires: active
+      regex: '(?:notifiarr\s+)?v?([0-9]+\.[0-9]+\.[0-9]+[^\s]*)'
+      requires: inactive
+    - type: file
+      path: "{data_dir}/VERSION"

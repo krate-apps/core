@@ -1,5 +1,7 @@
 id: recyclarr
 multi_user: true
+proxy:
+  mode: disabled
 # Syncs TRaSH guides into at least one Servarr.
 require_any:
   - sonarr
@@ -63,4 +65,7 @@ version:
     - type: executable
       cmd: "{install_dir}/recyclarr"
       args: --version
+      regex: '(?:recyclarr\s+)?v?([0-9]+\.[0-9]+[^\s]*)'
       requires: inactive
+    - type: file
+      path: "{data_dir}/VERSION"

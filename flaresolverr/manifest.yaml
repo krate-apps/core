@@ -1,5 +1,7 @@
 id: flaresolverr
 multi_user: true
+proxy:
+  mode: disabled
 runtime:
   kind: systemd
   service_template: flaresolverr@.service
@@ -83,3 +85,5 @@ version:
       url: "http://127.0.0.1:{default_port}/"
       field: version
       requires: active
+    - type: file
+      path: "{data_dir}/VERSION"

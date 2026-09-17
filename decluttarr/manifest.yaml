@@ -1,5 +1,7 @@
 id: decluttarr
 multi_user: true
+proxy:
+  mode: disabled
 runtime:
   kind: systemd
   service_template: decluttarr@.service

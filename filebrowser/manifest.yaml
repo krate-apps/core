@@ -55,4 +55,5 @@ version:
     - type: executable
       cmd: "{install_dir}/filebrowser"
       args: --version
-      requires: active
+      regex: '([0-9]+\.[0-9]+\.[0-9]+[^\s]*)'
+      requires: inactive
