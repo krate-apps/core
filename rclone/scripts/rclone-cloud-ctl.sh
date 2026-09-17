@@ -367,6 +367,7 @@ rclone_ctl::apply() {
 	local user="${1:?}"
 	shift
 	local preset="media" mode="import" provider="import" remote="Media"
+	local remote_set=0 provider_set=0
 	local team_drive="" drive_root="mydrive"
 	local move_dest="" move_min_age="" move_bwlimit="" move_enabled=""
 	local on_calendar="" on_unit_active="" on_boot=""
@@ -374,8 +375,8 @@ rclone_ctl::apply() {
 		case "$1" in
 		--preset) preset="${2:-}"; shift 2 ;;
 		--mode) mode="${2:-}"; shift 2 ;;
-		--provider) provider="${2:-}"; shift 2 ;;
-		--remote) remote="${2:-}"; shift 2 ;;
+		--provider) provider="${2:-}"; provider_set=1; shift 2 ;;
+		--remote) remote="${2:-}"; remote_set=1; shift 2 ;;
 		--team-drive) team_drive="${2:-}"; shift 2 ;;
 		--drive-root) drive_root="${2:-}"; shift 2 ;;
 		--move-dest) move_dest="${2:-}"; shift 2 ;;
@@ -389,9 +390,122 @@ rclone_ctl::apply() {
 		esac
 	done
 	preset="media"
+	# Always refresh /usr/lib/krate/rclone scripts first.
 	rclone_cloud_setup::install_files
+
+	# Bare `apply` (no --remote) must not reset a working stack to the Media default.
+	local home="/home/${user}"
+	local state="${home}/.krate/applications/rclone-cloud"
+	local conf="${home}/.config/rclone/rclone.conf"
+	if [[ "${remote_set}" -eq 0 || "${provider_set}" -eq 0 ]]; then
+		local existing_spec="" existing_prov=""
+		if [[ -f "${state}/mounts/main.env" ]]; then
+			# shellcheck source=/dev/null
+			set -a && source "${state}/mounts/main.env" && set +a
+			existing_spec="${RCLONE_REMOTE_SPEC:-}"
+			existing_prov="${RCLONE_PROVIDER:-}"
+		fi
+		if [[ -z "${existing_spec}" && -f "${state}/profile.env" ]]; then
+			# shellcheck source=/dev/null
+			set -a && source "${state}/profile.env" && set +a
+			existing_spec="${RCLONE_MOVE_DEST:-}"
+			[[ -n "${existing_prov}" ]] || existing_prov="${RCLONE_PROVIDER:-}"
+		fi
+		if [[ "${remote_set}" -eq 0 ]]; then
+			remote="${existing_spec%%:*}"
+			[[ -n "${remote}" ]] || remote="Media"
+		fi
+		if [[ "${provider_set}" -eq 0 && -n "${existing_prov}" ]]; then
+			provider="${existing_prov}"
+		fi
+	fi
+	# If chosen remote is missing from conf, prefer crypt then first usable section.
+	if [[ -f "${conf}" ]] && ! grep -qE "^\[${remote}\]$" "${conf}" 2>/dev/null; then
+		local picked
+		picked="$(python3 - "${conf}" <<'PY'
+import sys
+conf = sys.argv[1]
+sections, cur, meta = [], None, {}
+try:
+    with open(conf, encoding="utf-8") as f:
+        for raw in f:
+            line = raw.strip()
+            if line.startswith("[") and line.endswith("]"):
+                cur = line[1:-1]
+                sections.append(cur)
+                meta[cur] = {"type": "", "url": ""}
+                continue
+            if cur is None or "=" not in line or line.startswith("#"):
+                continue
+            k, v = line.split("=", 1)
+            k, v = k.strip().lower(), v.strip()
+            if k == "type":
+                meta[cur]["type"] = v.lower()
+            elif k == "url":
+                meta[cur]["url"] = v
+except FileNotFoundError:
+    pass
+
+def score(name):
+    t = meta.get(name, {}).get("type", "")
+    if t == "alias":
+        return -1
+    if t == "crypt":
+        return 100
+    if t in ("webdav", "drive", "dropbox", "onedrive", "s3"):
+        return 50
+    return 10
+
+cands = [n for n in sections if score(n) >= 0]
+cands.sort(key=lambda n: (-score(n), n))
+print(cands[0] if cands else "")
+PY
+)"
+		if [[ -n "${picked}" ]]; then
+			remote="${picked}"
+			if [[ "${provider_set}" -eq 0 ]]; then
+				local rtype typ url
+				rtype="$(python3 - "${conf}" "${picked}" <<'PY'
+import sys
+conf, remote = sys.argv[1], sys.argv[2]
+section = typ = url = ""
+with open(conf, encoding="utf-8") as f:
+    for line in f:
+        line = line.strip()
+        if line.startswith("[") and line.endswith("]"):
+            section = line[1:-1]; continue
+        if section != remote or "=" not in line:
+            continue
+        k, v = line.split("=", 1)
+        k, v = k.strip().lower(), v.strip()
+        if k == "type":
+            typ = v.lower()
+        elif k == "url":
+            url = v
+print(f"{typ}\t{url}")
+PY
+)"
+				typ="${rtype%%$'\t'*}"
+				url="${rtype#*$'\t'}"
+				case "${typ}" in
+				crypt) provider="crypt" ;;
+				webdav)
+					if [[ "${url}" == *kdrive* || "${url}" == *infomaniak* ]]; then
+						provider="kdrive"
+					else
+						provider="webdav"
+					fi
+					;;
+				drive | dropbox | s3 | onedrive) provider="${typ}" ;;
+				*) provider="import" ;;
+				esac
+			fi
+			[[ -n "${move_dest}" ]] || move_dest="${picked}:"
+		fi
+	fi
+
 	rclone_cloud_setup::apply_user "${user}" "${preset}" "${mode}" "${provider}" "${remote}" "${team_drive}" "${drive_root}"
-	local profile="/home/${user}/.krate/applications/rclone-cloud/profile.env"
+	local profile="${state}/profile.env"
 	_profile_set() {
 		local k="$1" v="$2"
 		[[ -n "${v}" ]] || return 0
