@@ -86,6 +86,9 @@ rclone_unit::mount_pre() {
 rclone_unit::mount_start() {
 	rclone_cloud::load_mount_env
 	rclone_cloud::load_profile
+	# Always remote/<branch> — ignore stale RCLONE_REMOTE_MOUNT from old mounts/*.env or libexec.
+	RCLONE_REMOTE_MOUNT="$(rclone_cloud::remote_mount_path "${RCLONE_HOME}" "${RCLONE_BRANCH}")"
+	install -d -m 0755 -o "${RCLONE_USER}" -g "${RCLONE_USER}" "${RCLONE_REMOTE_MOUNT}"
 	rclone_unit::mount_preflight
 	local bin ua
 	bin="$(rclone_cloud::rclone_bin)"
