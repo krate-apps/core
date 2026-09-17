@@ -28,13 +28,14 @@ rclone_unit::remote_name_from_spec() {
 	printf '%s\n' "${spec}"
 }
 
-# True when the remote section has usable credentials (OAuth token, SA, keys, or WebDAV url).
+# True when the remote section has usable credentials.
+# Covers OAuth, SA, S3 keys, WebDAV url, crypt passwords, and alias→remote.
 rclone_unit::remote_has_auth() {
 	local conf="${1:?}" remote="${2:?}"
 	awk -v r="${remote}" '
 		$0 == "[" r "]" { s = 1; next }
 		/^\[/ { s = 0 }
-		s && /^(token|service_account_file|service_account_credentials|access_key_id|url)[[:space:]]*=/ {
+		s && /^(token|service_account_file|service_account_credentials|access_key_id|url|password|password2|remote)[[:space:]]*=/ {
 			found = 1
 		}
 		END { exit found ? 0 : 1 }
@@ -59,8 +60,8 @@ rclone_unit::mount_preflight() {
 		exit 1
 	fi
 	if ! rclone_unit::remote_has_auth "${RCLONE_CONF}" "${remote}"; then
-		echo "rclone mount: remote [${remote}] has no credentials yet (token / service account / keys)" >&2
-		echo "  Fix: zen rclone oauth-complete ${RCLONE_USER} --remote ${remote} --token '…'  or import a ready conf" >&2
+		echo "rclone mount: remote [${remote}] has no credentials yet (token / password / url / keys)" >&2
+		echo "  Fix: import a ready conf, or oauth-complete / remote-create for this remote" >&2
 		exit 1
 	fi
 	if grep -qE -- '--allow-other' <<<"${RCLONE_MOUNT_FLAGS:- --allow-other}" &&

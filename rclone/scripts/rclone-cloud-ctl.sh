@@ -33,7 +33,7 @@ rclone_ctl::unit_active() {
 }
 
 rclone_ctl::remote_has_token() {
-	# v3: treat OAuth token OR service-account / key-based auth as “ready”
+	# Ready when OAuth/SA/S3/WebDAV/crypt/alias fields are present.
 	local conf="$1" remote="$2"
 	python3 - "$conf" "$remote" <<'PY'
 import sys
@@ -59,6 +59,9 @@ ok = bool(keys & {
     "service_account_credentials",
     "access_key_id",
     "url",
+    "password",
+    "password2",
+    "remote",  # crypt / alias point at another remote
 })
 print("1" if ok else "0")
 PY

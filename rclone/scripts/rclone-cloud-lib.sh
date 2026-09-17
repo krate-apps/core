@@ -112,8 +112,8 @@ rclone_cloud::default_mount_flags() {
 	local provider="${1:-import}"
 	local cache_dir="${RCLONE_HOME:-/tmp}/.cache/rclone"
 	case "${provider}" in
-	kdrive | webdav)
-		# Infomaniak-recommended profile (no --daemon: systemd owns the process).
+	kdrive | webdav | crypt)
+		# Infomaniak / crypt-over-webdav profile (no --daemon: systemd owns the process).
 		printf '%s\n' "--allow-other --dir-cache-time 1h --umask 002 --timeout 1h --vfs-cache-mode full --vfs-cache-max-age 24h --vfs-cache-max-size 10G --cache-dir ${cache_dir}"
 		;;
 	drive)
@@ -143,7 +143,7 @@ rclone_cloud::default_backend_flags() {
 rclone_cloud::default_move_flags() {
 	local provider="${1:-import}"
 	case "${provider}" in
-	kdrive | webdav)
+	kdrive | webdav | crypt)
 		printf '%s\n' '--fast-list --retries 3 --low-level-retries 10 --checkers 4 --transfers 2 --delete-empty-src-dirs'
 		;;
 	drive)
