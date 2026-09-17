@@ -77,7 +77,7 @@ rclone_unit::mount_preflight() {
 }
 
 rclone_unit::mount_pre() {
-	rclone_cloud::migrate_layout "${RCLONE_USER}" 2>/dev/null || true
+	RCLONE_MIGRATE_NO_RESTART=1 rclone_cloud::migrate_layout "${RCLONE_USER}" 2>/dev/null || true
 	rclone_cloud::ensure_dirs
 	rclone_cloud::load_mount_env
 	rclone_unit::mount_preflight
@@ -119,7 +119,7 @@ rclone_unit::mount_stop() {
 }
 
 rclone_unit::media_pre() {
-	rclone_cloud::migrate_layout "${RCLONE_USER}" 2>/dev/null || true
+	RCLONE_MIGRATE_NO_RESTART=1 rclone_cloud::migrate_layout "${RCLONE_USER}" 2>/dev/null || true
 	rclone_cloud::ensure_dirs
 	rclone_cloud::load_mount_env 2>/dev/null || true
 	if [[ "${RCLONE_VIEW_MODE:-0}" == "1" && "${RCLONE_BRANCH}" != "main" ]]; then

@@ -204,7 +204,37 @@ rclone_cloud::migrate_layout() {
 	fi
 
 	[[ "${migrated}" -eq 1 ]] || return 0
+
+	# status/setup may umount the legacy leaf; bring mounts back unless a unit
+	# ExecStartPre is about to mount (avoid restart loops).
+	if [[ "${RCLONE_MIGRATE_NO_RESTART:-0}" != "1" ]]; then
+		rclone_cloud::restart_mounts_after_migrate "${user}"
+	fi
 	return 0
+}
+
+# Restart rclone FUSE + mergerfs after a layout migrate that may have umounted.
+rclone_cloud::restart_mounts_after_migrate() {
+	local user="${1:?}"
+	local state="/home/${user}/.krate/applications/rclone-cloud"
+	local f b
+	systemctl try-restart "rclone-mount@${user}.service" 2>/dev/null || \
+		systemctl restart "rclone-mount@${user}.service" 2>/dev/null || true
+	shopt -s nullglob
+	for f in "${state}/mounts"/*.env; do
+		[[ -f "${f}" ]] || continue
+		b="$(basename "${f}" .env)"
+		[[ "${b}" == "main" ]] && continue
+		if grep -q '^RCLONE_VIEW_MODE=1' "${f}" 2>/dev/null; then
+			continue
+		fi
+		systemctl try-restart "rclone-mount@${user}--${b}.service" 2>/dev/null || \
+			systemctl restart "rclone-mount@${user}--${b}.service" 2>/dev/null || true
+	done
+	shopt -u nullglob
+	systemctl try-restart "mergerfs-union@${user}.service" 2>/dev/null || true
+	systemctl try-restart "mergerfs-media@${user}.service" 2>/dev/null || \
+		systemctl restart "mergerfs-media@${user}.service" 2>/dev/null || true
 }
 
 rclone_cloud::rebuild_union_branches() {
