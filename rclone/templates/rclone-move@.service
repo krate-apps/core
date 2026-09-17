@@ -12,6 +12,3 @@ IOSchedulingClass=best-effort
 IOSchedulingPriority=7
 Environment=RCLONE_INSTANCE=%i
 ExecStart=/bin/bash /usr/lib/krate/rclone/rclone-move.sh %i
-
-[Install]
-WantedBy=multi-user.target

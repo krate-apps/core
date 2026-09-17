@@ -1,7 +1,5 @@
 [Unit]
 Description=Periodic rclone move for %i
-Requires=rclone-move@%i.service
-After=rclone-move@%i.service
 
 [Timer]
 OnBootSec=15min
