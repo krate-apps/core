@@ -219,11 +219,12 @@ rclone_cloud_setup::teardown_user() {
 	done
 }
 
-# Add an advanced branch: rclone_cloud_setup::add_branch user branchid remote_spec
+# Add an advanced branch: rclone_cloud_setup::add_branch user branchid remote_spec [union=0|1]
 rclone_cloud_setup::add_branch() {
 	local user="${1:?}"
 	local branch="${2:?}"
 	local remote_spec="${3:?}"
+	local with_union="${4:-0}"
 	local home="/home/${user}"
 	local state="${home}/.krate/applications/rclone-cloud"
 	local mount_path="${home}/mounts/remotes/${branch}"
@@ -244,23 +245,26 @@ rclone_cloud_setup::add_branch() {
 	local instance="${user}--${branch}"
 	systemctl enable --now "rclone-mount@${instance}.service"
 
-	# Rebuild union.branches from all remotes dirs that have env files
-	local branches_file="${state}/union.branches"
-	{
-		echo "${home}/mounts/remote"
-		for f in "${state}/mounts"/*.env; do
-			[[ -f "${f}" ]] || continue
-			local b
-			b="$(basename "${f}" .env)"
-			[[ "${b}" == "main" ]] && continue
-			echo "${home}/mounts/remotes/${b}"
-		done
-	} >"${branches_file}"
-	chown "${user}:${user}" "${branches_file}"
+	# Optional: merge this branch (and others) into mounts/union and point media at it.
+	# Default is off so secondary remotes (e.g. backup) stay isolated under remotes/<id>.
+	if [[ "${with_union}" == "1" ]]; then
+		local branches_file="${state}/union.branches"
+		{
+			echo "${home}/mounts/remote"
+			local f b
+			for f in "${state}/mounts"/*.env; do
+				[[ -f "${f}" ]] || continue
+				b="$(basename "${f}" .env)"
+				[[ "${b}" == "main" ]] && continue
+				echo "${home}/mounts/remotes/${b}"
+			done
+		} >"${branches_file}"
+		chown "${user}:${user}" "${branches_file}"
 
-	if [[ "$(grep -c . "${branches_file}" || true)" -ge 2 ]]; then
-		sed -i 's/^RCLONE_MEDIA_CLOUD_BRANCH=.*/RCLONE_MEDIA_CLOUD_BRANCH=union/' "${state}/profile.env" || true
-		systemctl enable --now "mergerfs-union@${user}.service" || true
-		systemctl restart "mergerfs-media@${user}.service" || true
+		if [[ "$(grep -c . "${branches_file}" || true)" -ge 2 ]]; then
+			sed -i 's/^RCLONE_MEDIA_CLOUD_BRANCH=.*/RCLONE_MEDIA_CLOUD_BRANCH=union/' "${state}/profile.env" || true
+			systemctl enable --now "mergerfs-union@${user}.service" || true
+			systemctl restart "mergerfs-media@${user}.service" || true
+		fi
 	fi
 }

@@ -750,19 +750,20 @@ PY
 rclone_ctl::add_branch() {
 	local user="${1:?}"
 	shift
-	local branch="" remote_spec=""
+	local branch="" remote_spec="" with_union=0
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
 		--branch) branch="${2:-}"; shift 2 ;;
 		--remote-spec) remote_spec="${2:-}"; shift 2 ;;
+		--union) with_union=1; shift ;;
 		*) shift ;;
 		esac
 	done
 	[[ -n "${branch}" && -n "${remote_spec}" ]] || rclone_ctl::fail "add-branch requires --branch and --remote-spec"
-	rclone_cloud_setup::add_branch "${user}" "${branch}" "${remote_spec}"
+	rclone_cloud_setup::add_branch "${user}" "${branch}" "${remote_spec}" "${with_union}"
 	python3 - <<PY
 import json
-print(json.dumps({"ok": True, "branch": "${branch}", "remote_spec": "${remote_spec}"}))
+print(json.dumps({"ok": True, "branch": "${branch}", "remote_spec": "${remote_spec}", "union": ${with_union}}))
 PY
 }
 
