@@ -214,12 +214,16 @@ rclone_cloud::migrate_layout() {
 }
 
 # Restart rclone FUSE + mergerfs after a layout migrate that may have umounted.
+# Prefer restart/start — try-restart is a no-op (exit 0) when the unit is inactive.
 rclone_cloud::restart_mounts_after_migrate() {
 	local user="${1:?}"
 	local state="/home/${user}/.krate/applications/rclone-cloud"
 	local f b
-	systemctl try-restart "rclone-mount@${user}.service" 2>/dev/null || \
-		systemctl restart "rclone-mount@${user}.service" 2>/dev/null || true
+	_restart_unit() {
+		local u="${1:?}"
+		systemctl restart "${u}" 2>/dev/null || systemctl start "${u}" 2>/dev/null || true
+	}
+	_restart_unit "rclone-mount@${user}.service"
 	shopt -s nullglob
 	for f in "${state}/mounts"/*.env; do
 		[[ -f "${f}" ]] || continue
@@ -228,13 +232,11 @@ rclone_cloud::restart_mounts_after_migrate() {
 		if grep -q '^RCLONE_VIEW_MODE=1' "${f}" 2>/dev/null; then
 			continue
 		fi
-		systemctl try-restart "rclone-mount@${user}--${b}.service" 2>/dev/null || \
-			systemctl restart "rclone-mount@${user}--${b}.service" 2>/dev/null || true
+		_restart_unit "rclone-mount@${user}--${b}.service"
 	done
 	shopt -u nullglob
-	systemctl try-restart "mergerfs-union@${user}.service" 2>/dev/null || true
-	systemctl try-restart "mergerfs-media@${user}.service" 2>/dev/null || \
-		systemctl restart "mergerfs-media@${user}.service" 2>/dev/null || true
+	_restart_unit "mergerfs-union@${user}.service"
+	_restart_unit "mergerfs-media@${user}.service"
 }
 
 rclone_cloud::rebuild_union_branches() {
