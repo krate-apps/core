@@ -175,6 +175,7 @@ rclone_unit::media_stop() {
 
 rclone_unit::union_pre() {
 	rclone_cloud::ensure_dirs
+	install -d -m 0755 -o "${RCLONE_USER}" -g "${RCLONE_USER}" "${RCLONE_UNION}"
 }
 
 rclone_unit::union_start() {

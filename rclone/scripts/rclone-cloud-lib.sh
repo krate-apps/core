@@ -70,19 +70,23 @@ rclone_cloud::run_as_user() {
 }
 
 rclone_cloud::ensure_dirs() {
-	install -d -m 0755 -o "${RCLONE_USER}" -g "${RCLONE_USER}" \
-		"${RCLONE_HOME}/mounts" \
-		"${RCLONE_HOME}/mounts/remotes" \
-		"${RCLONE_HOME}/mounts/views" \
-		"${RCLONE_HOME}/.cache/rclone" \
-		"${RCLONE_CACHE}" \
-		"${RCLONE_MEDIA}" \
-		"${RCLONE_UNION}" \
-		"${RCLONE_REMOTE_MOUNT}" \
-		"${RCLONE_STATE_DIR}" \
-		"${RCLONE_STATE_DIR}/mounts" \
-		"${RCLONE_STATE_DIR}/views" \
+	# Media stack defaults: mounts/{cache,media,remote} only.
+	# remotes/, union/, views/ are created on demand (add-branch / add-view / union).
+	local -a dirs=(
+		"${RCLONE_HOME}/mounts"
+		"${RCLONE_HOME}/.cache/rclone"
+		"${RCLONE_CACHE}"
+		"${RCLONE_MEDIA}"
+		"${RCLONE_STATE_DIR}"
+		"${RCLONE_STATE_DIR}/mounts"
 		"${RCLONE_LOG_DIR}"
+	)
+	if [[ "${RCLONE_BRANCH:-main}" == "main" ]]; then
+		dirs+=("${RCLONE_HOME}/mounts/remote")
+	else
+		dirs+=("${RCLONE_HOME}/mounts/remotes" "${RCLONE_REMOTE_MOUNT}")
+	fi
+	install -d -m 0755 -o "${RCLONE_USER}" -g "${RCLONE_USER}" "${dirs[@]}"
 }
 
 # Append shell-quoted flag string into a nameref array (safe tokenization).

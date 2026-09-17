@@ -39,7 +39,7 @@ systemd:
         RCLONE_CONFIG: /home/%i/.config/rclone/rclone.conf
   exec:
     pre:
-      - /bin/mkdir -p /home/%i/.tmp/rclone /home/%i/.config/rclone /home/%i/mounts /home/%i/mounts/cache /home/%i/mounts/media /home/%i/mounts/remote /home/%i/mounts/remotes /home/%i/mounts/union /home/%i/mounts/views /home/%i/.krate/applications/rclone-cloud /home/%i/.krate/logs/rclone
+      - /bin/mkdir -p /home/%i/.tmp/rclone /home/%i/.config/rclone /home/%i/mounts /home/%i/mounts/cache /home/%i/mounts/media /home/%i/mounts/remote /home/%i/.krate/applications/rclone-cloud /home/%i/.krate/logs/rclone
     start:
       - /opt/%i/rclone/rclone-verify
 files:

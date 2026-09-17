@@ -105,9 +105,8 @@ rclone_cloud_setup::apply_user() {
 
 	install -d -m 0755 -o "${user}" -g "${user}" \
 		"${home}/mounts" "${home}/mounts/cache" "${home}/mounts/media" \
-		"${home}/mounts/union" "${home}/mounts/remote" "${home}/mounts/remotes" \
-		"${home}/mounts/views" \
-		"${state}" "${state}/mounts" "${state}/views" "${home}/.krate/logs/rclone" \
+		"${home}/mounts/remote" \
+		"${state}" "${state}/mounts" "${home}/.krate/logs/rclone" \
 		"${home}/.config/rclone"
 
 	[[ -f "${conf}" ]] || install -m 0600 -o "${user}" -g "${user}" /dev/null "${conf}"
@@ -229,7 +228,8 @@ rclone_cloud_setup::add_branch() {
 	local state="${home}/.krate/applications/rclone-cloud"
 	local mount_path="${home}/mounts/remotes/${branch}"
 
-	install -d -m 0755 -o "${user}" -g "${user}" "${mount_path}" "${state}/mounts"
+	install -d -m 0755 -o "${user}" -g "${user}" \
+		"${home}/mounts/remotes" "${mount_path}" "${state}/mounts"
 	local provider="import"
 	if [[ -f "${state}/profile.env" ]]; then
 		# shellcheck source=/dev/null
