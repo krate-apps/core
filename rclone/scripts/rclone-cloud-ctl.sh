@@ -307,6 +307,8 @@ PY
 	health_file="$(mktemp)"
 	printf '%s' "${health_json}" >"${health_file}"
 
+	# Nested remotes/branches/views are JSON; load them via json.loads so JSON
+	# true/false are not evaluated as Python identifiers (NameError: false).
 	python3 - "${health_file}" <<PY
 import json, sys
 health = json.load(open(sys.argv[1], encoding="utf-8"))
@@ -321,9 +323,9 @@ print(json.dumps({
   "primary_branch": $(rclone_ctl::json_escape "${primary_branch}"),
   "media_cloud_branch": $(rclone_ctl::json_escape "${media_cloud_branch}"),
   "oauth_ready": ${oauth_ready} == 1,
-  "oauth_pending": ${pending},
+  "oauth_pending": json.loads("${pending}"),
   "move": {
-    "enabled": $( [[ "${move_enabled}" == "1" ]] && echo true || echo false ),
+    "enabled": json.loads("$( [[ "${move_enabled}" == "1" ]] && echo true || echo false )"),
     "dest": $(rclone_ctl::json_escape "${move_dest}"),
     "min_age": $(rclone_ctl::json_escape "${move_min_age}"),
     "bwlimit": $(rclone_ctl::json_escape "${move_bwlimit}"),
@@ -339,9 +341,9 @@ print(json.dumps({
     "mergerfs_union": $(rclone_ctl::json_escape "$(rclone_ctl::unit_active "mergerfs-union@${user}.service")"),
     "move_timer": $(rclone_ctl::json_escape "$(rclone_ctl::unit_active "rclone-move@${user}.timer")"),
   },
-  "remotes": ${remotes_json},
-  "branches": ${branches_json},
-  "views": ${views_json},
+  "remotes": json.loads($(rclone_ctl::json_escape "${remotes_json}")),
+  "branches": json.loads($(rclone_ctl::json_escape "${branches_json}")),
+  "views": json.loads($(rclone_ctl::json_escape "${views_json}")),
   "health": health,
   "paths": {
     "remote": $(rclone_ctl::json_escape "${RCLONE_HOME}/mounts/remote"),
