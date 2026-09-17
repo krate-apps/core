@@ -107,6 +107,7 @@ rclone_ctl::status() {
 		esac
 	done
 	rclone_cloud::parse_instance "${user}"
+	rclone_cloud::migrate_layout "${user}" 2>/dev/null || true
 	local conf="${RCLONE_CONF}"
 	local profile="${RCLONE_PROFILE}"
 	local remotes=()
@@ -116,6 +117,8 @@ rclone_ctl::status() {
 	done < <(rclone_ctl::list_remotes "${conf}")
 
 	local primary=""
+	local primary_branch="main"
+	local media_cloud_branch="main"
 	local preset="media" mode="import" provider="import" drive_root="mydrive"
 	local move_dest="" move_min_age="30m" move_bwlimit="" move_enabled="0" tps="12"
 	if [[ -f "${profile}" ]]; then
@@ -130,8 +133,17 @@ rclone_ctl::status() {
 		move_bwlimit="${RCLONE_MOVE_BWLIMIT:-}"
 		move_enabled="${RCLONE_MOVE_ENABLED:-0}"
 		tps="${RCLONE_TPSLIMIT:-12}"
+		primary_branch="$(rclone_cloud::primary_branch)"
+		media_cloud_branch="${RCLONE_MEDIA_CLOUD_BRANCH:-${primary_branch}}"
+		case "${media_cloud_branch}" in
+		remote) media_cloud_branch="main" ;;
+		esac
 	fi
-	if [[ -f "${RCLONE_STATE_DIR}/mounts/main.env" ]]; then
+	if [[ -f "${RCLONE_STATE_DIR}/mounts/${primary_branch}.env" ]]; then
+		# shellcheck source=/dev/null
+		set -a && source "${RCLONE_STATE_DIR}/mounts/${primary_branch}.env" && set +a
+		primary="${RCLONE_REMOTE_SPEC%%:*}"
+	elif [[ -f "${RCLONE_STATE_DIR}/mounts/main.env" ]]; then
 		# shellcheck source=/dev/null
 		set -a && source "${RCLONE_STATE_DIR}/mounts/main.env" && set +a
 		primary="${RCLONE_REMOTE_SPEC%%:*}"
@@ -174,19 +186,28 @@ PY
 
 	local branches_json="["
 	local first=1
-	local f b
+	local f b mount_path is_primary
 	for f in "${RCLONE_STATE_DIR}/mounts"/*.env; do
 		[[ -f "${f}" ]] || continue
 		b="$(basename "${f}" .env)"
 		[[ "${b}" == "main" ]] && continue
+		# Dedicated views are listed separately.
+		if grep -q '^RCLONE_VIEW_MODE=1' "${f}" 2>/dev/null; then
+			continue
+		fi
 		[[ "${first}" -eq 1 ]] || branches_json+=","
 		first=0
 		# shellcheck source=/dev/null
 		set -a && source "${f}" && set +a
-		branches_json+=$(printf '{"id":%s,"remote_spec":%s,"unit":%s}' \
+		mount_path="$(rclone_cloud::remote_mount_path "${RCLONE_HOME}" "${b}")"
+		is_primary="false"
+		[[ "${b}" == "${primary_branch}" ]] && is_primary="true"
+		branches_json+=$(printf '{"id":%s,"remote_spec":%s,"unit":%s,"mount_path":%s,"primary":%s}' \
 			"$(rclone_ctl::json_escape "${b}")" \
 			"$(rclone_ctl::json_escape "${RCLONE_REMOTE_SPEC:-}")" \
-			"$(rclone_ctl::json_escape "rclone-mount@${user}--${b}.service")")
+			"$(rclone_ctl::json_escape "rclone-mount@${user}--${b}.service")" \
+			"$(rclone_ctl::json_escape "${mount_path}")" \
+			"${is_primary}")
 	done
 	branches_json+="]"
 
@@ -297,6 +318,8 @@ print(json.dumps({
   "provider": $(rclone_ctl::json_escape "${provider}"),
   "drive_root": $(rclone_ctl::json_escape "${drive_root}"),
   "primary_remote": $(rclone_ctl::json_escape "${primary}"),
+  "primary_branch": $(rclone_ctl::json_escape "${primary_branch}"),
+  "media_cloud_branch": $(rclone_ctl::json_escape "${media_cloud_branch}"),
   "oauth_ready": ${oauth_ready} == 1,
   "oauth_pending": ${pending},
   "move": {
@@ -322,6 +345,7 @@ print(json.dumps({
   "health": health,
   "paths": {
     "remote": $(rclone_ctl::json_escape "${RCLONE_HOME}/mounts/remote"),
+    "remote_primary": $(rclone_ctl::json_escape "$(rclone_cloud::remote_mount_path "${RCLONE_HOME}" "${primary_branch}")"),
     "cache": $(rclone_ctl::json_escape "${RCLONE_CACHE}"),
     "media": $(rclone_ctl::json_escape "${RCLONE_MEDIA}"),
     "union": $(rclone_ctl::json_escape "${RCLONE_UNION}"),
@@ -763,7 +787,26 @@ rclone_ctl::add_branch() {
 	rclone_cloud_setup::add_branch "${user}" "${branch}" "${remote_spec}" "${with_union}"
 	python3 - <<PY
 import json
-print(json.dumps({"ok": True, "branch": "${branch}", "remote_spec": "${remote_spec}", "union": ${with_union}}))
+print(json.dumps({"ok": True, "branch": "${branch}", "remote_spec": "${remote_spec}", "union": ${with_union}, "mount_path": "/home/${user}/mounts/remote/${branch}"}))
+PY
+}
+
+rclone_ctl::set_primary_branch() {
+	local user="${1:?}"
+	shift
+	local branch=""
+	while [[ $# -gt 0 ]]; do
+		case "$1" in
+		--branch) branch="${2:-}"; shift 2 ;;
+		*) shift ;;
+		esac
+	done
+	[[ -n "${branch}" ]] || rclone_ctl::fail "set-primary-branch requires --branch"
+	rclone_cloud_setup::set_primary_branch "${user}" "${branch}" \
+		|| rclone_ctl::fail "set-primary-branch failed for ${branch}"
+	python3 - <<PY
+import json
+print(json.dumps({"ok": True, "primary_branch": "${branch}", "mount_path": "/home/${user}/mounts/remote/${branch}"}))
 PY
 }
 
@@ -780,31 +823,22 @@ rclone_ctl::remove_branch() {
 	[[ -n "${branch}" ]] || rclone_ctl::fail "remove-branch requires --branch"
 	[[ "${branch}" != "main" ]] || rclone_ctl::fail "cannot remove main branch"
 	local instance="${user}--${branch}"
+	local state="/home/${user}/.krate/applications/rclone-cloud"
 	systemctl disable --now "rclone-mount@${instance}.service" 2>/dev/null || true
-	rm -f "/home/${user}/.krate/applications/rclone-cloud/mounts/${branch}.env"
-	# Refresh union if needed
-	if [[ -f /usr/lib/krate/rclone/rclone-cloud-setup.sh ]]; then
-		# rebuild via add_branch helper side-effect: call status rebuild
-		local state="/home/${user}/.krate/applications/rclone-cloud"
-		local branches_file="${state}/union.branches"
-		{
-			echo "/home/${user}/mounts/remote"
-			for f in "${state}/mounts"/*.env; do
-				[[ -f "${f}" ]] || continue
-				local b
-				b="$(basename "${f}" .env)"
-				[[ "${b}" == "main" ]] && continue
-				echo "/home/${user}/mounts/remotes/${b}"
-			done
-		} >"${branches_file}"
-		chown "${user}:${user}" "${branches_file}" 2>/dev/null || true
-		if [[ "$(grep -c . "${branches_file}" || true)" -ge 2 ]]; then
-			systemctl restart "mergerfs-union@${user}.service" || true
-		else
-			systemctl disable --now "mergerfs-union@${user}.service" 2>/dev/null || true
-			sed -i 's/^RCLONE_MEDIA_CLOUD_BRANCH=.*/RCLONE_MEDIA_CLOUD_BRANCH=remote/' "${state}/profile.env" 2>/dev/null || true
-			systemctl restart "mergerfs-media@${user}.service" 2>/dev/null || true
-		fi
+	rm -f "${state}/mounts/${branch}.env"
+	rclone_cloud::migrate_layout "${user}" 2>/dev/null || true
+	# If this branch was primary, fall back to main.
+	if [[ -f "${state}/profile.env" ]] && grep -q "^RCLONE_PRIMARY_BRANCH=${branch}$" "${state}/profile.env" 2>/dev/null; then
+		rclone_cloud_setup::set_primary_branch "${user}" "main" || true
+	fi
+	rclone_cloud::rebuild_union_branches "${user}"
+	local branches_file="${state}/union.branches"
+	if [[ "$(grep -c . "${branches_file}" || true)" -ge 2 ]]; then
+		systemctl restart "mergerfs-union@${user}.service" || true
+	else
+		systemctl disable --now "mergerfs-union@${user}.service" 2>/dev/null || true
+		sed -i 's/^RCLONE_MEDIA_CLOUD_BRANCH=union$/RCLONE_MEDIA_CLOUD_BRANCH=main/' "${state}/profile.env" 2>/dev/null || true
+		systemctl restart "mergerfs-media@${user}.service" 2>/dev/null || true
 	fi
 	python3 - <<PY
 import json
@@ -1076,7 +1110,8 @@ rclone_ctl::add_view() {
 	local home="${RCLONE_HOME}"
 	local state="${RCLONE_STATE_DIR}"
 	install -d -m 0755 -o "${user}" -g "${user}" \
-		"${home}/mounts/views" "${home}/mounts/cache/${view}" "${home}/mounts/remotes/${view}" \
+		"${home}/mounts/views" "${home}/mounts/cache/${view}" \
+		"$(rclone_cloud::remote_mount_path "${home}" "${view}")" \
 		"${home}/mounts/views/${view}" "${state}/views" "${state}/mounts"
 
 	# Ensure branch mount env (view mode)
@@ -1242,6 +1277,7 @@ oauth-complete) rclone_ctl::oauth_complete "${USER_NAME}" "${ARGS[@]+"${ARGS[@]}
 list-drives) rclone_ctl::list_drives "${USER_NAME}" "${ARGS[@]+"${ARGS[@]}"}" ;;
 crypt-create) rclone_ctl::crypt_create "${USER_NAME}" "${ARGS[@]+"${ARGS[@]}"}" ;;
 add-branch) rclone_ctl::add_branch "${USER_NAME}" "${ARGS[@]+"${ARGS[@]}"}" ;;
+set-primary-branch) rclone_ctl::set_primary_branch "${USER_NAME}" "${ARGS[@]+"${ARGS[@]}"}" ;;
 remove-branch) rclone_ctl::remove_branch "${USER_NAME}" "${ARGS[@]+"${ARGS[@]}"}" ;;
 logs) rclone_ctl::logs "${USER_NAME}" "${ARGS[@]+"${ARGS[@]}"}" ;;
 import-conf) rclone_ctl::import_conf "${USER_NAME}" "${ARGS[@]+"${ARGS[@]}"}" ;;

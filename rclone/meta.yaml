@@ -9,11 +9,6 @@ links:
 tier: pro
 category: cloud
 install_mode: local
-password_constraints:
-  min_length: 8
-  max_length: 128
-  require_upper: false
-  require_digit: false
 autocomplete_options:
   - --rclone-mode
   - --rclone-provider

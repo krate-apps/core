@@ -77,6 +77,7 @@ rclone_unit::mount_preflight() {
 }
 
 rclone_unit::mount_pre() {
+	rclone_cloud::migrate_layout "${RCLONE_USER}" 2>/dev/null || true
 	rclone_cloud::ensure_dirs
 	rclone_cloud::load_mount_env
 	rclone_unit::mount_preflight
@@ -118,6 +119,7 @@ rclone_unit::mount_stop() {
 }
 
 rclone_unit::media_pre() {
+	rclone_cloud::migrate_layout "${RCLONE_USER}" 2>/dev/null || true
 	rclone_cloud::ensure_dirs
 	rclone_cloud::load_mount_env 2>/dev/null || true
 	if [[ "${RCLONE_VIEW_MODE:-0}" == "1" && "${RCLONE_BRANCH}" != "main" ]]; then
@@ -125,7 +127,7 @@ rclone_unit::media_pre() {
 			"${RCLONE_HOME}/mounts/views" \
 			"${RCLONE_HOME}/mounts/views/${RCLONE_BRANCH}" \
 			"${RCLONE_HOME}/mounts/cache/${RCLONE_BRANCH}" \
-			"${RCLONE_HOME}/mounts/remotes/${RCLONE_BRANCH}"
+			"$(rclone_cloud::remote_mount_path "${RCLONE_HOME}" "${RCLONE_BRANCH}")"
 	fi
 }
 
@@ -133,11 +135,11 @@ rclone_unit::media_start() {
 	rclone_cloud::load_profile
 	rclone_cloud::load_mount_env 2>/dev/null || true
 
-	local cache_path cloud_path media_path what opts cloud_branch
-	# Named media views: cache/<branch> + remotes/<branch> → views/<branch>
+	local cache_path cloud_path media_path what opts
+	# Named media views: cache/<branch> + remote/<branch> → views/<branch>
 	if [[ "${RCLONE_VIEW_MODE:-0}" == "1" && "${RCLONE_BRANCH}" != "main" ]]; then
 		cache_path="${RCLONE_HOME}/mounts/cache/${RCLONE_BRANCH}"
-		cloud_path="${RCLONE_HOME}/mounts/remotes/${RCLONE_BRANCH}"
+		cloud_path="$(rclone_cloud::remote_mount_path "${RCLONE_HOME}" "${RCLONE_BRANCH}")"
 		media_path="${RCLONE_HOME}/mounts/views/${RCLONE_BRANCH}"
 		install -d -m 0755 -o "${RCLONE_USER}" -g "${RCLONE_USER}" "${cache_path}" "${cloud_path}" "${media_path}"
 		what="${cache_path}:${cloud_path}"
@@ -145,20 +147,7 @@ rclone_unit::media_start() {
 		exec mergerfs -o "${opts}" "${what}" "${media_path}"
 	fi
 
-	cloud_branch="${RCLONE_MEDIA_CLOUD_BRANCH:-remote}"
-	if [[ "${cloud_branch}" == "union" ]]; then
-		cloud_path="${RCLONE_UNION}"
-	else
-		cloud_path="${RCLONE_REMOTE_MOUNT}"
-		if [[ "${RCLONE_BRANCH}" == "main" ]]; then
-			cloud_path="${RCLONE_HOME}/mounts/remote"
-		fi
-	fi
-
-	if mountpoint -q "${RCLONE_UNION}" 2>/dev/null; then
-		cloud_path="${RCLONE_UNION}"
-	fi
-
+	cloud_path="$(rclone_cloud::media_cloud_path)"
 	what="${RCLONE_CACHE}:${cloud_path}"
 	opts="${RCLONE_MERGERFS_OPTS:-async_read=false,use_ino,allow_other,auto_cache,func.getattr=newest,category.action=all,category.create=ff,dropcacheonclose=true}"
 	exec mergerfs -o "${opts}" "${what}" "${RCLONE_MEDIA}"

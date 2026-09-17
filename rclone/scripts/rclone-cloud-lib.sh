@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Shared helpers for rclone cloud mount / mergerfs / move stack.
+# Layout: ~/mounts/remote/<branch> (primary feeds ~/mounts/media via RCLONE_PRIMARY_BRANCH).
 # shellcheck disable=SC2034
 set -euo pipefail
 
@@ -22,11 +23,8 @@ rclone_cloud::parse_instance() {
 	RCLONE_CACHE="${RCLONE_HOME}/mounts/cache"
 	RCLONE_MEDIA="${RCLONE_HOME}/mounts/media"
 	RCLONE_UNION="${RCLONE_HOME}/mounts/union"
-	if [[ "${RCLONE_BRANCH}" == "main" ]]; then
-		RCLONE_REMOTE_MOUNT="${RCLONE_HOME}/mounts/remote"
-	else
-		RCLONE_REMOTE_MOUNT="${RCLONE_HOME}/mounts/remotes/${RCLONE_BRANCH}"
-	fi
+	# Every cloud FUSE lives under mounts/remote/<branch> (main → remote/main).
+	RCLONE_REMOTE_MOUNT="${RCLONE_HOME}/mounts/remote/${RCLONE_BRANCH}"
 }
 
 rclone_cloud::load_profile() {
@@ -51,6 +49,38 @@ rclone_cloud::load_mount_env() {
 	: "${RCLONE_REMOTE_SPEC:?RCLONE_REMOTE_SPEC required in ${RCLONE_MOUNT_ENV}}"
 }
 
+# Primary branch id used by media (and default move dest). Defaults to main.
+rclone_cloud::primary_branch() {
+	local b="${RCLONE_PRIMARY_BRANCH:-}"
+	if [[ -z "${b}" ]]; then
+		# Legacy: MEDIA_CLOUD_BRANCH=remote meant the anonymous main mount.
+		case "${RCLONE_MEDIA_CLOUD_BRANCH:-}" in
+		"" | remote) b="main" ;;
+		union) b="main" ;;
+		*) b="${RCLONE_MEDIA_CLOUD_BRANCH}" ;;
+		esac
+	fi
+	printf '%s\n' "${b}"
+}
+
+rclone_cloud::remote_mount_path() {
+	local home="${1:?}" branch="${2:?}"
+	printf '%s\n' "${home}/mounts/remote/${branch}"
+}
+
+# Cloud leg for mergerfs-media (primary branch path, or union).
+rclone_cloud::media_cloud_path() {
+	local home="${RCLONE_HOME:?}"
+	local branch cloud
+	if [[ "${RCLONE_MEDIA_CLOUD_BRANCH:-}" == "union" ]] || mountpoint -q "${RCLONE_UNION}" 2>/dev/null; then
+		printf '%s\n' "${RCLONE_UNION}"
+		return 0
+	fi
+	branch="$(rclone_cloud::primary_branch)"
+	cloud="$(rclone_cloud::remote_mount_path "${home}" "${branch}")"
+	printf '%s\n' "${cloud}"
+}
+
 rclone_cloud::rclone_bin() {
 	local u="${RCLONE_USER:-}"
 	if [[ -n "${u}" && -x "/opt/${u}/rclone/rclone" ]]; then
@@ -69,23 +99,151 @@ rclone_cloud::run_as_user() {
 	fi
 }
 
+rclone_cloud::fusermount_uz() {
+	local target="${1:?}"
+	if mountpoint -q "${target}" 2>/dev/null; then
+		fusermount3 -uz "${target}" 2>/dev/null || fusermount -uz "${target}" 2>/dev/null || true
+	fi
+}
+
+# Idempotent layout migration: mounts/remote leaf + mounts/remotes/* → mounts/remote/<name>.
+rclone_cloud::migrate_layout() {
+	local user="${1:?}"
+	local home="/home/${user}"
+	local state="${home}/.krate/applications/rclone-cloud"
+	local remote_root="${home}/mounts/remote"
+	local remotes_root="${home}/mounts/remotes"
+	local profile="${state}/profile.env"
+	local branches_file="${state}/union.branches"
+	local migrated=0
+
+	install -d -m 0755 -o "${user}" -g "${user}" "${home}/mounts" "${state}" "${state}/mounts"
+
+	# Old leaf mount at mounts/remote (no subdirectory named after a branch).
+	if mountpoint -q "${remote_root}" 2>/dev/null; then
+		rclone_cloud::fusermount_uz "${remote_root}"
+		migrated=1
+	fi
+
+	# If mounts/remote exists but is not yet a parent of main/, promote to remote/main.
+	if [[ -d "${remote_root}" && ! -d "${remote_root}/main" ]]; then
+		# Only treat as legacy leaf if it has no branch-like children yet.
+		local child has_branch_child=0
+		shopt -s nullglob
+		for child in "${remote_root}"/*; do
+			[[ -d "${child}" ]] || continue
+			case "$(basename "${child}")" in
+			main | cache | media | union | remotes | views) ;;
+			*)
+				# Already looks like new layout (e.g. remote/backup) without main yet.
+				has_branch_child=1
+				;;
+			esac
+		done
+		shopt -u nullglob
+		if [[ "${has_branch_child}" -eq 0 ]]; then
+			# Empty (post-umount) or leftover files: create main and move loose entries aside.
+			install -d -m 0755 -o "${user}" -g "${user}" "${remote_root}/main"
+			migrated=1
+		fi
+	fi
+
+	install -d -m 0755 -o "${user}" -g "${user}" "${remote_root}/main"
+
+	# Move legacy plural remotes/* → remote/*
+	if [[ -d "${remotes_root}" ]]; then
+		local d name dest
+		shopt -s nullglob
+		for d in "${remotes_root}"/*; do
+			[[ -e "${d}" ]] || continue
+			name="$(basename "${d}")"
+			dest="${remote_root}/${name}"
+			if mountpoint -q "${d}" 2>/dev/null; then
+				rclone_cloud::fusermount_uz "${d}"
+			fi
+			if [[ -e "${dest}" ]]; then
+				# Prefer keeping existing target; drop empty source.
+				rmdir "${d}" 2>/dev/null || true
+			else
+				mv "${d}" "${dest}"
+			fi
+			migrated=1
+		done
+		shopt -u nullglob
+		rmdir "${remotes_root}" 2>/dev/null || true
+	fi
+
+	# Rewrite union.branches paths.
+	if [[ -f "${branches_file}" ]]; then
+		local tmp
+		tmp="$(mktemp)"
+		while IFS= read -r line || [[ -n "${line}" ]]; do
+			[[ -z "${line}" || "${line}" =~ ^# ]] && continue
+			line="${line//${home}\/mounts\/remotes\//${home}\/mounts\/remote\/}"
+			if [[ "${line}" == "${home}/mounts/remote" ]]; then
+				line="${home}/mounts/remote/main"
+			fi
+			printf '%s\n' "${line}"
+		done <"${branches_file}" >"${tmp}"
+		mv "${tmp}" "${branches_file}"
+		chown "${user}:${user}" "${branches_file}" 2>/dev/null || true
+	fi
+
+	# Profile: introduce PRIMARY_BRANCH; map legacy MEDIA_CLOUD_BRANCH=remote → main.
+	if [[ -f "${profile}" ]]; then
+		if ! grep -q '^RCLONE_PRIMARY_BRANCH=' "${profile}" 2>/dev/null; then
+			echo 'RCLONE_PRIMARY_BRANCH=main' >>"${profile}"
+			migrated=1
+		fi
+		if grep -q '^RCLONE_MEDIA_CLOUD_BRANCH=remote$' "${profile}" 2>/dev/null; then
+			sed -i 's/^RCLONE_MEDIA_CLOUD_BRANCH=remote$/RCLONE_MEDIA_CLOUD_BRANCH=main/' "${profile}"
+			migrated=1
+		fi
+		chown "${user}:${user}" "${profile}" 2>/dev/null || true
+		chmod 0600 "${profile}" 2>/dev/null || true
+	fi
+
+	[[ "${migrated}" -eq 1 ]] || return 0
+	return 0
+}
+
+rclone_cloud::rebuild_union_branches() {
+	local user="${1:?}"
+	local home="/home/${user}"
+	local state="${home}/.krate/applications/rclone-cloud"
+	local branches_file="${state}/union.branches"
+	local f b
+	{
+		echo "$(rclone_cloud::remote_mount_path "${home}" "main")"
+		for f in "${state}/mounts"/*.env; do
+			[[ -f "${f}" ]] || continue
+			b="$(basename "${f}" .env)"
+			[[ "${b}" == "main" ]] && continue
+			# Skip dedicated media views (they have their own mergerfs).
+			if grep -q '^RCLONE_VIEW_MODE=1' "${f}" 2>/dev/null; then
+				continue
+			fi
+			echo "$(rclone_cloud::remote_mount_path "${home}" "${b}")"
+		done
+	} >"${branches_file}"
+	chown "${user}:${user}" "${branches_file}" 2>/dev/null || true
+}
+
 rclone_cloud::ensure_dirs() {
-	# Media stack defaults: mounts/{cache,media,remote} only.
-	# remotes/, union/, views/ are created on demand (add-branch / add-view / union).
+	local primary
+	primary="$(rclone_cloud::primary_branch 2>/dev/null || echo main)"
 	local -a dirs=(
 		"${RCLONE_HOME}/mounts"
 		"${RCLONE_HOME}/.cache/rclone"
 		"${RCLONE_CACHE}"
 		"${RCLONE_MEDIA}"
+		"${RCLONE_HOME}/mounts/remote"
+		"${RCLONE_REMOTE_MOUNT}"
+		"$(rclone_cloud::remote_mount_path "${RCLONE_HOME}" "${primary}")"
 		"${RCLONE_STATE_DIR}"
 		"${RCLONE_STATE_DIR}/mounts"
 		"${RCLONE_LOG_DIR}"
 	)
-	if [[ "${RCLONE_BRANCH:-main}" == "main" ]]; then
-		dirs+=("${RCLONE_HOME}/mounts/remote")
-	else
-		dirs+=("${RCLONE_HOME}/mounts/remotes" "${RCLONE_REMOTE_MOUNT}")
-	fi
 	install -d -m 0755 -o "${RCLONE_USER}" -g "${RCLONE_USER}" "${dirs[@]}"
 }
 
