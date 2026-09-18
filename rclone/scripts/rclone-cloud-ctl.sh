@@ -1346,17 +1346,6 @@ PY
 rclone_ctl::teardown() {
 	local user="${1:?}"
 	rclone_cloud_setup::teardown_user "${user}"
-	# Also stop media views
-	local u
-	for u in $(systemctl list-units --type=service --all --no-legend 'mergerfs-media@*.service' 2>/dev/null | awk '{print $1}'); do
-		case "${u}" in
-		mergerfs-media@"${user}"--*.service)
-			systemctl disable --now "${u}" 2>/dev/null || true
-			;;
-		esac
-	done
-	rm -rf "/etc/systemd/system/rclone-move@${user}.timer.d" 2>/dev/null || true
-	systemctl daemon-reload 2>/dev/null || true
 	python3 - <<PY
 import json
 print(json.dumps({"ok": True, "teardown": "${user}"}))

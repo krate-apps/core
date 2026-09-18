@@ -211,12 +211,16 @@ EOF
 
 rclone_cloud_setup::teardown_user() {
 	local user="${1:?username}"
+	local home="/home/${user}"
+	local state="${home}/.krate/applications/rclone-cloud"
+
 	systemctl disable --now "rclone-mount@${user}.service" 2>/dev/null || true
 	systemctl disable --now "mergerfs-media@${user}.service" 2>/dev/null || true
 	systemctl disable --now "mergerfs-union@${user}.service" 2>/dev/null || true
 	systemctl disable --now "rclone-move@${user}.timer" 2>/dev/null || true
 	systemctl disable --now "rclone-move@${user}.service" 2>/dev/null || true
-	# Extra branches: username--*
+
+	# Extra branches + named media views: username--*
 	local u
 	for u in $(systemctl list-units --type=service --all --no-legend 'rclone-mount@*.service' 2>/dev/null | awk '{print $1}'); do
 		case "${u}" in
@@ -225,6 +229,50 @@ rclone_cloud_setup::teardown_user() {
 			;;
 		esac
 	done
+	for u in $(systemctl list-units --type=service --all --no-legend 'mergerfs-media@*.service' 2>/dev/null | awk '{print $1}'); do
+		case "${u}" in
+		mergerfs-media@"${user}"--*.service)
+			systemctl disable --now "${u}" 2>/dev/null || true
+			;;
+		esac
+	done
+
+	# Drop FUSE before deleting mountpoint directories.
+	local p
+	shopt -s nullglob
+	for p in \
+		"${home}/mounts/media" \
+		"${home}/mounts/union" \
+		"${home}/mounts/remote" \
+		"${home}/mounts/remote"/* \
+		"${home}/mounts/remotes"/* \
+		"${home}/mounts/views"/*; do
+		[[ -e "${p}" ]] || continue
+		rclone_cloud::fusermount_uz "${p}" 2>/dev/null || true
+	done
+	shopt -u nullglob
+
+	# Remove cloud layout + state (keep ~/.config/rclone conf — data_dir lifecycle owns it).
+	rm -rf \
+		"${home}/mounts/cache" \
+		"${home}/mounts/media" \
+		"${home}/mounts/remote" \
+		"${home}/mounts/remotes" \
+		"${home}/mounts/union" \
+		"${home}/mounts/views" \
+		"${state}" \
+		"${home}/.cache/rclone"
+	rmdir "${home}/mounts" 2>/dev/null || true
+
+	rm -rf "/etc/systemd/system/rclone-move@${user}.timer.d" 2>/dev/null || true
+	systemctl daemon-reload 2>/dev/null || true
+	systemctl reset-failed \
+		"rclone-mount@${user}.service" \
+		"mergerfs-media@${user}.service" \
+		"mergerfs-union@${user}.service" \
+		"rclone-move@${user}.timer" \
+		"rclone-move@${user}.service" \
+		2>/dev/null || true
 }
 
 # Add an advanced branch: rclone_cloud_setup::add_branch user branchid remote_spec [union=0|1]
