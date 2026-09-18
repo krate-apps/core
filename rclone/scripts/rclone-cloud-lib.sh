@@ -106,6 +106,16 @@ rclone_cloud::fusermount_uz() {
 	fi
 }
 
+# True when ~/mounts/cache (local move staging) still has files — must not tear down.
+rclone_cloud::cache_has_pending_files() {
+	local cache="${1:?}"
+	[[ -d "${cache}" ]] || return 1
+	# Any regular file under cache (empty dirs are OK).
+	local hit
+	hit="$(find "${cache}" -xdev -type f -print -quit 2>/dev/null || true)"
+	[[ -n "${hit}" ]]
+}
+
 # Idempotent layout migration: mounts/remote leaf + mounts/remotes/* → mounts/remote/<name>.
 rclone_cloud::migrate_layout() {
 	local user="${1:?}"

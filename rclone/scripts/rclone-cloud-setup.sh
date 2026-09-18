@@ -213,6 +213,14 @@ rclone_cloud_setup::teardown_user() {
 	local user="${1:?username}"
 	local home="/home/${user}"
 	local state="${home}/.krate/applications/rclone-cloud"
+	local cache="${home}/mounts/cache"
+
+	# Refuse any teardown/remove while staged files remain in the local cache.
+	if rclone_cloud::cache_has_pending_files "${cache}"; then
+		echo "rclone: refuse remove/teardown — ${cache} is not empty (pending files for move)." >&2
+		echo "  Empty or finish moving that cache, then retry uninstall / zen rclone teardown ${user}." >&2
+		return 1
+	fi
 
 	systemctl disable --now "rclone-mount@${user}.service" 2>/dev/null || true
 	systemctl disable --now "mergerfs-media@${user}.service" 2>/dev/null || true

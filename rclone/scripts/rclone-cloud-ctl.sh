@@ -1345,7 +1345,9 @@ PY
 
 rclone_ctl::teardown() {
 	local user="${1:?}"
-	rclone_cloud_setup::teardown_user "${user}"
+	if ! rclone_cloud_setup::teardown_user "${user}"; then
+		rclone_ctl::fail "teardown blocked: empty ~/mounts/cache first (pending move files)"
+	fi
 	python3 - <<PY
 import json
 print(json.dumps({"ok": True, "teardown": "${user}"}))
