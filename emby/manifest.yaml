@@ -14,7 +14,12 @@ install:
     backup_dir: /home/%i/.krate/backups/emby
     temp_dir: /home/%i/.tmp/emby
   release:
+    # Tags are bare versions (4.11.0.1). Channel is the GitHub prerelease flag.
+    # Do not use stable/beta/canary here — those tokens filter tag_name in zenfw.
     asset: emby-server-deb_
+    branches:
+      main: latest
+      beta: prerelease
   executable:
     - /opt/%i/emby/bin/emby-server
 systemd:
