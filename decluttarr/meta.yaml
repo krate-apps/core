@@ -1,6 +1,7 @@
 id: decluttarr
 name: Decluttarr
 description: "Background worker (no web UI): cleans *arr queues and download clients. Configure config.yaml (*arr API keys and/or qBittorrent); logs via journalctl. Useless without at least one configured target."
+source: https://github.com/ManiMatter/decluttarr
 links:
   homepage: https://github.com/ManiMatter/decluttarr
   documentation: https://github.com/ManiMatter/decluttarr#readme

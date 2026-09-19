@@ -55,6 +55,5 @@ security:
       - /opt/%i/decluttarr
 version:
   probes:
-    - type: pip
-      venv: "{install_dir}/.venv"
-      package: decluttarr
+    - type: file
+      path: "{data_dir}/VERSION"
