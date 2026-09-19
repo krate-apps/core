@@ -77,24 +77,24 @@
      }
 --- a/frontend/src/App.jsx	2026-06-05 20:38:49.000000000 +0200
 +++ b/frontend/src/App.jsx	2026-06-06 13:50:24.683994241 +0200
-@@ -73,7 +73,7 @@
-         if (error.status === 401) {
-           localStorage.removeItem('token');
+@@ -86,7 +86,7 @@
+           localStorage.removeItem('accessToken');
            localStorage.removeItem('refreshToken');
+           localStorage.removeItem('tokenExpiration');
 -          window.location.href = '/login';
 +          window.location.href = (import.meta.env.BASE_URL || '/') + 'login';
          }
        }
      }
-@@ -111,7 +111,7 @@
-       withNormalizeCSS
+@@ -125,7 +125,7 @@
      >
-       <WebsocketProvider>
--        <Router>
-+        <Router basename={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-           <AppShell
-             header={{
-               height: 0,
+       <ErrorBoundary name="application">
+         <WebsocketProvider>
+-          <Router>
++          <Router basename={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+             <AppShell
+               header={{
+                 height: 0,
 --- a/frontend/src/WebSocket.jsx	2026-06-05 20:38:49.000000000 +0200
 +++ b/frontend/src/WebSocket.jsx	2026-06-06 13:50:24.684994266 +0200
 @@ -82,9 +82,10 @@
