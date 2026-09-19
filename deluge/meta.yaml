@@ -9,7 +9,14 @@ links:
 tier: pro
 category: download
 install_mode: local
+autocomplete_options:
+  - -b
 ui_options:
+  branches:
+    options:
+      - main
+      - beta
+    label: app.branch
   subdomain:
     enabled: false
     label: app.subdomain

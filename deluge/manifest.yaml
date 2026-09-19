@@ -13,6 +13,12 @@ dependencies:
     common:
       packages: curl wget ca-certificates python3.13 python3.13-venv python3.13-dev python3-rencode build-essential libffi-dev pkg-config
 install:
+  # Vendor slots from krate-apps/snapshots (BINARIES_CATALOG). Not git branches:
+  # main = oldest deb (2.1.1), beta = newest (2.2.0). Resolved by binary::slot::resolve.
+  release:
+    branches:
+      main: oldest
+      beta: newest
   layout:
     install_dir: /opt/%i/deluge
     backup_dir: /home/%i/.krate/backups/deluge
