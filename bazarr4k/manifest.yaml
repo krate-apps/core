@@ -15,6 +15,9 @@ install:
     temp_dir: /home/%i/.tmp/bazarr4k
   release:
     asset: bazarr.zip
+    branches:
+      main: master
+      beta: development
   executable:
     - /opt/%i/bazarr4k/bazarr.py
 systemd:
