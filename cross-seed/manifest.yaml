@@ -1,5 +1,7 @@
 id: cross-seed
 multi_user: true
+proxy:
+  mode: disabled
 runtime:
   kind: systemd
   service_template: cross-seed@.service
