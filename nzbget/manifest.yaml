@@ -78,7 +78,6 @@ security:
 version:
   probes:
     - type: executable
-      cmd: "{install_dir}/nzbget/usr/bin/nzbget"
-      args: --version
-      regex: '(?:version:\s*)?v?([0-9]+\.[0-9]+[^\s]*)'
-      requires: inactive
+      cmd: "{install_dir}/usr/bin/nzbget"
+      args: -n --version
+      regex: 'nzbget version:\s*v?([0-9]+\.[0-9]+[^\s]*)'
