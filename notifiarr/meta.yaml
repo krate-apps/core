@@ -16,7 +16,6 @@ password_constraints:
   require_digit: false
 autocomplete_options:
   - -b
-  - -k
   - --notifiarr-api-key
 ui_options:
   branches:

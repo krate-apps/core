@@ -32,6 +32,12 @@ systemd:
       DN_HTTP_LOG: /home/%i/.config/notifiarr/logs/http.log
       DN_DEBUG_LOG: /home/%i/.config/notifiarr/logs/debug.log
       DN_SERVICES_LOG_FILE: /home/%i/.config/notifiarr/logs/services.log
+    file:
+      path: /home/%i/.krate/applications/notifiarr.env
+      mode: "0600"
+      variables:
+        DN_URLBASE: "{url_base}"
+        DN_UPSTREAMS_0: "127.0.0.1/32"
   exec:
     pre:
       - /bin/mkdir -p /home/%i/.tmp/notifiarr /home/%i/.config/notifiarr/logs
@@ -42,6 +48,7 @@ files:
   service: /etc/systemd/system/notifiarr@.service
   config:
     - /home/%i/.config/notifiarr/notifiarr.conf
+    - /home/%i/.krate/applications/notifiarr.env
   proxy:
     - /etc/caddy/softwares/%i.notifiarr.caddy
   binary:
@@ -55,6 +62,7 @@ security:
       - /home/%i/.config/notifiarr
       - /home/%i/.tmp/notifiarr
       - /home/%i/.krate/backups/notifiarr
+      - /home/%i/.krate/applications
     read_only:
       - /opt/%i/notifiarr
 version:
