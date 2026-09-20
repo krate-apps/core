@@ -28,11 +28,13 @@ systemd:
   environment:
     inline:
       TMPDIR: /home/%i/.tmp/lidarr
+      LIDARR__SERVER__ALLOWEDHOSTS: "*"
     file:
       path: /home/%i/.krate/applications/lidarr.env
       mode: "0600"
       variables:
         LIDARR__SERVER__BINDADDRESS: 127.0.0.1
+        LIDARR__SERVER__ALLOWEDHOSTS: "*"
         LIDARR__SERVER__PORT: "{default_port}"
         LIDARR__SERVER__URLBASE: "{url_base}"
         LIDARR__SERVER__ENABLESSL: "False"
