@@ -27,13 +27,13 @@ systemd:
   environment:
     inline:
       TMPDIR: /home/%i/.tmp/sonarr
-      SONARR__SERVER__ALLOWEDHOSTS: "*"
+      SONARR__SERVER__ALLOWEDHOSTS: "localhost,127.0.0.1"
     file:
       path: /home/%i/.krate/applications/sonarr.env
       mode: "0600"
       variables:
         SONARR__SERVER__BINDADDRESS: 127.0.0.1
-        SONARR__SERVER__ALLOWEDHOSTS: "*"
+        SONARR__SERVER__ALLOWEDHOSTS: "localhost,127.0.0.1"
         SONARR__SERVER__PORT: "{default_port}"
         SONARR__SERVER__URLBASE: "{url_base}"
         SONARR__SERVER__ENABLESSL: "False"
