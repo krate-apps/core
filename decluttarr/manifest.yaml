@@ -8,7 +8,7 @@ runtime:
 dependencies:
   apt:
     common:
-      packages: git curl ca-certificates python3.13 python3.13-venv python3.13-dev build-essential
+      packages: git curl ca-certificates python3 python3-venv python3-dev python3-pip build-essential
 install:
   release:
     branches:
@@ -57,3 +57,11 @@ version:
   probes:
     - type: file
       path: "{data_dir}/VERSION"
+    - type: http_json
+      url: https://api.github.com/repos/ManiMatter/decluttarr/tags
+      field: 0.name
+  latest:
+    probes:
+      - type: http_json
+        url: https://api.github.com/repos/ManiMatter/decluttarr/tags
+        field: 0.name
