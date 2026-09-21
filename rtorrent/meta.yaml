@@ -1,6 +1,6 @@
 id: rtorrent
 name: rTorrent
-description: "rTorrent vendor binary and rtorrent@<user> service. Config ~/.config/rtorrent/.rtorrent.rc. tmux session rtorrent-<user>, SCGI /run/krate/user/<user>.rtorrent.sock. autogen port_range."
+description: "rTorrent vendor binary and rtorrent@<user> service. Config ~/.config/rtorrent/.rtorrent.rc (0.16.23 dialect; migrate via update or bin/rtorrent-rc-convert.sh). tmux session rtorrent-<user>, SCGI /run/krate/user/<user>.rtorrent.sock. autogen port_range. Slots: 0.15.7, 0.16.23 (0.16.11 archived)."
 links:
   homepage: http://rakshasa.github.io/rtorrent/
   documentation: http://rakshasa.github.io/rtorrent/

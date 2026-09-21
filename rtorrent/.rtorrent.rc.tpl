@@ -1,5 +1,5 @@
 #
-# rTorrent configuration (KRATE template)
+# rTorrent configuration (KRATE template — 0.16.23 canonical syntax)
 # Canonical paths (do not change without updating manifest + ruTorrent/Flood):
 #   Config:  /home/{{USERNAME}}/.config/rtorrent/.rtorrent.rc
 #   SCGI:    /run/krate/user/{{USERNAME}}.rtorrent.sock
@@ -20,7 +20,7 @@ method.insert = cfg.watch,    private|const|string, (cat,"{{WATCH_DIR}}")
 method.insert = cfg.socket,   private|const|string, (cat,"/run/krate/user/{{USERNAME}}.rtorrent.sock")
 
 # =============================================================================
-# 2. Session, working directory, encoding
+# 2. Session, working directory
 # =============================================================================
 session.path.set = (cat, (cfg.session))
 session.use_lock.set = yes
@@ -28,7 +28,6 @@ directory.default.set = (cat, (cfg.download))
 system.cwd.set = (directory.default)
 system.umask.set = 0007
 system.daemon.set = false
-encoding.add = utf8
 
 # =============================================================================
 # 3. File logging for executed commands
@@ -38,22 +37,22 @@ log.execute = (cat, (cfg.logs), "execute.log")
 # =============================================================================
 # 4. BitTorrent networking — ports, DHT/PEX, encryption
 # =============================================================================
-network.port_range.set = {{PORT_RANGE}}
-network.port_random.set = yes
+network.listen.port.range.set = {{PORT_RANGE}}
+network.listen.port.random.set = yes
 network.tos.set = throughput
 
 dht.mode.set = disable
 protocol.pex.set = no
-trackers.use_udp.set = yes
 
 protocol.encryption.set = allow_incoming,prefer_plaintext,enable_retry
 
 # =============================================================================
-# 5. Socket / file / buffer limits (tune to ulimit and workload)
+# 5. Socket / file / buffer limits (socket categories; tune to LimitNOFILE=16384)
 # =============================================================================
-network.http.max_open.set = 250
-network.max_open_files.set = 8192
-network.max_open_sockets.set = 2048
+system.sockets.http.min_alloc.set = 250
+system.sockets.files.min_alloc.set = 4096
+system.sockets.adjust_alloc =
+
 network.send_buffer.size.set = 16M
 network.receive_buffer.size.set = 4M
 
@@ -98,12 +97,12 @@ method.insert = d.session_file, simple, "cat=(session.path), (d.hash), .torrent"
 # =============================================================================
 # 9. Schedules — free disk space, watch folders
 # =============================================================================
-schedule2 = monitor_diskspace, 15, 60, ((close_low_diskspace, 1000M))
+schedule = monitor_diskspace, 15, 60, ((close_low_diskspace, 1000M))
 
 # Auto-add from watch/load/*.torrent
-schedule2 = watch_load, 11, 10, ((load.verbose, (cat, (cfg.watch), "/load/*.torrent")))
+schedule = watch_load, 11, 10, ((load.verbose, (cat, (cfg.watch), "/load/*.torrent")))
 # Auto-add and start from watch/start/*.torrent
-schedule2 = watch_start, 10, 10, ((load.start_verbose, (cat, (cfg.watch), "/start/*.torrent")))
+schedule = watch_start, 10, 10, ((load.start_verbose, (cat, (cfg.watch), "/start/*.torrent")))
 
 # =============================================================================
 # 10. SCGI — /run/krate/user/<user>.rtorrent.sock (setgid dir + systemd Group=krate, see krate-run.conf)
@@ -125,7 +124,7 @@ log.add_output = "connection", "log"
 # =============================================================================
 # 12. ruTorrent plugin init (run by rutorrent handler on install/update)
 # =============================================================================
-#schedule2 = init_plugins, 10, 0, "execute2={sh,-c,/usr/bin/php /srv/rutorrent/app/php/initplugins.php {{USERNAME}} &}"
+#schedule = init_plugins, 10, 0, "execute={sh,-c,/usr/bin/php /srv/rutorrent/app/php/initplugins.php {{USERNAME}} &}"
 
 # =============================================================================
 # 13. Commented options (reference)

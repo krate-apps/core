@@ -33,7 +33,7 @@ systemd:
     Restart: on-failure
     RestartSec: 5
     TimeoutStopSec: 30
-    LimitNOFILE: "8192"
+    LimitNOFILE: "16384"
     Group: krate
     UMask: "0007"
     SupplementaryGroups: krate
