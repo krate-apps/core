@@ -75,8 +75,13 @@ security:
       - /opt/%i/kapowarr
 version:
   probes:
-    - type: http_json
-      url: "http://127.0.0.1:{default_port}{root_url}/api/v1/system/status"
-      field: version
-      auth: apikey
-      requires: active
+    - type: file
+      path: "{data_dir}/VERSION"
+    - type: executable
+      cmd: "{install_dir}/.venv/bin/python"
+      args: -c "import tomllib; print(tomllib.load(open('{install_dir}/pyproject.toml','rb'))['project']['version'])"
+  latest:
+    probes:
+      - type: http_json
+        url: https://api.github.com/repos/Casvt/Kapowarr/releases/latest
+        field: tag_name
