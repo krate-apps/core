@@ -25,15 +25,13 @@ systemd:
     TimeoutStopSec: 20
     Type: simple
   environment:
-    inline:
-      TMPDIR: /home/%i/.tmp/radarr4k
-      RADARR__SERVER__ALLOWEDHOSTS: "localhost,127.0.0.1"
     file:
       path: /home/%i/.krate/applications/radarr4k.env
       mode: "0600"
       variables:
-        RADARR__SERVER__BINDADDRESS: 127.0.0.1
+        TMPDIR: /home/%i/.tmp/radarr4k
         RADARR__SERVER__ALLOWEDHOSTS: "localhost,127.0.0.1"
+        RADARR__SERVER__BINDADDRESS: 127.0.0.1
         RADARR__SERVER__PORT: "{default_port}"
         RADARR__SERVER__URLBASE: "{url_base}"
         RADARR__SERVER__ENABLESSL: "False"
