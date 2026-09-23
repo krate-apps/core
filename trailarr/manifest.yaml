@@ -28,12 +28,13 @@ systemd:
     RestartSec: "10"
     WorkingDirectory: /opt/%i/trailarr/backend
   environment:
-    inline:
-      TMPDIR: /home/%i/.tmp/trailarr
-      PYTHONUNBUFFERED: "1"
-      PYTHONPATH: /opt/%i/trailarr/backend
     file:
       path: /home/%i/.config/trailarr/.env
+      mode: "0600"
+      variables:
+        TMPDIR: /home/%i/.tmp/trailarr
+        PYTHONUNBUFFERED: "1"
+        PYTHONPATH: /opt/%i/trailarr/backend
   exec:
     pre:
       - /bin/mkdir -p /home/%i/.tmp/trailarr /home/%i/.config/trailarr/backups
