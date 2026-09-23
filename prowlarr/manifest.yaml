@@ -21,15 +21,13 @@ systemd:
     TimeoutStopSec: 20
     Type: simple
   environment:
-    inline:
-      TMPDIR: /home/%i/.tmp/prowlarr
-      PROWLARR__SERVER__ALLOWEDHOSTS: "localhost,127.0.0.1"
     file:
       path: /home/%i/.krate/applications/prowlarr.env
       mode: "0600"
       variables:
-        PROWLARR__SERVER__BINDADDRESS: 127.0.0.1
+        TMPDIR: /home/%i/.tmp/prowlarr
         PROWLARR__SERVER__ALLOWEDHOSTS: "localhost,127.0.0.1"
+        PROWLARR__SERVER__BINDADDRESS: 127.0.0.1
         PROWLARR__SERVER__PORT: "{default_port}"
         PROWLARR__SERVER__URLBASE: "{url_base}"
         PROWLARR__SERVER__ENABLESSL: "False"
