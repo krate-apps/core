@@ -27,18 +27,17 @@ systemd:
     RestartSec: "10"
     WorkingDirectory: /opt/%i/audiobookshelf
   environment:
-    inline:
-      TMPDIR: /home/%i/.tmp/audiobookshelf
-      HOME: /home/%i
-      NODE_ENV: production
-      CYPRESS_INSTALL_BINARY: "0"
-      PNPM_HOME: /home/%i/.local/share/pnpm
-      PATH: /home/%i/.local/share/pnpm/bin:/home/%i/.local/share/pnpm:/usr/local/bin:/usr/bin:/bin
-      SOURCE: krate
     file:
       path: /home/%i/.krate/applications/audiobookshelf.env
       mode: "0600"
       variables:
+        TMPDIR: /home/%i/.tmp/audiobookshelf
+        HOME: /home/%i
+        NODE_ENV: production
+        CYPRESS_INSTALL_BINARY: "0"
+        PNPM_HOME: /home/%i/.local/share/pnpm
+        PATH: /home/%i/.local/share/pnpm/bin:/home/%i/.local/share/pnpm:/usr/local/bin:/usr/bin:/bin
+        SOURCE: krate
         PORT: "{default_port}"
         HOST: "127.0.0.1"
         CONFIG_PATH: /home/%i/.config/audiobookshelf/config
