@@ -32,14 +32,13 @@ systemd:
     RestartSec: "10"
     WorkingDirectory: /opt/%i/duplicati
   environment:
-    inline:
-      TMPDIR: /home/%i/.tmp/duplicati
-      HOME: /home/%i
-      DOTNET_BUNDLE_EXTRACT_BASE_DIR: /home/%i/.tmp/duplicati
     file:
       path: /home/%i/.krate/applications/duplicati.env
       mode: "0600"
       variables:
+        TMPDIR: /home/%i/.tmp/duplicati
+        HOME: /home/%i
+        DOTNET_BUNDLE_EXTRACT_BASE_DIR: /home/%i/.tmp/duplicati
         DUPLICATI_PORT: "{default_port}"
         DUPLICATI_HOME: /home/%i/.config/duplicati
   exec:
