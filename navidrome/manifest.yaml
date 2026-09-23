@@ -29,13 +29,12 @@ systemd:
     RestartSec: "10"
     WorkingDirectory: /opt/%i/navidrome
   environment:
-    inline:
-      TMPDIR: /home/%i/.tmp/navidrome
-      HOME: /home/%i
     file:
       path: /home/%i/.krate/applications/navidrome.env
       mode: "0600"
       variables:
+        TMPDIR: /home/%i/.tmp/navidrome
+        HOME: /home/%i
         ND_ADDRESS: 127.0.0.1
         ND_PORT: "{default_port}"
         ND_MUSICFOLDER: /home/%i/medias/libraries/music
