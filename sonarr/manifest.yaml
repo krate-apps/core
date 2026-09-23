@@ -6,7 +6,7 @@ runtime:
 dependencies:
   apt:
     common:
-      packages: ca-certificates-mono mono-devel mediainfo sqlite3
+      packages: ca-certificates-mono mediainfo sqlite3
 install:
   layout:
     backup_dir: /home/%i/.krate/backups/sonarr
@@ -25,15 +25,13 @@ systemd:
     TimeoutStopSec: 20
     Type: simple
   environment:
-    inline:
-      TMPDIR: /home/%i/.tmp/sonarr
-      SONARR__SERVER__ALLOWEDHOSTS: "localhost,127.0.0.1"
     file:
       path: /home/%i/.krate/applications/sonarr.env
       mode: "0600"
       variables:
-        SONARR__SERVER__BINDADDRESS: 127.0.0.1
+        TMPDIR: /home/%i/.tmp/sonarr
         SONARR__SERVER__ALLOWEDHOSTS: "localhost,127.0.0.1"
+        SONARR__SERVER__BINDADDRESS: 127.0.0.1
         SONARR__SERVER__PORT: "{default_port}"
         SONARR__SERVER__URLBASE: "{url_base}"
         SONARR__SERVER__ENABLESSL: "False"
