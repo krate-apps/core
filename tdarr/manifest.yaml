@@ -34,15 +34,14 @@ systemd:
     KillMode: process
     WorkingDirectory: /opt/%i/tdarr/Tdarr_Server
   environment:
-    inline:
-      TMPDIR: /home/%i/.tmp/tdarr
-      HOME: /home/%i
-      serverBindIP: "true"
-      openBrowser: "false"
     file:
       path: /home/%i/.krate/applications/tdarr.env
       mode: "0600"
       variables:
+        TMPDIR: /home/%i/.tmp/tdarr
+        HOME: /home/%i
+        serverBindIP: "true"
+        openBrowser: "false"
         webUIPort: "{default_port}"
   exec:
     pre:
