@@ -20,8 +20,11 @@ systemd:
     TimeoutStopSec: 20
     Type: simple
   environment:
-    inline:
-      TMPDIR: /home/%i/.tmp/filebrowser
+    file:
+      path: /home/%i/.krate/applications/filebrowser.env
+      mode: "0600"
+      variables:
+        TMPDIR: /home/%i/.tmp/filebrowser
   exec:
     pre:
       - /bin/mkdir -p /home/%i/.tmp/filebrowser /home/%i/.config/filebrowser/logs
@@ -32,6 +35,7 @@ systemd:
 files:
   service: /etc/systemd/system/filebrowser@.service
   config:
+    - /home/%i/.krate/applications/filebrowser.env
     - /home/%i/.config/filebrowser/filebrowser.db
   database:
     - /home/%i/.config/filebrowser/filebrowser.db
