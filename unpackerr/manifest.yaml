@@ -31,12 +31,11 @@ systemd:
     UMask: "0002"
     WorkingDirectory: /home/%i/.tmp/unpackerr
   environment:
-    inline:
-      TMPDIR: /home/%i/.tmp/unpackerr
     file:
       path: /home/%i/.krate/applications/unpackerr.env
       mode: "0600"
       variables:
+        TMPDIR: /home/%i/.tmp/unpackerr
         UN_INTERVAL: "2m"
         UN_START_DELAY: "1m"
         UN_LOG_FILE: /home/%i/.config/unpackerr/unpackerr.log
