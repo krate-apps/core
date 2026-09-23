@@ -31,22 +31,19 @@ systemd:
     SyslogIdentifier: flaresolverr@%i
     WorkingDirectory: /opt/%i/flaresolverr
   environment:
-    inline:
-      TMPDIR: /home/%i/.tmp/flaresolverr
-      HOME: /home/%i
-      # systemd: prefer xvfb-run ExecStart over FlareSolverr's xvfbwrapper when HEADLESS=true (default).
-      HEADLESS: "false"
     file:
       path: /home/%i/.krate/applications/flaresolverr.env
       mode: "0600"
       variables:
+        TMPDIR: /home/%i/.tmp/flaresolverr
+        HOME: /home/%i
+        HEADLESS: "false"
         HOST: 127.0.0.1
         PORT: "{default_port}"
         LOG_LEVEL: info
         LOG_HTML: "false"
         CAPTCHA_SOLVER: none
         BROWSER_TIMEOUT: "40000"
-        # Smoke test at process start only — keep a fast page; heavy CF checks run from handler _verify (request.get).
         TEST_URL: https://www.google.com
         LANG: en_US
   exec:
