@@ -32,20 +32,17 @@ systemd:
     RestartSec: "10"
     WorkingDirectory: /opt/%i/maintainerr/apps/server
   environment:
-    inline:
-      TMPDIR: /home/%i/.tmp/maintainerr
-      NODE_ENV: production
-      PNPM_HOME: /home/%i/.local/share/pnpm
-      PATH: /home/%i/.local/share/pnpm/bin:/home/%i/.local/share/pnpm:/usr/local/bin:/usr/bin:/bin
-      DATA_DIR: /home/%i/.config/maintainerr
     file:
       path: /home/%i/.krate/applications/maintainerr.env
       mode: "0600"
       variables:
+        TMPDIR: /home/%i/.tmp/maintainerr
+        NODE_ENV: production
+        PNPM_HOME: /home/%i/.local/share/pnpm
+        PATH: /home/%i/.local/share/pnpm/bin:/home/%i/.local/share/pnpm:/usr/local/bin:/usr/bin:/bin
+        DATA_DIR: /home/%i/.config/maintainerr
         UI_PORT: "{default_port}"
         UI_HOSTNAME: "127.0.0.1"
-        DATA_DIR: /home/%i/.config/maintainerr
-        NODE_ENV: production
         MAINTAINERR_ENTRY: dist/main.js
   exec:
     pre:
