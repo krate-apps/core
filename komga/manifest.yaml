@@ -26,13 +26,12 @@ systemd:
     RestartSec: "10"
     WorkingDirectory: /opt/%i/komga
   environment:
-    inline:
-      TMPDIR: /home/%i/.tmp/komga
-      HOME: /home/%i
     file:
       path: /home/%i/.krate/applications/komga.env
       mode: "0600"
       variables:
+        TMPDIR: /home/%i/.tmp/komga
+        HOME: /home/%i
         KOMGA_PORT: "{default_port}"
         KOMGA_CONFIG_DIR: /home/%i/.config/komga
         KOMGA_BASE_URL: "{url_base}"
