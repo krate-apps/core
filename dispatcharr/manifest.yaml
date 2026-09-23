@@ -33,13 +33,13 @@ systemd:
     WorkingDirectory: /opt/%i/dispatcharr
     BindPaths: /home/%i/.config/dispatcharr:/data
   environment:
-    inline:
-      TMPDIR: /home/%i/.tmp/dispatcharr
-      PYTHONUNBUFFERED: "1"
-      DISPATCHARR_ENV: aio
     file:
       path: /home/%i/.krate/applications/dispatcharr.env
       mode: "0600"
+      variables:
+        TMPDIR: /home/%i/.tmp/dispatcharr
+        PYTHONUNBUFFERED: "1"
+        DISPATCHARR_ENV: aio
   exec:
     pre:
       - /bin/mkdir -p /home/%i/.tmp/dispatcharr /home/%i/.config/dispatcharr
