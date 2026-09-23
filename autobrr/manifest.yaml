@@ -22,8 +22,11 @@ systemd:
     TimeoutStopSec: 20
     Type: simple
   environment:
-    inline:
-      TMPDIR: /home/%i/.tmp/autobrr
+    file:
+      path: /home/%i/.krate/applications/autobrr.env
+      mode: "0600"
+      variables:
+        TMPDIR: /home/%i/.tmp/autobrr
   exec:
     pre:
       - /bin/mkdir -p /home/%i/.tmp/autobrr
@@ -33,6 +36,7 @@ systemd:
 files:
   service: /etc/systemd/system/autobrr@.service
   config:
+    - /home/%i/.krate/applications/autobrr.env
     - /home/%i/.config/autobrr/config.toml
   database:
     - /home/%i/.config/autobrr/autobrr.db
