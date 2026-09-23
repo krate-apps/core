@@ -24,12 +24,11 @@ systemd:
     RestartSec: "10"
     WorkingDirectory: /opt/%i/ombi
   environment:
-    inline:
-      TMPDIR: /home/%i/.tmp/ombi
     file:
       path: /home/%i/.krate/applications/ombi.env
       mode: "0600"
       variables:
+        TMPDIR: /home/%i/.tmp/ombi
         OMBI_PORT: "{default_port}"
         OMBI_STORAGE: /home/%i/.config/ombi
         OMBI_BASEURL: "{url_base}"
