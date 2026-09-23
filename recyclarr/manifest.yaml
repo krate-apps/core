@@ -4,8 +4,10 @@ proxy:
   mode: disabled
 # Syncs TRaSH guides into at least one Servarr.
 require_any:
-  - sonarr
   - radarr
+  - radarr4k
+  - sonarr
+  - sonarr4k
 runtime:
   kind: systemd
   service_template: recyclarr@.service
@@ -29,11 +31,11 @@ systemd:
     RemainAfterExit: "false"
     WorkingDirectory: /home/%i/.config/recyclarr
   environment:
-    inline:
-      TMPDIR: /home/%i/.tmp/recyclarr
     file:
       path: /home/%i/.krate/applications/recyclarr.env
       mode: "0600"
+      variables:
+        TMPDIR: /home/%i/.tmp/recyclarr
   exec:
     pre:
       - /bin/mkdir -p /home/%i/.tmp/recyclarr /home/%i/.config/recyclarr
