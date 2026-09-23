@@ -28,12 +28,12 @@ systemd:
     RestartSec: "10"
     WorkingDirectory: /opt/%i/kapowarr
   environment:
-    inline:
-      TMPDIR: /home/%i/.tmp/kapowarr
-      PYTHONUNBUFFERED: "1"
     file:
       path: /home/%i/.krate/applications/kapowarr.env
       mode: "0600"
+      variables:
+        TMPDIR: /home/%i/.tmp/kapowarr
+        PYTHONUNBUFFERED: "1"
   exec:
     pre:
       - /bin/mkdir -p /home/%i/.tmp/kapowarr /home/%i/.config/kapowarr/db /home/%i/.config/kapowarr/logs /home/%i/.config/kapowarr/temp_downloads
