@@ -28,13 +28,12 @@ systemd:
     RestartSec: "10"
     WorkingDirectory: /opt/%i/quasarr
   environment:
-    inline:
-      TMPDIR: /home/%i/.tmp/quasarr
-      PYTHONUNBUFFERED: "1"
     file:
       path: /home/%i/.krate/applications/quasarr.env
       mode: "0600"
       variables:
+        TMPDIR: /home/%i/.tmp/quasarr
+        PYTHONUNBUFFERED: "1"
         PORT: "{default_port}"
         INTERNAL_ADDRESS: "http://127.0.0.1:{default_port}"
         QUASARR_URL_BASE: "{url_base}"
