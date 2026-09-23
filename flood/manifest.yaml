@@ -23,12 +23,11 @@ systemd:
     TimeoutStopSec: 20
     Type: simple
   environment:
-    inline:
-      TMPDIR: /home/%i/.tmp/flood
     file:
       path: /home/%i/.krate/applications/flood.env
       mode: "0600"
       variables:
+        TMPDIR: /home/%i/.tmp/flood
         FLOOD_OPTION_host: 127.0.0.1
         FLOOD_OPTION_port: "{default_port}"
         FLOOD_OPTION_baseuri: "{url_base}"
