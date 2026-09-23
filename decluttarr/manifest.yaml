@@ -29,9 +29,12 @@ systemd:
     RestartSec: "10"
     WorkingDirectory: /opt/%i/decluttarr
   environment:
-    inline:
-      TMPDIR: /home/%i/.tmp/decluttarr
-      PYTHONUNBUFFERED: "1"
+    file:
+      path: /home/%i/.krate/applications/decluttarr.env
+      mode: "0600"
+      variables:
+        TMPDIR: /home/%i/.tmp/decluttarr
+        PYTHONUNBUFFERED: "1"
   exec:
     pre:
       - /bin/mkdir -p /home/%i/.tmp/decluttarr /home/%i/.config/decluttarr/config
@@ -41,6 +44,7 @@ systemd:
 files:
   service: /etc/systemd/system/decluttarr@.service
   config:
+    - /home/%i/.krate/applications/decluttarr.env
     - /home/%i/.config/decluttarr/config/config.yaml
 autogen: []
 security:
