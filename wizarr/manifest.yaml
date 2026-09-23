@@ -28,13 +28,13 @@ systemd:
     RestartSec: "10"
     WorkingDirectory: /opt/%i/wizarr
   environment:
-    inline:
-      TMPDIR: /home/%i/.tmp/wizarr
-      PYTHONUNBUFFERED: "1"
-      FLASK_ENV: production
     file:
       path: /home/%i/.krate/applications/wizarr.env
       mode: "0600"
+      variables:
+        TMPDIR: /home/%i/.tmp/wizarr
+        PYTHONUNBUFFERED: "1"
+        FLASK_ENV: production
   exec:
     pre:
       - /bin/mkdir -p /home/%i/.tmp/wizarr /home/%i/.config/wizarr/database
