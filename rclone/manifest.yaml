@@ -30,14 +30,12 @@ systemd:
     RemainAfterExit: "true"
     WorkingDirectory: /opt/%i/rclone
   environment:
-    inline:
-      TMPDIR: /home/%i/.tmp/rclone
-      HOME: /home/%i
-      RCLONE_CONFIG: /home/%i/.config/rclone/rclone.conf
     file:
       path: /home/%i/.krate/applications/rclone.env
       mode: "0600"
       variables:
+        TMPDIR: /home/%i/.tmp/rclone
+        HOME: /home/%i
         RCLONE_CONFIG: /home/%i/.config/rclone/rclone.conf
   exec:
     pre:
