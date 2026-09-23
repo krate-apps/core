@@ -30,8 +30,11 @@ systemd:
     UMask: "0002"
     WorkingDirectory: /opt/%i/bazarr
   environment:
-    inline:
-      TMPDIR: /home/%i/.tmp/bazarr
+    file:
+      path: /home/%i/.krate/applications/bazarr.env
+      mode: "0600"
+      variables:
+        TMPDIR: /home/%i/.tmp/bazarr
   exec:
     pre:
       - /bin/mkdir -p /home/%i/.tmp/bazarr /home/%i/.config/bazarr/config /home/%i/.config/bazarr/db /home/%i/.config/bazarr/log
@@ -44,6 +47,7 @@ systemd:
 files:
   service: /etc/systemd/system/bazarr@.service
   config:
+    - /home/%i/.krate/applications/bazarr.env
     - /home/%i/.config/bazarr/config/config.yaml
   database:
     - /home/%i/.config/bazarr/db/bazarr.db
