@@ -36,13 +36,12 @@ systemd:
     RestartSec: "10"
     WorkingDirectory: /opt/%i/nextcloud
   environment:
-    inline:
-      TMPDIR: /home/%i/.tmp/nextcloud
-      HOME: /home/%i
     file:
       path: /home/%i/.krate/applications/nextcloud.env
       mode: "0600"
       variables:
+        TMPDIR: /home/%i/.tmp/nextcloud
+        HOME: /home/%i
         PORT: "{default_port}"
         NEXTCLOUD_DATA: /home/%i/.config/nextcloud/data
   exec:
