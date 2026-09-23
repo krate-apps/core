@@ -38,9 +38,12 @@ systemd:
     UMask: "0007"
     SupplementaryGroups: krate
   environment:
-    inline:
-      TERM: xterm
-      PATH: /home/%i/.local/bin:/home/%i/.krate/active/rtorrent/usr/bin:/usr/local/bin:/usr/bin:/bin
+    file:
+      path: /home/%i/.krate/applications/rtorrent.env
+      mode: "0600"
+      variables:
+        TERM: xterm
+        PATH: /home/%i/.local/bin:/home/%i/.krate/active/rtorrent/usr/bin:/usr/local/bin:/usr/bin:/bin
   exec:
     pre:
       - +/bin/sh /opt/Krate/share/applications/official/rtorrent/bin/rtorrent-pre.sh %i
@@ -65,6 +68,7 @@ systemd:
 files:
   service: /etc/systemd/system/rtorrent@.service
   config:
+    - /home/%i/.krate/applications/rtorrent.env
     - /home/%i/.config/rtorrent/.rtorrent.rc
   proxy:
     - /etc/caddy/softwares/%i.rtorrent.caddy
