@@ -29,9 +29,12 @@ systemd:
     UMask: "0002"
     WorkingDirectory: /opt/%i/tautulli
   environment:
-    inline:
-      TMPDIR: /home/%i/.tmp/tautulli
-      PYTHONUNBUFFERED: "1"
+    file:
+      path: /home/%i/.krate/applications/tautulli.env
+      mode: "0600"
+      variables:
+        TMPDIR: /home/%i/.tmp/tautulli
+        PYTHONUNBUFFERED: "1"
   exec:
     pre:
       - /bin/mkdir -p /home/%i/.tmp/tautulli /home/%i/.config/tautulli/backups /home/%i/.config/tautulli/cache /home/%i/.config/tautulli/exports /home/%i/.config/tautulli/logs /home/%i/.config/tautulli/newsletters
@@ -47,6 +50,7 @@ systemd:
 files:
   service: /etc/systemd/system/tautulli@.service
   config:
+    - /home/%i/.krate/applications/tautulli.env
     - /home/%i/.config/tautulli/config.ini
   database:
     - /home/%i/.config/tautulli/tautulli.db
@@ -70,3 +74,16 @@ version:
   probes:
     - type: file
       path: "{data_dir}/VERSION"
+    - type: http_json
+      url: "http://127.0.0.1:{default_port}{root_url}/api/v2?apikey={apikey}&cmd=get_tautulli_info"
+      field: response.data.tautulli_version
+      requires: active
+    - type: http_json
+      url: "http://127.0.0.1:{default_port}/api/v2?apikey={apikey}&cmd=get_tautulli_info"
+      field: response.data.tautulli_version
+      requires: active
+  latest:
+    probes:
+      - type: http_json
+        url: https://api.github.com/repos/Tautulli/Tautulli/releases/latest
+        field: tag_name
