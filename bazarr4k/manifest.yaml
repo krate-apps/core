@@ -30,8 +30,11 @@ systemd:
     UMask: "0002"
     WorkingDirectory: /opt/%i/bazarr4k
   environment:
-    inline:
-      TMPDIR: /home/%i/.tmp/bazarr4k
+    file:
+      path: /home/%i/.krate/applications/bazarr4k.env
+      mode: "0600"
+      variables:
+        TMPDIR: /home/%i/.tmp/bazarr4k
   exec:
     pre:
       - /bin/mkdir -p /home/%i/.tmp/bazarr4k /home/%i/.config/bazarr4k/config /home/%i/.config/bazarr4k/db /home/%i/.config/bazarr4k/log
@@ -44,6 +47,7 @@ systemd:
 files:
   service: /etc/systemd/system/bazarr4k@.service
   config:
+    - /home/%i/.krate/applications/bazarr4k.env
     - /home/%i/.config/bazarr4k/config/config.yaml
   database:
     - /home/%i/.config/bazarr4k/db/bazarr4k.db
