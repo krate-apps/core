@@ -34,8 +34,11 @@ systemd:
     LimitNOFILE: "65536"
     WorkingDirectory: /opt/%i/jellyfin
   environment:
-    inline:
-      TMPDIR: /home/%i/.tmp/jellyfin
+    file:
+      path: /home/%i/.krate/applications/jellyfin.env
+      mode: "0600"
+      variables:
+        TMPDIR: /home/%i/.tmp/jellyfin
   exec:
     pre:
       - /bin/mkdir -p /home/%i/.tmp/jellyfin /home/%i/.config/jellyfin/config
@@ -50,6 +53,7 @@ systemd:
 files:
   service: /etc/systemd/system/jellyfin@.service
   config:
+    - /home/%i/.krate/applications/jellyfin.env
     - /home/%i/.config/jellyfin/config/network.xml
   database:
     - /home/%i/.config/jellyfin/data/jellyfin.db
