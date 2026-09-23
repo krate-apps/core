@@ -30,12 +30,12 @@ systemd:
     RemainAfterExit: "false"
     WorkingDirectory: /home/%i/.config/ytdl-sub
   environment:
-    inline:
-      TMPDIR: /home/%i/.tmp/ytdl-sub
-      HOME: /home/%i
     file:
       path: /home/%i/.krate/applications/ytdl-sub.env
       mode: "0600"
+      variables:
+        TMPDIR: /home/%i/.tmp/ytdl-sub
+        HOME: /home/%i
   exec:
     pre:
       - /bin/mkdir -p /home/%i/.tmp/ytdl-sub /home/%i/.config/ytdl-sub /home/%i/medias/ytdl-sub
