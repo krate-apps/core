@@ -30,11 +30,14 @@ systemd:
     Type: simple
     WorkingDirectory: /opt/%i/sabnzbd
   environment:
-    inline:
-      LANG: C.UTF-8
-      LC_ALL: C.UTF-8
-      PYTHONIOENCODING: utf-8
-      PYTHONUTF8: "1"
+    file:
+      path: /home/%i/.krate/applications/sabnzbd.env
+      mode: "0600"
+      variables:
+        LANG: C.UTF-8
+        LC_ALL: C.UTF-8
+        PYTHONIOENCODING: utf-8
+        PYTHONUTF8: "1"
   exec:
     start:
       - /opt/%i/sabnzbd/.venv/bin/python
@@ -46,6 +49,7 @@ systemd:
 files:
   service: /etc/systemd/system/sabnzbd@.service
   config:
+    - /home/%i/.krate/applications/sabnzbd.env
     - /home/%i/.config/sabnzbd/sabnzbd.ini
   proxy:
     - /etc/caddy/softwares/%i.sabnzbd.caddy
