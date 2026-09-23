@@ -34,18 +34,15 @@ systemd:
     WorkingDirectory: /opt/%i/syncthing
     BindPaths: /home/%i/.tmp/syncthing/index-v2:/home/%i/.config/syncthing/index-v2
   environment:
-    inline:
-      TMPDIR: /home/%i/.tmp/syncthing
-      HOME: /home/%i
-      STHOMEDIR: /home/%i/.config/syncthing
-      STNOBROWSER: "1"
     file:
       path: /home/%i/.krate/applications/syncthing.env
       mode: "0600"
       variables:
-        STGUIADDRESS: "127.0.0.1:{default_port}"
-        STNOBROWSER: "1"
+        TMPDIR: /home/%i/.tmp/syncthing
+        HOME: /home/%i
         STHOMEDIR: /home/%i/.config/syncthing
+        STNOBROWSER: "1"
+        STGUIADDRESS: "127.0.0.1:{default_port}"
   exec:
     pre:
       - /bin/mkdir -p /home/%i/.tmp/syncthing/index-v2 /home/%i/.config/syncthing/index-v2
