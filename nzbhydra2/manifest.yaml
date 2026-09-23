@@ -30,12 +30,11 @@ systemd:
     RestartSec: "10"
     WorkingDirectory: /opt/%i/nzbhydra2
   environment:
-    inline:
-      TMPDIR: /home/%i/.tmp/nzbhydra2
     file:
       path: /home/%i/.krate/applications/nzbhydra2.env
       mode: "0600"
       variables:
+        TMPDIR: /home/%i/.tmp/nzbhydra2
         NZBHYDRA2_PORT: "{default_port}"
         NZBHYDRA2_URL_BASE: "/%i/nzbhydra2"
   exec:
