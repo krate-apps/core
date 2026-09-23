@@ -25,15 +25,13 @@ systemd:
     TimeoutStopSec: 20
     Type: simple
   environment:
-    inline:
-      TMPDIR: /home/%i/.tmp/whisparr
-      WHISPARR__SERVER__ALLOWEDHOSTS: "localhost,127.0.0.1"
     file:
       path: /home/%i/.krate/applications/whisparr.env
       mode: "0600"
       variables:
-        WHISPARR__SERVER__BINDADDRESS: 127.0.0.1
+        TMPDIR: /home/%i/.tmp/whisparr
         WHISPARR__SERVER__ALLOWEDHOSTS: "localhost,127.0.0.1"
+        WHISPARR__SERVER__BINDADDRESS: 127.0.0.1
         WHISPARR__SERVER__PORT: "{default_port}"
         WHISPARR__SERVER__ENABLESSL: "False"
         WHISPARR__SERVER__SSLPORT: "{ssl_port}"
