@@ -24,12 +24,11 @@ systemd:
     RestartSec: "10"
     WorkingDirectory: /opt/%i/cleanuparr
   environment:
-    inline:
-      TMPDIR: /home/%i/.tmp/cleanuparr
     file:
       path: /home/%i/.krate/applications/cleanuparr.env
       mode: "0600"
       variables:
+        TMPDIR: /home/%i/.tmp/cleanuparr
         BIND_ADDRESS: 127.0.0.1
         PORT: "{default_port}"
         BASE_PATH: "{url_base}"
