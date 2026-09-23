@@ -29,19 +29,17 @@ systemd:
     RestartSec: "10"
     WorkingDirectory: /opt/%i/cross-seed
   environment:
-    inline:
-      TMPDIR: /home/%i/.tmp/cross-seed
-      HOME: /home/%i
-      NODE_ENV: production
-      CONFIG_DIR: /home/%i/.config/cross-seed
-      PNPM_HOME: /home/%i/.local/share/pnpm
-      PATH: /home/%i/.local/share/pnpm/bin:/home/%i/.local/share/pnpm:/usr/local/bin:/usr/bin:/bin
     file:
       path: /home/%i/.krate/applications/cross-seed.env
       mode: "0600"
       variables:
-        PORT: "{default_port}"
+        TMPDIR: /home/%i/.tmp/cross-seed
+        HOME: /home/%i
+        NODE_ENV: production
         CONFIG_DIR: /home/%i/.config/cross-seed
+        PNPM_HOME: /home/%i/.local/share/pnpm
+        PATH: /home/%i/.local/share/pnpm/bin:/home/%i/.local/share/pnpm:/usr/local/bin:/usr/bin:/bin
+        PORT: "{default_port}"
   exec:
     pre:
       - /bin/mkdir -p /home/%i/.tmp/cross-seed /home/%i/.config/cross-seed /home/%i/.local/share/pnpm
