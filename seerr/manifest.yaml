@@ -27,15 +27,15 @@ systemd:
     RestartSec: "10"
     WorkingDirectory: /opt/%i/seerr
   environment:
-    inline:
-      TMPDIR: /home/%i/.tmp/seerr
-      NODE_ENV: production
-      CYPRESS_INSTALL_BINARY: "0"
-      PNPM_HOME: /home/%i/.local/share/pnpm
-      PATH: /home/%i/.local/share/pnpm:/usr/local/bin:/usr/bin:/bin
     file:
       path: /home/%i/.krate/applications/seerr.env
       mode: "0600"
+      variables:
+        TMPDIR: /home/%i/.tmp/seerr
+        NODE_ENV: production
+        CYPRESS_INSTALL_BINARY: "0"
+        PNPM_HOME: /home/%i/.local/share/pnpm
+        PATH: /home/%i/.local/share/pnpm:/usr/local/bin:/usr/bin:/bin
   exec:
     pre:
       - /bin/mkdir -p /home/%i/.tmp/seerr /home/%i/.local/share/pnpm /home/%i/.config/seerr/config/db /home/%i/.config/seerr/config/logs
