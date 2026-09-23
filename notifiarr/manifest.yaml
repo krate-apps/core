@@ -25,17 +25,16 @@ systemd:
     TimeoutStopSec: 20
     Type: simple
   environment:
-    inline:
-      TMPDIR: /home/%i/.tmp/notifiarr
-      DN_QUIET: "true"
-      DN_LOG_FILE: /home/%i/.config/notifiarr/logs/app.log
-      DN_HTTP_LOG: /home/%i/.config/notifiarr/logs/http.log
-      DN_DEBUG_LOG: /home/%i/.config/notifiarr/logs/debug.log
-      DN_SERVICES_LOG_FILE: /home/%i/.config/notifiarr/logs/services.log
     file:
       path: /home/%i/.krate/applications/notifiarr.env
       mode: "0600"
       variables:
+        TMPDIR: /home/%i/.tmp/notifiarr
+        DN_QUIET: "true"
+        DN_LOG_FILE: /home/%i/.config/notifiarr/logs/app.log
+        DN_HTTP_LOG: /home/%i/.config/notifiarr/logs/http.log
+        DN_DEBUG_LOG: /home/%i/.config/notifiarr/logs/debug.log
+        DN_SERVICES_LOG_FILE: /home/%i/.config/notifiarr/logs/services.log
         DN_URLBASE: "{url_base}"
         DN_UPSTREAMS_0: "127.0.0.1/32"
   exec:
