@@ -5,7 +5,7 @@ links:
   homepage: https://rutorrent.video/
   documentation: https://github.com/Novik/ruTorrent/wiki
   source: https://github.com/Novik/ruTorrent
-  krate_docs: https://runkrate.com/docs/software/community/rutorrent
+  krate_docs: https://runkrate.com/docs/software/official/rutorrent
 tier: pro
 category: download
 install_mode: local
