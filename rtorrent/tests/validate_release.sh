@@ -30,6 +30,16 @@ grep -q 'LimitNOFILE: "16384"' "${APP_DIR}/manifest.yaml"
 grep -q 'files.min_alloc.set = 4096' "${APP_DIR}/.rtorrent.rc.tpl"
 echo "OK: LimitNOFILE + files.min_alloc"
 
+echo "== 4b) Unit stays active only while rtorrent-run.sh is up =="
+grep -q 'Type: notify' "${APP_DIR}/manifest.yaml"
+grep -q 'rtorrent-run.sh' "${APP_DIR}/manifest.yaml"
+if grep -q 'RemainAfterExit' "${APP_DIR}/manifest.yaml"; then
+	echo "FAIL: RemainAfterExit keeps the unit active after rtorrent exits" >&2
+	exit 1
+fi
+test -f "${APP_DIR}/bin/rtorrent-run.sh"
+echo "OK: notify supervisor"
+
 echo "== 5) Manual host checklist (print only) =="
 cat <<'EOF'
 After installing krate-rtorrent_0.16.23 on a Trixie host:

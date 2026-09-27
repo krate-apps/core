@@ -26,8 +26,9 @@ install:
     - /home/%i/.krate/active/rtorrent/usr/bin/rtorrent
 systemd:
   unit:
-    Type: oneshot
-    RemainAfterExit: "yes"
+    Type: notify
+    NotifyAccess: all
+    TimeoutStartSec: "45"
     KillMode: control-group
     WorkingDirectory: /home/%i/
     Restart: on-failure
@@ -48,18 +49,9 @@ systemd:
     pre:
       - +/bin/sh /opt/Krate/share/applications/official/rtorrent/bin/rtorrent-pre.sh %i
     start:
-      - /usr/bin/tmux
-      - -f
-      - /dev/null
-      - new-session
-      - -d
-      - -s
-      - rtorrent-%i
-      - --
-      - /home/%i/.krate/active/rtorrent/usr/bin/rtorrent
-      - -n
-      - -o
-      - import=/home/%i/.config/rtorrent/.rtorrent.rc
+      - /bin/sh
+      - /opt/Krate/share/applications/official/rtorrent/bin/rtorrent-run.sh
+      - "%i"
     stop:
       - /usr/bin/tmux
       - kill-session
