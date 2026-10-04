@@ -79,3 +79,8 @@ version:
       url: "http://127.0.0.1:{default_port}{root_url}/System/Info/Public"
       field: Version
       requires: active
+    # Read the installed server version when the API is unavailable or stopped.
+    - type: executable
+      cmd: "{install_dir}/jellyfin"
+      args: "--version"
+      regex: '[Jj]ellyfin(?:[.]Server)?[ \t]+v?([0-9]+[.][0-9]+(?:[.][0-9]+)?)'
