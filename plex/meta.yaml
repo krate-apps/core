@@ -1,0 +1,27 @@
+id: plex
+name: Plex
+description: Client-server media server with apps for TV, mobile, and the web.
+links:
+  homepage: https://www.plex.tv/
+  documentation: https://support.plex.tv/
+  source: https://www.plex.tv/
+  krate_docs: https://runkrate.com/docs/software/official/plex
+tier: pro
+category: streaming
+install_mode: local
+password_constraints:
+  min_length: 8
+  max_length: 128
+  require_upper: false
+  require_digit: false
+autocomplete_options:
+  - -b
+  - --plex-email
+  - --plex-password
+  - --plex-pass-key
+ui_options:
+  # ZEN_BRANCH: main → Public (ButlerUpdateChannel 16), beta → Plex Pass (8).
+  branches:
+    options:
+      - main
+      - beta

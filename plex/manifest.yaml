@@ -1,0 +1,81 @@
+id: plex
+multi_user: true
+proxy:
+  mode: strip_prefix
+  rewrite_location: true
+runtime:
+  kind: systemd
+  service_template: plex@.service
+# Declarative: before apt, lifecycle runs vpn::ensure::from_manifest.
+# On Hetzner (or if a plex@user route is already staged), ensure/stage the VPN app route.
+requirements:
+  - when:
+      provider: hetzner
+    vpn:
+      ensure: plex-route
+      stage: true
+dependencies:
+  apt:
+    sources:
+      - plex
+    common:
+      packages: plexmediaserver curl ca-certificates
+install:
+  layout:
+    install_dir: /opt/%i/plex
+    data_dir: /opt/%i/plex
+    backup_dir: /home/%i/.krate/backups/plex
+    temp_dir: /home/%i/.tmp/plex
+  executable:
+    - /usr/lib/plexmediaserver/Plex Media Server
+systemd:
+  unit:
+    Restart: on-failure
+    RestartSec: "5"
+    TimeoutStartSec: "600"
+    TimeoutStopSec: 20
+    Type: simple
+    LimitNOFILE: "65536"
+    WorkingDirectory: /opt/%i/plex
+  environment:
+    file:
+      path: /home/%i/.krate/applications/plex.env
+      mode: "0600"
+      variables:
+        # Vendor binaries stay in the apt package; KRATE instance root is /opt/%i/plex.
+        PLEX_MEDIA_SERVER_HOME: /usr/lib/plexmediaserver
+        PLEX_MEDIA_SERVER_APPLICATION_SUPPORT_DIR: /opt/%i/plex/Library/Application Support
+        TMPDIR: /home/%i/.tmp/plex
+  exec:
+    # One YAML element = one systemd argv token (paths with spaces are quoted by service::generate).
+    pre:
+      - /bin/mkdir
+      - -p
+      - /home/%i/.tmp/plex
+      - /opt/%i/plex/Library/Application Support/Plex Media Server
+    start:
+      - /usr/lib/plexmediaserver/Plex Media Server
+files:
+  service: /etc/systemd/system/plex@.service
+  config:
+    - /home/%i/.krate/applications/plex.env
+    - /opt/%i/plex/Library/Application Support/Plex Media Server/Preferences.xml
+  proxy:
+    - /etc/caddy/softwares/path/%i.plex.caddy
+  binary:
+    - /usr/lib/plexmediaserver/Plex Media Server
+autogen:
+  - default_port
+security:
+  network: true
+  filesystem:
+    read_write:
+      - /opt/%i/plex
+      - /home/%i/.tmp/plex
+      - /home/%i/.krate/backups/plex
+    read_only:
+      - /usr/lib/plexmediaserver
+version:
+  probes:
+    - type: dpkg
+      package: plexmediaserver

@@ -1,0 +1,221 @@
+#!/usr/bin/env bash
+[[ -n "${KRATE_HANDLER_CONTEXT_FILE:-}" && -f "${KRATE_HANDLER_CONTEXT_FILE}" ]] && . "${KRATE_HANDLER_CONTEXT_FILE}"
+# @file applications/unencrypted/apps/plex/plex
+# @project KRATE
+# @description Plex — apt plexmediaserver, Preferences, claim token, optional VPN route.
+# shellcheck disable=SC2154
+# VPN: manifest → vpn::ensure::from_manifest. Proxy: strip_prefix. Prefs: files.config → config_xml.
+# Ports: PMS binds 32400 in each netns; service_default_port is the unique WAN/public port (DNAT).
+set -euo pipefail
+
+readonly _plex_bind_port=32400
+
+_add() {
+	zenfw::service::manage stop plexmediaserver.service 2>/dev/null || true
+	zenfw::service::manage disable plexmediaserver.service 2>/dev/null || true
+	zenfw::service::generate "${app_name}" true false
+	_config prefs_only
+	_secure
+	_config proxy_only
+}
+
+_update() {
+	zenfw::service::manage stop "${service_unit}"
+	_config prefs_only
+	_secure
+	_config proxy_only
+	zenfw::software::backup::create "${app_name}" "user" "${data_dir}" "${username}"
+}
+
+# MyPlex: host:public_port (path prefixes ignored). Public = autogen service_default_port.
+_public_url() {
+	local host="" public_port="${service_default_port//[^0-9]/}"
+	: "${public_port:=${_plex_bind_port}}"
+	[[ -r /etc/caddy/environment ]] &&
+		host="$(sed -n 's/^[[:space:]]*DOMAIN=//p' /etc/caddy/environment | tail -n1 || true)"
+	host="${host#\"}"
+	host="${host%\"}"
+	host="${host#\'}"
+	host="${host%\'}"
+	host="${proxy_host:-${host}}"
+	[[ -n "${host}" ]] || host="$(curl -4 -fsS --connect-timeout 2 https://api.ipify.org 2>/dev/null || true)"
+	[[ -n "${host}" ]] || return 0
+	printf 'http://%s:%s' "${host}" "${public_port}"
+}
+
+# mode: all | prefs_only | proxy_only
+_config() {
+	local mode="${1:-all}" public_port prefs_dir backup plex_user custom channel tpl
+	public_port="${service_default_port//[^0-9]/}"
+	: "${public_port:=${_plex_bind_port}}"
+	: "${config_xml:?plex: missing Preferences path (files.config → config_xml)}"
+	prefs_dir="$(dirname "${config_xml}")"
+	backup="${prefs_dir}/Plug-in Support/Databases/backup"
+	tpl="${app_dir}/preferences.tpl"
+	case "${branch:-main}" in
+	[Bb]eta | [Pp]lex-[Pp]ass | [Pp]lexpass | [Pp]ass | 8) channel=8 ;;
+	*) channel=16 ;;
+	esac
+	plex_user="${email:-${username}}"
+	custom="$(_public_url || true)"
+
+	if [[ "${mode}" != "proxy_only" ]]; then
+		mkdir -p "${install_dir}" "${data_dir}/cache" "${data_dir}/tmp" "${prefs_dir}" "${backup}"
+		zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
+		zenfw::permission::read_exec::set "${data_dir}" "${username}" "${username}"
+		if [[ ! -f "${config_xml}" ]]; then
+			[[ -f "${tpl}" ]] || {
+				printf '%s\n' "$(zenfw::intl::trans "lifecycle.error.plex.missing_template" "${app_name}" "${tpl}" 2>/dev/null | awk 'NR==1{print; exit}')" >&2
+				return 1
+			}
+			sed -e "s|__KRATE_HTTP_PORT__|${public_port}|g" -e "s|__KRATE_INSTANCE_NAME__|${instance_name}|g" \
+				-e "s|__KRATE_EMAIL__|${email}|g" -e "s|__KRATE_PLEX_USERNAME__|${plex_user}|g" \
+				-e "s|__KRATE_BUTLER_BACKUP_PATH__|${backup}|g" -e "s|__KRATE_CUSTOM_CONNECTIONS__|${custom}|g" \
+				-e "s|__KRATE_BUTLER_UPDATE_CHANNEL__|${channel}|g" "${tpl}" >"${config_xml}"
+		else
+			app::update::xml ManualPortMappingMode "1"
+			app::update::xml ManualPortMappingPort "${public_port}"
+			app::update::xml AcceptedEULA "1"
+			app::update::xml PublishServerOnPlexOnlineKey "1"
+			app::update::xml ButlerUpdateChannel "${channel}"
+			[[ -n "${instance_name}" ]] && app::update::xml FriendlyName "${instance_name}"
+			[[ -n "${email}" ]] && {
+				app::update::xml PlexOnlineMail "${email}"
+				app::update::xml PlexOnlineUsername "${email}"
+			}
+			[[ -n "${custom}" ]] && app::update::xml customConnections "${custom}"
+		fi
+		zenfw::permission::read_exec::set "${config_xml}" "${username}" "${username}"
+		zenfw::permission::read_exec::set "${prefs_dir}" "${username}" "${username}"
+		zenfw::vault::save "${username}.${app_name}" "${user_password}" application 2>/dev/null || true
+	fi
+	[[ "${mode}" == "prefs_only" ]] && return 0
+	# Caddy upstream = PMS bind in netns (not the public WAN port).
+	zenfw::proxy::generate "${app_name}" "${_plex_bind_port}" "${url_base}" true "${username}"
+	zenfw::vpn::route get plex "${username}" >/dev/null 2>&1 && return 0
+	zenfw::service::manage restart "${service_unit}" 600 || true
+}
+
+# Claim on /dev/tty (lifecycle captures stderr); VPN ensure before plex.tv exchange.
+_secure() {
+	local public_port response="" auth plex_user plex_mail machine anon custom ip args out rc attempt=0 had_cli=0 msg
+	public_port="${service_default_port//[^0-9]/}"
+	: "${public_port:=${_plex_bind_port}}"
+	: "${config_xml:?plex: missing Preferences path (files.config → config_xml)}"
+	[[ -n "${license_key:-}" ]] && had_cli=1
+
+	zenfw::vpn::route get plex "${username}" >/dev/null 2>&1 &&
+		{ zenfw::vpn::ensure::plex-route "${username}" --listen-port "${public_port}" || return 1; }
+	[[ -f "${config_xml}" ]] || {
+		printf '%s\n' "$(zenfw::intl::trans "lifecycle.error.plex.missing_preferences" "${app_name}" 2>/dev/null | awk 'NR==1{print; exit}')" >&2
+		return 1
+	}
+
+	# plex.tv requires X-Plex-Client-Identifier (= ProcessedMachineIdentifier) or returns 422.
+	machine="$(sed -n 's/.*ProcessedMachineIdentifier="\([^"]*\)".*/\1/p' "${config_xml}" | head -n1 || true)"
+	anon="$(sed -n 's/.*AnonymousMachineIdentifier="\([^"]*\)".*/\1/p' "${config_xml}" | head -n1 || true)"
+	[[ -n "${machine}" ]] || machine="$(command -v uuidgen >/dev/null && uuidgen || cat /proc/sys/kernel/random/uuid 2>/dev/null || true)"
+	[[ -n "${anon}" ]] || anon="$(command -v uuidgen >/dev/null && uuidgen || cat /proc/sys/kernel/random/uuid 2>/dev/null || true)"
+	for a in ProcessedMachineIdentifier AnonymousMachineIdentifier; do
+		grep -q "${a}=" "${config_xml}" || sed -i "s|<Preferences |<Preferences ${a}=\"\" |" "${config_xml}"
+	done
+	app::update::xml ProcessedMachineIdentifier "${machine}"
+	app::update::xml AnonymousMachineIdentifier "${anon}"
+
+	if [[ -z "${license_key:-}" ]]; then
+		if [[ "${action:-add}" == "update" ]] ||
+			! { [[ -c /dev/tty && -r /dev/tty && -w /dev/tty ]] && tty </dev/tty >/dev/null 2>&1; }; then
+			[[ "${action:-add}" != "update" ]] &&
+				printf '%s\n' "$(zenfw::intl::trans "lifecycle.hint.plex.claim_deferred" "${app_name}" 2>/dev/null | awk 'NR==1{print; exit}')"
+			zenfw::service::manage restart "${service_unit}" 600 || true
+			zenfw::request::wait::ping "http://127.0.0.1:${_plex_bind_port}/" 120 1000 false || true
+			return 0
+		fi
+		printf '%s\n' "$(zenfw::intl::trans "lifecycle.info.plex.claim_prompt" "${app_name}" 2>/dev/null | awk 'NR==1{print; exit}')" >/dev/tty
+		while [[ -z "${license_key:-}" ]]; do
+			printf 'Plex claim token: ' >/dev/tty
+			# shellcheck disable=SC2162
+			IFS= read -r license_key </dev/tty || return 1
+			license_key="${license_key#"${license_key%%[![:space:]]*}"}"
+			license_key="${license_key%"${license_key##*[![:space:]]}"}"
+		done
+	fi
+
+	while ((attempt < 3)); do
+		attempt=$((attempt + 1))
+		ip="$(dig +short @1.1.1.1 plex.tv A 2>/dev/null | awk '/^[0-9.]+$/{print; exit}')"
+		[[ -z "${ip}" ]] && ip="$(getent ahostsv4 plex.tv 2>/dev/null | awk '{print $1; exit}')"
+		args=(-4 -fsS -X POST
+			-H "X-Plex-Client-Identifier: ${machine}"
+			-H 'X-Plex-Product: Plex Media Server'
+			-H 'X-Plex-Provides: server'
+			-H 'X-Plex-Version: 1.1'
+			-H 'X-Plex-Platform: Linux'
+			-H 'X-Plex-Device: Linux'
+			-H 'X-Plex-Device-Name: PlexMediaServer')
+		[[ -n "${ip}" ]] && args+=(--resolve "plex.tv:443:${ip}" --resolve "plex.tv:80:${ip}")
+		set +e
+		if zenfw::vpn::route get plex "${username}" >/dev/null 2>&1; then
+			out="$(zenfw::vpn::route exec plex "${username}" -- curl "${args[@]}" \
+				"https://plex.tv/api/claim/exchange?token=${license_key}" 2>&1)"
+		else
+			out="$(curl "${args[@]}" "https://plex.tv/api/claim/exchange?token=${license_key}" 2>&1)"
+		fi
+		rc=$?
+		set -e
+		response="${out}"
+		((rc == 0)) && [[ -n "${response}" ]] && break
+		msg="$(zenfw::intl::trans "lifecycle.error.plex.claim_failed" "${app_name}" 2>/dev/null | awk 'NR==1{print; exit}')"
+		printf '%s\n%s\n' "${msg}" "${response}" >/dev/tty 2>/dev/null || printf '%s\n%s\n' "${msg}" "${response}" >&2
+		((attempt >= 3)) && return 1
+		((had_cli)) && ! { [[ -c /dev/tty && -r /dev/tty && -w /dev/tty ]] && tty </dev/tty >/dev/null 2>&1; } && return 1
+		printf '%s\n' "$(zenfw::intl::trans "lifecycle.info.plex.claim_retry" "${app_name}" 2>/dev/null | awk 'NR==1{print; exit}')" >/dev/tty
+		license_key=""
+		while [[ -z "${license_key}" ]]; do
+			printf 'Plex claim token: ' >/dev/tty
+			# shellcheck disable=SC2162
+			IFS= read -r license_key </dev/tty || return 1
+			license_key="${license_key#"${license_key%%[![:space:]]*}"}"
+			license_key="${license_key%"${license_key##*[![:space:]]}"}"
+		done
+		had_cli=0
+	done
+
+	zenfw::vpn::route get plex "${username}" >/dev/null 2>&1 &&
+		zenfw::vpn::route reconcile >/dev/null 2>&1 || true
+
+	auth="$(zenfw::json::extract "${response}" authToken 2>/dev/null || true)"
+	[[ -z "${auth}" ]] && auth="$(zenfw::json::extract "${response}" authenticationToken 2>/dev/null || true)"
+	[[ -z "${auth}" ]] && auth="$(printf '%s' "${response}" | sed -n 's/.*authToken="\([^"]*\)".*/\1/p' | head -n1 || true)"
+	[[ -z "${auth}" ]] && auth="$(printf '%s' "${response}" | sed -n 's/.*<authentication-token>\([^<]*\)<\/authentication-token>.*/\1/p' | head -n1 || true)"
+	[[ -n "${auth}" ]] || {
+		printf '%s\n' "$(zenfw::intl::trans "lifecycle.error.plex.claim_failed" "${app_name}" 2>/dev/null | awk 'NR==1{print; exit}')" >&2
+		return 1
+	}
+	plex_user="$(zenfw::json::extract "${response}" username 2>/dev/null || true)"
+	[[ -z "${plex_user}" ]] && plex_user="$(printf '%s' "${response}" | sed -n 's/.*username="\([^"]*\)".*/\1/p' | head -n1 || true)"
+	plex_mail="$(zenfw::json::extract "${response}" email 2>/dev/null || true)"
+	[[ -z "${plex_mail}" ]] && plex_mail="$(printf '%s' "${response}" | sed -n 's/.*email="\([^"]*\)".*/\1/p' | head -n1 || true)"
+	plex_user="${plex_user:-${email:-${username}}}"
+	plex_mail="${plex_mail:-${email}}"
+
+	for a in PlexOnlineToken PlexOnlineUsername PlexOnlineMail PublishServerOnPlexOnlineKey customConnections; do
+		grep -q "${a}=" "${config_xml}" || sed -i "s|<Preferences |<Preferences ${a}=\"\" |" "${config_xml}"
+	done
+	app::update::xml PlexOnlineToken "${auth}"
+	app::update::xml PlexOnlineUsername "${plex_user}"
+	[[ -n "${plex_mail}" ]] && app::update::xml PlexOnlineMail "${plex_mail}"
+	app::update::xml PublishServerOnPlexOnlineKey "1"
+	app::update::xml AcceptedEULA "1"
+	app::update::xml ManualPortMappingMode "1"
+	app::update::xml ManualPortMappingPort "${public_port}"
+	custom="$(_public_url || true)"
+	[[ -n "${custom}" ]] && app::update::xml customConnections "${custom}"
+	printf '%s' "${response}" | grep -Eiq 'subscriptionActive[[:space:]]*:[[:space:]]*true|plex.?pass|"subscription"' &&
+		printf '%s\n' "$(zenfw::intl::trans "lifecycle.success.plex.pass_detected" "${app_name}" 2>/dev/null | awk 'NR==1{print; exit}')"
+
+	zenfw::permission::read_exec::set "${config_xml}" "${username}" "${username}"
+	printf '%s\n' "$(zenfw::intl::trans "lifecycle.success.plex.claimed" "${app_name}" 2>/dev/null | awk 'NR==1{print; exit}')"
+	zenfw::service::manage restart "${service_unit}" 600
+	zenfw::request::wait::ping "http://127.0.0.1:${_plex_bind_port}/" 120 1000 false || true
+}
