@@ -20,7 +20,8 @@ autocomplete_options:
   - --plex-password
   - --plex-pass-key
 ui_options:
-  # ZEN_BRANCH: main → Public (ButlerUpdateChannel 16), beta → Plex Pass (8).
+  # Branch: main → Public updates (16), beta → Plex Pass early updates (8).
+  # Requires a Plex Pass account for channel 8 to apply in the Plex UI.
   branches:
     options:
       - main
