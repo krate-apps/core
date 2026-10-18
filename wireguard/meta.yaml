@@ -1,0 +1,42 @@
+id: wireguard
+name: WireGuard
+description: "Kernel WireGuard VPN — server gateway with per-user configs, client peer stash, and HarmonyUI VPN Control."
+links:
+  homepage: https://www.wireguard.com/
+  documentation: https://www.wireguard.com/
+  source: https://git.zx2c4.com/wireguard-tools/
+  krate_docs: https://runkrate.com/docs/software/official/wireguard
+tier: pro
+category: network
+install_mode: local
+autocomplete_options:
+  - --wg-mode
+  - --wg-port
+  - --wg-cidr
+  - --wg-dns
+  - --wg-endpoint
+ui_options:
+  subdomain:
+    enabled: false
+    label: app.subdomain
+  wg_mode:
+    options:
+      - server
+      - client
+    label: app.wireguard.mode
+  wg_port:
+    enabled: true
+    optional: true
+    label: app.wireguard.port
+  wg_cidr:
+    enabled: true
+    optional: true
+    label: app.wireguard.cidr
+  wg_dns:
+    enabled: true
+    optional: true
+    label: app.wireguard.dns
+  wg_endpoint:
+    enabled: true
+    optional: true
+    label: app.wireguard.endpoint

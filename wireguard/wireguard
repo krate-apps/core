@@ -1,0 +1,128 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC1090,SC2154
+[[ -n "${KRATE_HANDLER_CONTEXT_FILE:-}" && -f "${KRATE_HANDLER_CONTEXT_FILE}" ]] && . "${KRATE_HANDLER_CONTEXT_FILE}"
+# @file applications/unencrypted/apps/wireguard/wireguard
+# @project KRATE
+# @description WireGuard tools + gateway enroll (HarmonyUI VPN Control via zenfw vpn::*).
+set -euo pipefail
+
+_STASH="/etc/krate/vpn/wg"
+_MODE="${ZEN_SOFT_WG_MODE:-server}"
+_PORT="${ZEN_SOFT_WG_PORT:-51820}"
+_CIDR="${ZEN_SOFT_WG_CIDR:-10.66.66.0/24}"
+_DNS="${ZEN_SOFT_WG_DNS:-1.1.1.1}"
+_ENDPOINT="${ZEN_SOFT_WG_ENDPOINT:-}"
+
+_add() {
+	zenfw::dependency::apt::install_inline "wireguard" "wireguard-tools" "iproute2" "iptables" "ca-certificates" "curl" "jq" || true
+	zenfw::verify::command wg || {
+		printf '%s\n' "wg not found after apt install (wireguard-tools)" >&2
+		return 1
+	}
+	modprobe wireguard 2>/dev/null || true
+	mkdir -p "${install_dir}" "${data_dir}" "$(dirname "${env_file}")" \
+		"${_STASH}/peers" "${_STASH}/gateway" "${_STASH}/users" "${_STASH}/routes"
+	chmod 750 "${_STASH}" 2>/dev/null || true
+
+	if [[ -n "${_ENDPOINT}" ]]; then
+		zenfw::vpn::install --mode "${_MODE}" --port "${_PORT}" --cidr "${_CIDR}" --dns "${_DNS}" --endpoint "${_ENDPOINT}" || true
+	else
+		zenfw::vpn::install --mode "${_MODE}" --port "${_PORT}" --cidr "${_CIDR}" --dns "${_DNS}" || true
+	fi
+	zenfw::verify::command wg || return 1
+	if [[ "${_MODE}" == "server" ]]; then
+		_ensure_gateway
+		_enroll_user
+	fi
+
+	_write_verify
+	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
+	[[ -e "${install_dir}/wireguard-verify" ]] && zenfw::permission::exec_exec::set "${install_dir}/wireguard-verify" "${username}" "${username}"
+	zenfw::service::generate "${app_name}" false false
+	_config
+}
+
+_config() {
+	mkdir -p "${data_dir}" "$(dirname "${env_file}")"
+	zenfw::permission::read_exec::set "${data_dir}" "${username}" "${username}"
+	[[ -f "${env_file}" ]] || : >"${env_file}"
+	zenfw::permission::private::set "${env_file}" "${username}" "${username}"
+	_write_readme
+	_write_verify
+	if [[ "${_MODE}" == "server" ]]; then
+		_enroll_user
+	fi
+	[[ -e "${install_dir}/wireguard-verify" ]] && zenfw::permission::exec_exec::set "${install_dir}/wireguard-verify" "${username}" "${username}"
+	zenfw::service::manage start "${service_unit}" 2>/dev/null || true
+}
+
+_update() {
+	zenfw::dependency::apt::install_inline "wireguard" "wireguard-tools" "iproute2" "iptables" "ca-certificates" "curl" "jq" || true
+	_config
+	zenfw::software::backup::create "${app_name}" "user" "${data_dir}" "${username}"
+}
+
+_remove() {
+	# Revoke this user's gateway peer; do not tear down host gateway (shared).
+	zenfw::vpn::gateway revoke "${username}" || true
+	zenfw::service::manage stop "${service_unit}" 2>/dev/null || true
+	zenfw::service::manage disable "${service_unit}" 2>/dev/null || true
+}
+
+_ensure_gateway() {
+	if [[ ! -f "${_STASH}/gateway/wg0.conf" ]]; then
+		if [[ -n "${_ENDPOINT}" ]]; then
+			zenfw::vpn::install --mode server --port "${_PORT}" --cidr "${_CIDR}" --dns "${_DNS}" --endpoint "${_ENDPOINT}" || true
+		else
+			zenfw::vpn::install --mode server --port "${_PORT}" --cidr "${_CIDR}" --dns "${_DNS}" || true
+		fi
+	fi
+	zenfw::vpn::gateway enable || true
+}
+
+_enroll_user() {
+	[[ -n "${username:-}" ]] || return 0
+	zenfw::vpn::gateway enroll "${username}" || true
+	# Copy user conf into data_dir for self-service backup path
+	if [[ -f "${_STASH}/users/${username}.conf" ]]; then
+		cp -f "${_STASH}/users/${username}.conf" "${data_dir}/${username}.conf"
+		zenfw::permission::private::set "${data_dir}/${username}.conf" "${username}" "${username}"
+	fi
+}
+
+_write_readme() {
+	cat >"${data_dir}/README" <<EOF
+WireGuard (KRATE)
+=================
+
+Packages: wireguard, wireguard-tools.
+
+Install mode: ${_MODE}
+Gateway stash: ${_STASH}
+Your client config (when enrolled): ${data_dir}/${username}.conf
+
+Admin cockpit: HarmonyUI → Settings → VPN Control (feature: vpn).
+Self-service: Applications → WireGuard → Manage VPN.
+
+CLI:
+  zenfw vpn::status
+  zenfw vpn::peer list
+  zenfw vpn::gateway enroll <user>
+EOF
+	zenfw::permission::read_exec::set "${data_dir}/README" "${username}" "${username}"
+}
+
+_write_verify() {
+	cat >"${install_dir}/wireguard-verify" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+command -v wg >/dev/null 2>&1 || {
+	echo "wg not found — install wireguard-tools" >&2
+	exit 1
+}
+wg show all dump >/dev/null 2>&1 || true
+exit 0
+EOF
+	zenfw::permission::exec_exec::set "${install_dir}/wireguard-verify" "${username}" "${username}"
+	zenfw::permission::read_exec::set "${install_dir}" "${username}" "${username}"
+}

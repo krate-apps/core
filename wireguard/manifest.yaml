@@ -1,0 +1,64 @@
+id: wireguard
+multi_user: true
+proxy:
+  mode: disabled
+runtime:
+  kind: systemd
+  service_template: wireguard@.service
+dependencies:
+  apt:
+    common:
+      packages: wireguard wireguard-tools iproute2 iptables ca-certificates curl jq
+install:
+  source: apt
+  layout:
+    backup_dir: /home/%i/.krate/backups/wireguard
+    data_dir: /home/%i/.krate/wireguard
+    install_dir: /opt/%i/wireguard
+    temp_dir: /home/%i/.tmp/wireguard
+  executable:
+    - /opt/%i/wireguard/wireguard-verify
+systemd:
+  unit:
+    TimeoutStopSec: 30
+    Type: oneshot
+    RemainAfterExit: "true"
+    WorkingDirectory: /home/%i/.krate/wireguard
+    AmbientCapabilities: CAP_NET_ADMIN CAP_NET_RAW
+    CapabilityBoundingSet: CAP_NET_ADMIN CAP_NET_RAW
+    DeviceAllow: /dev/net/tun rw
+  environment:
+    file:
+      path: /home/%i/.krate/applications/wireguard.env
+      mode: "0600"
+      variables:
+        TMPDIR: /home/%i/.tmp/wireguard
+        HOME: /home/%i
+        KRATE_VPN_STASH: /etc/krate/vpn/wg
+  exec:
+    pre:
+      - /bin/mkdir -p /home/%i/.tmp/wireguard /home/%i/.krate/wireguard
+    start:
+      - /opt/%i/wireguard/wireguard-verify
+files:
+  service: /etc/systemd/system/wireguard@.service
+  config:
+    - /home/%i/.krate/wireguard/README
+    - /home/%i/.krate/applications/wireguard.env
+  binary:
+    - /opt/%i/wireguard/wireguard-verify
+autogen: []
+security:
+  network: true
+  filesystem:
+    read_write:
+      - /home/%i/.krate/wireguard
+      - /home/%i/.tmp/wireguard
+      - /home/%i/.krate/backups/wireguard
+      - /home/%i/.krate/applications
+      - /opt/%i/wireguard
+    read_only: []
+version:
+  probes:
+    - type: dpkg
+      package: wireguard-tools
