@@ -42,7 +42,11 @@ systemd:
         PORT: "{default_port}"
   exec:
     pre:
-      - /bin/mkdir -p /home/%i/.tmp/cross-seed /home/%i/.config/cross-seed /home/%i/.local/share/pnpm
+      - /bin/mkdir
+      - -p
+      - /home/%i/.tmp/cross-seed
+      - /home/%i/.config/cross-seed
+      - /home/%i/.local/share/pnpm
     start:
       - /opt/%i/cross-seed/node_modules/node/bin/node
       - /opt/%i/cross-seed/node_modules/cross-seed/dist/cmd.js
