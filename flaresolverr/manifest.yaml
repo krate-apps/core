@@ -48,7 +48,12 @@ systemd:
         LANG: en_US
   exec:
     pre:
-      - /bin/mkdir -p /home/%i/.tmp/flaresolverr /home/%i/.config/chromium /home/%i/.cache/chromium /home/%i/.local/share/undetected_chromedriver
+      - /bin/mkdir
+      - -p
+      - /home/%i/.tmp/flaresolverr
+      - /home/%i/.config/chromium
+      - /home/%i/.cache/chromium
+      - /home/%i/.local/share/undetected_chromedriver
     start:
       - /usr/bin/xvfb-run
       - -a
