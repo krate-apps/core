@@ -46,8 +46,11 @@ systemd:
         TERM: xterm
         PATH: /home/%i/.local/bin:/home/%i/.krate/active/rtorrent/usr/bin:/usr/local/bin:/usr/bin:/bin
   exec:
+    # One YAML element = one systemd argv token (service::generate quotes spaced paths).
     pre:
-      - +/bin/sh /opt/Krate/share/applications/official/rtorrent/bin/rtorrent-pre.sh %i
+      - +/bin/sh
+      - /opt/Krate/share/applications/official/rtorrent/bin/rtorrent-pre.sh
+      - "%i"
     start:
       - /bin/sh
       - /opt/Krate/share/applications/official/rtorrent/bin/rtorrent-run.sh
@@ -63,7 +66,8 @@ files:
     - /home/%i/.krate/applications/rtorrent.env
     - /home/%i/.config/rtorrent/.rtorrent.rc
   proxy:
-    - /etc/caddy/softwares/%i.rtorrent.caddy
+    - /etc/caddy/softwares/path/%i.rtorrent.caddy
+    - /etc/caddy/softwares/host/%i.rtorrent.caddy
   binary:
     - /home/%i/.krate/active/rtorrent/usr/bin/rtorrent
 autogen:
