@@ -37,7 +37,9 @@ systemd:
         FLOOD_OPTION_rtsocket: /run/krate/user/%i.rtorrent.sock
   exec:
     pre:
-      - /bin/mkdir -p /home/%i/.tmp/flood
+      - /bin/mkdir
+      - -p
+      - /home/%i/.tmp/flood
     start:
       - /opt/%i/flood/flood
       - --rundir
