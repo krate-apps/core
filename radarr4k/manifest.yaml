@@ -44,7 +44,9 @@ systemd:
         RADARR__APP__THEME: dark
   exec:
     pre:
-      - /bin/mkdir -p /home/%i/.tmp/radarr4k
+      - /bin/mkdir
+      - -p
+      - /home/%i/.tmp/radarr4k
     start:
       - /opt/%i/radarr4k/Radarr
       - -nobrowser
