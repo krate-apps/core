@@ -45,7 +45,12 @@ systemd:
         webUIPort: "{default_port}"
   exec:
     pre:
-      - /bin/mkdir -p /home/%i/.tmp/tdarr /home/%i/.config/tdarr/configs /home/%i/.config/tdarr/logs /home/%i/.config/tdarr/server
+      - /bin/mkdir
+      - -p
+      - /home/%i/.tmp/tdarr
+      - /home/%i/.config/tdarr/configs
+      - /home/%i/.config/tdarr/logs
+      - /home/%i/.config/tdarr/server
     start:
       - /opt/%i/tdarr/Tdarr_Server/Tdarr_Server
 files:
