@@ -37,7 +37,10 @@ systemd:
         FLASK_ENV: production
   exec:
     pre:
-      - /bin/mkdir -p /home/%i/.tmp/wizarr /home/%i/.config/wizarr/database
+      - /bin/mkdir
+      - -p
+      - /home/%i/.tmp/wizarr
+      - /home/%i/.config/wizarr/database
     start:
       - /opt/%i/wizarr/.venv/bin/gunicorn
       - --umask
