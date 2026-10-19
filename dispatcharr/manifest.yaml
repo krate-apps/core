@@ -42,10 +42,14 @@ systemd:
         DISPATCHARR_ENV: aio
   exec:
     pre:
-      - /bin/mkdir -p /home/%i/.tmp/dispatcharr /home/%i/.config/dispatcharr
+      - /bin/mkdir
+      - -p
+      - /home/%i/.tmp/dispatcharr
+      - /home/%i/.config/dispatcharr
     start:
       - /bin/bash
-      - /opt/Krate/share/applications/official/dispatcharr/bin/krate-run.sh %i
+      - /opt/Krate/share/applications/official/dispatcharr/bin/krate-run.sh
+      - "%i"
 files:
   service: /etc/systemd/system/dispatcharr@.service
   config:
