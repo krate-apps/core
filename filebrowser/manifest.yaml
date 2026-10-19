@@ -27,7 +27,10 @@ systemd:
         TMPDIR: /home/%i/.tmp/filebrowser
   exec:
     pre:
-      - /bin/mkdir -p /home/%i/.tmp/filebrowser /home/%i/.config/filebrowser/logs
+      - /bin/mkdir
+      - -p
+      - /home/%i/.tmp/filebrowser
+      - /home/%i/.config/filebrowser/logs
     start:
       - /opt/%i/filebrowser/filebrowser
       - -d
