@@ -36,7 +36,12 @@ systemd:
         PYTHONUNBUFFERED: "1"
   exec:
     pre:
-      - /bin/mkdir -p /home/%i/.tmp/kapowarr /home/%i/.config/kapowarr/db /home/%i/.config/kapowarr/logs /home/%i/.config/kapowarr/temp_downloads
+      - /bin/mkdir
+      - -p
+      - /home/%i/.tmp/kapowarr
+      - /home/%i/.config/kapowarr/db
+      - /home/%i/.config/kapowarr/logs
+      - /home/%i/.config/kapowarr/temp_downloads
     start:
       - /opt/%i/kapowarr/.venv/bin/python
       - /opt/%i/kapowarr/Kapowarr.py
