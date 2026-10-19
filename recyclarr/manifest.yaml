@@ -38,7 +38,10 @@ systemd:
         TMPDIR: /home/%i/.tmp/recyclarr
   exec:
     pre:
-      - /bin/mkdir -p /home/%i/.tmp/recyclarr /home/%i/.config/recyclarr
+      - /bin/mkdir
+      - -p
+      - /home/%i/.tmp/recyclarr
+      - /home/%i/.config/recyclarr
     start:
       - /opt/%i/recyclarr/recyclarr
       - sync
