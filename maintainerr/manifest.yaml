@@ -46,7 +46,11 @@ systemd:
         MAINTAINERR_ENTRY: dist/main.js
   exec:
     pre:
-      - /bin/mkdir -p /home/%i/.tmp/maintainerr /home/%i/.local/share/pnpm /home/%i/.config/maintainerr/logs
+      - /bin/mkdir
+      - -p
+      - /home/%i/.tmp/maintainerr
+      - /home/%i/.local/share/pnpm
+      - /home/%i/.config/maintainerr/logs
     start:
       - /home/%i/.local/share/pnpm/bin/node
       - ${MAINTAINERR_ENTRY}
