@@ -44,7 +44,9 @@ systemd:
         SONARR__APP__THEME: dark
   exec:
     pre:
-      - /bin/mkdir -p /home/%i/.tmp/sonarr4k
+      - /bin/mkdir
+      - -p
+      - /home/%i/.tmp/sonarr4k
     start:
       - /opt/%i/sonarr4k/Sonarr
       - -nobrowser
