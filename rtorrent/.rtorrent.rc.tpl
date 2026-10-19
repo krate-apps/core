@@ -30,9 +30,17 @@ system.umask.set = 0007
 system.daemon.set = false
 
 # =============================================================================
-# 3. File logging for executed commands
+# 3. File logging (before SCGI so startup failures are captured)
 # =============================================================================
-log.execute = (cat, (cfg.logs), "execute.log")
+log.execute = (cat, (cfg.logs), "/execute.log")
+print = (cat, "Logging to ", (cfg.logfile))
+log.open_file = "log", (cfg.logfile)
+log.add_output = "info", "log"
+log.add_output = "debug", "log"
+log.add_output = "warn", "log"
+log.add_output = "error", "log"
+log.add_output = "critical", "log"
+log.add_output = "connection", "log"
 
 # =============================================================================
 # 4. BitTorrent networking — ports, DHT/PEX, encryption
@@ -110,24 +118,12 @@ schedule = watch_start, 10, 10, ((load.start_verbose, (cat, (cfg.watch), "/start
 network.scgi.open_local = (cat, (cfg.socket))
 
 # =============================================================================
-# 11. rTorrent logging to file (verbose — debug SCGI / crash issues)
-# =============================================================================
-print = (cat, "Logging to ", (cfg.logfile))
-log.open_file = "log", (cfg.logfile)
-log.add_output = "info", "log"
-log.add_output = "debug", "log"
-log.add_output = "warn", "log"
-log.add_output = "error", "log"
-log.add_output = "critical", "log"
-log.add_output = "connection", "log"
-
-# =============================================================================
-# 12. ruTorrent plugin init (run by rutorrent handler on install/update)
+# 11. ruTorrent plugin init (run by rutorrent handler on install/update)
 # =============================================================================
 #schedule = init_plugins, 10, 0, "execute={sh,-c,/usr/bin/php /srv/rutorrent/app/php/initplugins.php {{USERNAME}} &}"
 
 # =============================================================================
-# 13. Commented options (reference)
+# 12. Commented options (reference)
 # =============================================================================
 #config.path.set = (cat, (cfg.config))
 #pieces.hash.on_completion.set = no

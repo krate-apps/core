@@ -19,6 +19,23 @@ stop() {
 }
 trap stop INT TERM
 
+dump_failure() {
+	echo "rtorrent-run: ${1}" >&2
+	if [ -f "${log}" ]; then
+		echo "rtorrent-run: --- ${log} (tail) ---" >&2
+		tail -n 40 "${log}" >&2 || true
+	else
+		echo "rtorrent-run: log missing at ${log}" >&2
+		ls -la "$(dirname "${log}")" >&2 2>/dev/null || true
+	fi
+	if /usr/bin/tmux has-session -t "${session}" 2>/dev/null; then
+		echo "rtorrent-run: --- tmux pane ---" >&2
+		/usr/bin/tmux capture-pane -pt "${session}" -S -50 >&2 2>/dev/null || true
+	fi
+	ls -la "$(dirname "${sock}")" >&2 2>/dev/null || true
+	ls -la "${rc}" "${bin}" >&2 2>/dev/null || true
+}
+
 /usr/bin/tmux -f /dev/null new-session -d -s "${session}" -- \
 	"${bin}" -n -o "import=${rc}"
 
@@ -28,8 +45,7 @@ while [ "${i}" -lt 30 ]; do
 		break
 	fi
 	if ! /usr/bin/tmux has-session -t "${session}" 2>/dev/null; then
-		echo "rtorrent-run: session ${session} exited before SCGI socket ${sock}" >&2
-		[ -f "${log}" ] && tail -n 40 "${log}" >&2 || true
+		dump_failure "session ${session} exited before SCGI socket ${sock}"
 		exit 1
 	fi
 	i=$((i + 1))
@@ -37,8 +53,7 @@ while [ "${i}" -lt 30 ]; do
 done
 
 if [ ! -S "${sock}" ]; then
-	echo "rtorrent-run: SCGI socket missing at ${sock}" >&2
-	[ -f "${log}" ] && tail -n 40 "${log}" >&2 || true
+	dump_failure "SCGI socket missing at ${sock}"
 	/usr/bin/tmux kill-session -t "${session}" 2>/dev/null || true
 	exit 1
 fi
@@ -52,6 +67,5 @@ while /usr/bin/tmux has-session -t "${session}" 2>/dev/null; do
 done
 
 [ "${stopping}" -eq 1 ] && exit 0
-echo "rtorrent-run: session ${session} ended" >&2
-[ -f "${log}" ] && tail -n 40 "${log}" >&2 || true
+dump_failure "session ${session} ended"
 exit 1
