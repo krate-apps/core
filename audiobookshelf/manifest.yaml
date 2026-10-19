@@ -45,7 +45,13 @@ systemd:
         ROUTER_BASE_PATH: "{url_base}"
   exec:
     pre:
-      - /bin/mkdir -p /home/%i/.tmp/audiobookshelf /home/%i/.local/share/pnpm /home/%i/.config/audiobookshelf/config /home/%i/.config/audiobookshelf/metadata /home/%i/medias/libraries/audiobooks
+      - /bin/mkdir
+      - -p
+      - /home/%i/.tmp/audiobookshelf
+      - /home/%i/.local/share/pnpm
+      - /home/%i/.config/audiobookshelf/config
+      - /home/%i/.config/audiobookshelf/metadata
+      - /home/%i/medias/libraries/audiobooks
     start:
       - /home/%i/.local/share/pnpm/bin/node
       - index.js
