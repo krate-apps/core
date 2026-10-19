@@ -38,7 +38,11 @@ systemd:
         HOME: /home/%i
   exec:
     pre:
-      - /bin/mkdir -p /home/%i/.tmp/ytdl-sub /home/%i/.config/ytdl-sub /home/%i/medias/ytdl-sub
+      - /bin/mkdir
+      - -p
+      - /home/%i/.tmp/ytdl-sub
+      - /home/%i/.config/ytdl-sub
+      - /home/%i/medias/ytdl-sub
     start:
       - /opt/%i/ytdl-sub/ytdl-sub
       - --config
