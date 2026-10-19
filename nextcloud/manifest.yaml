@@ -46,7 +46,12 @@ systemd:
         NEXTCLOUD_DATA: /home/%i/.config/nextcloud/data
   exec:
     pre:
-      - /bin/mkdir -p /home/%i/.tmp/nextcloud /home/%i/.config/nextcloud/data /home/%i/.config/nextcloud/config /opt/%i/nextcloud
+      - /bin/mkdir
+      - -p
+      - /home/%i/.tmp/nextcloud
+      - /home/%i/.config/nextcloud/data
+      - /home/%i/.config/nextcloud/config
+      - /opt/%i/nextcloud
     start:
       - /usr/bin/php8.5
       - -S
