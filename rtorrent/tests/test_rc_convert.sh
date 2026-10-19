@@ -105,8 +105,12 @@ RC
 		_fail "http min_alloc missing"
 		return
 	}
-	grep -qE 'network\.max_open_sockets\.set|system\.sockets\.max_size\.set' "${rc}" && {
-		_fail "orphan global socket ceiling still present"
+	grep -qE 'network\.max_open_sockets\.set' "${rc}" && {
+		_fail "legacy network.max_open_sockets still present"
+		return
+	}
+	grep -qE '^system\.sockets\.max_size\.set = 8192$' "${rc}" || {
+		_fail "system.sockets.max_size.set = 8192 missing"
 		return
 	}
 	grep -q 'system.sockets.adjust_alloc' "${rc}" || {

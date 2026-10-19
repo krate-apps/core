@@ -57,6 +57,9 @@ protocol.encryption.set = allow_incoming,prefer_plaintext,enable_retry
 # =============================================================================
 # 5. Socket / file / buffer limits (socket categories; tune to LimitNOFILE=16384)
 # =============================================================================
+# Default max_open is 1024. adjust_alloc sums category mins (+ generic reserve) and
+# aborts if the total exceeds max_open (e.g. 250+4096+512+8 > 1024).
+system.sockets.max_size.set = 8192
 system.sockets.http.min_alloc.set = 250
 system.sockets.files.min_alloc.set = 4096
 system.sockets.adjust_alloc =

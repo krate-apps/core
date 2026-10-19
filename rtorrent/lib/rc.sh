@@ -8,6 +8,8 @@ _RC_MODERN_SINCE="0.16.14"
 # Defaults when reverse-injecting legacy socket ceilings (aligned with LimitNOFILE=16384).
 _RC_LEGACY_MAX_OPEN_FILES="4096"
 _RC_LEGACY_MAX_OPEN_SOCKETS="4096"
+# Modern ceiling: must cover http+files min_alloc + generic reserve for adjust_alloc.
+_RC_SOCKET_MAX_SIZE="8192"
 
 # True (exit 0) when version uses modern rc dialect (no schedule2 / encoding.add).
 _rc_is_modern() {
@@ -79,10 +81,9 @@ _rc_patch_forward() {
 		-e 's/network\.http\.max_open\.set/system.sockets.http.min_alloc.set/g' \
 		-e 's/network\.max_open_files\.set/system.sockets.files.min_alloc.set/g' \
 		"${rc_path}"
-	# Global socket ceiling is discouraged once category min_alloc is set — drop it.
+	# Legacy global ceiling → modern max_size (kept; see _rc_ensure_socket_max_size).
 	sed -i \
 		-e '/^[[:space:]]*network\.max_open_sockets\.set[[:space:]]*=/d' \
-		-e '/^[[:space:]]*system\.sockets\.max_size\.set[[:space:]]*=/d' \
 		"${rc_path}"
 	# Ensure adjust_alloc follows category floors when files/http mins exist.
 	if grep -qE '^[[:space:]]*system\.sockets\.(http|files)\.min_alloc\.set[[:space:]]*=' "${rc_path}"; then
@@ -94,7 +95,28 @@ _rc_patch_forward() {
 			fi
 		fi
 	fi
+	_rc_ensure_socket_max_size "${rc_path}"
 	_rc_floor_max_open "${rc_path}"
+}
+
+# Raise/inject system.sockets.max_size so adjust_alloc does not exceed the default 1024 max_open.
+_rc_ensure_socket_max_size() {
+	local rc_path="${1:?}"
+	if ! grep -qE '^[[:space:]]*system\.sockets\.(http|files)\.min_alloc\.set[[:space:]]*=' "${rc_path}" \
+		&& ! grep -qE '^[[:space:]]*system\.sockets\.adjust_alloc[[:space:]]*=' "${rc_path}"; then
+		return 0
+	fi
+	if grep -qE '^[[:space:]]*system\.sockets\.max_size\.set[[:space:]]*=' "${rc_path}"; then
+		sed -i -E "s|^([[:space:]]*system\\.sockets\\.max_size\\.set[[:space:]]*=[[:space:]]*).*$|\\1${_RC_SOCKET_MAX_SIZE}|" "${rc_path}"
+		return 0
+	fi
+	if grep -qE '^[[:space:]]*system\.sockets\.http\.min_alloc\.set[[:space:]]*=' "${rc_path}"; then
+		sed -i "/^[[:space:]]*system\\.sockets\\.http\\.min_alloc\\.set[[:space:]]*=/i system.sockets.max_size.set = ${_RC_SOCKET_MAX_SIZE}" "${rc_path}"
+	elif grep -qE '^[[:space:]]*system\.sockets\.files\.min_alloc\.set[[:space:]]*=' "${rc_path}"; then
+		sed -i "/^[[:space:]]*system\\.sockets\\.files\\.min_alloc\\.set[[:space:]]*=/i system.sockets.max_size.set = ${_RC_SOCKET_MAX_SIZE}" "${rc_path}"
+	else
+		sed -i "/^[[:space:]]*system\\.sockets\\.adjust_alloc[[:space:]]*=/i system.sockets.max_size.set = ${_RC_SOCKET_MAX_SIZE}" "${rc_path}"
+	fi
 }
 
 # Canonical 0.16.14+ → dialect usable on 0.15.x. Idempotent.
