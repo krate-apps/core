@@ -36,7 +36,11 @@ systemd:
         CLEANUPARR_LOGS_PATH: /home/%i/.config/cleanuparr/logs
   exec:
     pre:
-      - /bin/mkdir -p /home/%i/.tmp/cleanuparr /home/%i/.config/cleanuparr/config /home/%i/.config/cleanuparr/logs
+      - /bin/mkdir
+      - -p
+      - /home/%i/.tmp/cleanuparr
+      - /home/%i/.config/cleanuparr/config
+      - /home/%i/.config/cleanuparr/logs
     start:
       - /opt/%i/cleanuparr/Cleanuparr
 files:
