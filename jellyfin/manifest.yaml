@@ -41,7 +41,10 @@ systemd:
         TMPDIR: /home/%i/.tmp/jellyfin
   exec:
     pre:
-      - /bin/mkdir -p /home/%i/.tmp/jellyfin /home/%i/.config/jellyfin/config
+      - /bin/mkdir
+      - -p
+      - /home/%i/.tmp/jellyfin
+      - /home/%i/.config/jellyfin/config
     start:
       - /opt/%i/jellyfin/jellyfin
       - --datadir
