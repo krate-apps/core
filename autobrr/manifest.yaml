@@ -29,7 +29,9 @@ systemd:
         TMPDIR: /home/%i/.tmp/autobrr
   exec:
     pre:
-      - /bin/mkdir -p /home/%i/.tmp/autobrr
+      - /bin/mkdir
+      - -p
+      - /home/%i/.tmp/autobrr
     start:
       - /opt/%i/autobrr/autobrr
       - --config=/home/%i/.config/autobrr
