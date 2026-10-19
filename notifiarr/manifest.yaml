@@ -39,7 +39,10 @@ systemd:
         DN_UPSTREAMS_0: "127.0.0.1/32"
   exec:
     pre:
-      - /bin/mkdir -p /home/%i/.tmp/notifiarr /home/%i/.config/notifiarr/logs
+      - /bin/mkdir
+      - -p
+      - /home/%i/.tmp/notifiarr
+      - /home/%i/.config/notifiarr/logs
     start:
       - /opt/%i/notifiarr/notifiarr
       - --config=/home/%i/.config/notifiarr/notifiarr.conf
