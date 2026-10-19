@@ -43,7 +43,9 @@ systemd:
         WHISPARR__APP__THEME: dark
   exec:
     pre:
-      - /bin/mkdir -p /home/%i/.tmp/whisparr
+      - /bin/mkdir
+      - -p
+      - /home/%i/.tmp/whisparr
     start:
       - /opt/%i/whisparr/Whisparr
       - -nobrowser
