@@ -34,7 +34,10 @@ systemd:
         OMBI_BASEURL: "{url_base}"
   exec:
     pre:
-      - /bin/mkdir -p /home/%i/.tmp/ombi /home/%i/.config/ombi
+      - /bin/mkdir
+      - -p
+      - /home/%i/.tmp/ombi
+      - /home/%i/.config/ombi
     start:
       - /opt/%i/ombi/Ombi
       - --host
