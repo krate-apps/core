@@ -45,7 +45,9 @@ systemd:
         LIDARR__APP__THEME: dark
   exec:
     pre:
-      - /bin/mkdir -p /home/%i/.tmp/lidarr
+      - /bin/mkdir
+      - -p
+      - /home/%i/.tmp/lidarr
     start:
       - /opt/%i/lidarr/Lidarr
       - -nobrowser
