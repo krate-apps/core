@@ -39,7 +39,10 @@ systemd:
         QUASARR_URL_BASE: "{url_base}"
   exec:
     pre:
-      - /bin/mkdir -p /home/%i/.tmp/quasarr /home/%i/.config/quasarr
+      - /bin/mkdir
+      - -p
+      - /home/%i/.tmp/quasarr
+      - /home/%i/.config/quasarr
     start:
       - /opt/%i/quasarr/.venv/bin/quasarr
 files:
