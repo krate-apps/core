@@ -33,8 +33,9 @@ else
 	echo 'missing (rtorrent not bound SCGI or no write access to run dir)'
 fi
 
-printf '\n=== tmux (as %s) ===\n' "${username}"
-sudo -u "${username}" tmux has-session -t "${tmux_session}" 2>/dev/null && echo active || echo missing
+tmux_sock="/run/krate/user/${username}.rtorrent.tmux"
+printf '\n=== tmux (dedicated socket %s) ===\n' "${tmux_sock}"
+sudo -u "${username}" -g krate tmux -S "${tmux_sock}" has-session -t "${tmux_session}" 2>/dev/null && echo active || echo missing
 
 printf '\n=== rtorrent binary (must not be setuid) ===\n'
 namei -l "/home/${username}/.krate/active/rtorrent/usr/bin/rtorrent" 2>/dev/null || true

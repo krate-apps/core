@@ -57,6 +57,10 @@ systemd:
       - "%i"
     stop:
       - /usr/bin/tmux
+      - -S
+      - /run/krate/user/%i.rtorrent.tmux
+      - -f
+      - /dev/null
       - kill-session
       - -t
       - rtorrent-%i
