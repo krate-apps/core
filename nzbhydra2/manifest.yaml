@@ -39,7 +39,10 @@ systemd:
         NZBHYDRA2_URL_BASE: "/%i/nzbhydra2"
   exec:
     pre:
-      - /bin/mkdir -p /home/%i/.tmp/nzbhydra2 /home/%i/.config/nzbhydra2
+      - /bin/mkdir
+      - -p
+      - /home/%i/.tmp/nzbhydra2
+      - /home/%i/.config/nzbhydra2
     start:
       - /usr/bin/python3
       - /opt/%i/nzbhydra2/nzbhydra2wrapperPy3.py
