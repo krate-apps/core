@@ -37,7 +37,10 @@ systemd:
         PYTHONUNBUFFERED: "1"
   exec:
     pre:
-      - /bin/mkdir -p /home/%i/.tmp/decluttarr /home/%i/.config/decluttarr/config
+      - /bin/mkdir
+      - -p
+      - /home/%i/.tmp/decluttarr
+      - /home/%i/.config/decluttarr/config
     start:
       - /opt/%i/decluttarr/.venv/bin/python
       - /opt/%i/decluttarr/main.py
