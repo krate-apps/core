@@ -37,7 +37,10 @@ systemd:
         KOMGA_BASE_URL: "{url_base}"
   exec:
     pre:
-      - /bin/mkdir -p /home/%i/.tmp/komga /home/%i/.config/komga
+      - /bin/mkdir
+      - -p
+      - /home/%i/.tmp/komga
+      - /home/%i/.config/komga
     start:
       - /usr/bin/java
       - -Djava.awt.headless=true
