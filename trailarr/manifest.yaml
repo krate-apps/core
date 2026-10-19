@@ -37,7 +37,10 @@ systemd:
         PYTHONPATH: /opt/%i/trailarr/backend
   exec:
     pre:
-      - /bin/mkdir -p /home/%i/.tmp/trailarr /home/%i/.config/trailarr/backups
+      - /bin/mkdir
+      - -p
+      - /home/%i/.tmp/trailarr
+      - /home/%i/.config/trailarr/backups
     start:
       - /opt/%i/trailarr/backend/.venv/bin/uvicorn
       - main:trailarr_api
