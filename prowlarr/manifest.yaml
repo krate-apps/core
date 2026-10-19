@@ -40,7 +40,9 @@ systemd:
         PROWLARR__APP__THEME: dark
   exec:
     pre:
-      - /bin/mkdir -p /home/%i/.tmp/prowlarr
+      - /bin/mkdir
+      - -p
+      - /home/%i/.tmp/prowlarr
     start:
       - /opt/%i/prowlarr/Prowlarr
       - -nobrowser
