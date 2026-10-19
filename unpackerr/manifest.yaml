@@ -42,7 +42,9 @@ systemd:
         UN_LOG_FILE_MB: "10"
   exec:
     pre:
-      - /bin/mkdir -p /home/%i/.tmp/unpackerr
+      - /bin/mkdir
+      - -p
+      - /home/%i/.tmp/unpackerr
     start:
       - /opt/%i/unpackerr/unpackerr
 files:
