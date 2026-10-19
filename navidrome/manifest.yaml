@@ -42,7 +42,11 @@ systemd:
         ND_BASEURL: "{url_base}"
   exec:
     pre:
-      - /bin/mkdir -p /home/%i/.tmp/navidrome /home/%i/.config/navidrome /home/%i/medias/libraries/music
+      - /bin/mkdir
+      - -p
+      - /home/%i/.tmp/navidrome
+      - /home/%i/.config/navidrome
+      - /home/%i/medias/libraries/music
     start:
       - /opt/%i/navidrome/navidrome
 files:
