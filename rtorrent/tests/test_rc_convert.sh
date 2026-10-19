@@ -109,12 +109,16 @@ RC
 		_fail "legacy network.max_open_sockets still present"
 		return
 	}
-	grep -qE '^system\.sockets\.max_size\.set = 8192$' "${rc}" || {
-		_fail "system.sockets.max_size.set = 8192 missing"
+	grep -qE 'system\.sockets\.adjust_alloc' "${rc}" && {
+		_fail "adjust_alloc should be removed"
 		return
 	}
-	grep -q 'system.sockets.adjust_alloc' "${rc}" || {
-		_fail "adjust_alloc not injected"
+	grep -qE '^system\.sockets\.max_size\.set = 16384$' "${rc}" || {
+		_fail "system.sockets.max_size.set = 16384 missing"
+		return
+	}
+	grep -qE '^system\.sockets\.files\.min_alloc\.set = 2048$' "${rc}" || {
+		_fail "files.min_alloc not normalized to 2048"
 		return
 	}
 	_ok "patch_forward success"
@@ -129,16 +133,20 @@ system.sockets.files.min_alloc.set = 4096
 system.sockets.adjust_alloc =
 schedule = watch_load, 11, 10, ((load.verbose, ./watch/*.torrent))
 RC
-	cp "${rc}" "${TMP}/fwd2.before"
 	_rc_patch_forward "${rc}"
-	_rc_patch_forward "${rc}"
-	a="$(md5sum "${TMP}/fwd2.before" | awk '{print $1}')"
 	b="$(md5sum "${rc}" | awk '{print $1}')"
-	# First pass may inject nothing if already modern; second must be stable.
 	_rc_patch_forward "${rc}"
 	c="$(md5sum "${rc}" | awk '{print $1}')"
 	[[ "${b}" == "${c}" ]] || {
 		_fail "forward not idempotent"
+		return
+	}
+	grep -qE 'system\.sockets\.adjust_alloc' "${rc}" && {
+		_fail "adjust_alloc still present after forward"
+		return
+	}
+	grep -qE '^system\.sockets\.max_size\.set = 16384$' "${rc}" || {
+		_fail "max_size not ensured"
 		return
 	}
 	_ok "patch_forward idempotent"
