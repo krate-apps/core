@@ -37,7 +37,10 @@ systemd:
         KRATE_VPN_STASH: /etc/krate/vpn/wg
   exec:
     pre:
-      - /bin/mkdir -p /home/%i/.tmp/wireguard /home/%i/.krate/wireguard
+      - /bin/mkdir
+      - -p
+      - /home/%i/.tmp/wireguard
+      - /home/%i/.krate/wireguard
     start:
       - /opt/%i/wireguard/wireguard-verify
 files:
