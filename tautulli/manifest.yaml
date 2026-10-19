@@ -37,7 +37,14 @@ systemd:
         PYTHONUNBUFFERED: "1"
   exec:
     pre:
-      - /bin/mkdir -p /home/%i/.tmp/tautulli /home/%i/.config/tautulli/backups /home/%i/.config/tautulli/cache /home/%i/.config/tautulli/exports /home/%i/.config/tautulli/logs /home/%i/.config/tautulli/newsletters
+      - /bin/mkdir
+      - -p
+      - /home/%i/.tmp/tautulli
+      - /home/%i/.config/tautulli/backups
+      - /home/%i/.config/tautulli/cache
+      - /home/%i/.config/tautulli/exports
+      - /home/%i/.config/tautulli/logs
+      - /home/%i/.config/tautulli/newsletters
     start:
       - /opt/%i/tautulli/.venv/bin/python
       - /opt/%i/tautulli/Tautulli.py
