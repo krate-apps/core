@@ -38,7 +38,12 @@ systemd:
         PATH: /home/%i/.local/share/pnpm:/usr/local/bin:/usr/bin:/bin
   exec:
     pre:
-      - /bin/mkdir -p /home/%i/.tmp/seerr /home/%i/.local/share/pnpm /home/%i/.config/seerr/config/db /home/%i/.config/seerr/config/logs
+      - /bin/mkdir
+      - -p
+      - /home/%i/.tmp/seerr
+      - /home/%i/.local/share/pnpm
+      - /home/%i/.config/seerr/config/db
+      - /home/%i/.config/seerr/config/logs
     start:
       - /usr/local/bin/pnpm
       - exec
