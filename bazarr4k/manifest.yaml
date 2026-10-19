@@ -37,7 +37,12 @@ systemd:
         TMPDIR: /home/%i/.tmp/bazarr4k
   exec:
     pre:
-      - /bin/mkdir -p /home/%i/.tmp/bazarr4k /home/%i/.config/bazarr4k/config /home/%i/.config/bazarr4k/db /home/%i/.config/bazarr4k/log
+      - /bin/mkdir
+      - -p
+      - /home/%i/.tmp/bazarr4k
+      - /home/%i/.config/bazarr4k/config
+      - /home/%i/.config/bazarr4k/db
+      - /home/%i/.config/bazarr4k/log
     start:
       - /opt/%i/bazarr4k/.venv/bin/python
       - /opt/%i/bazarr4k/bazarr.py
