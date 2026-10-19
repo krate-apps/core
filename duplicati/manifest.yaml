@@ -43,7 +43,10 @@ systemd:
         DUPLICATI_HOME: /home/%i/.config/duplicati
   exec:
     pre:
-      - /bin/mkdir -p /home/%i/.tmp/duplicati /home/%i/.config/duplicati
+      - /bin/mkdir
+      - -p
+      - /home/%i/.tmp/duplicati
+      - /home/%i/.config/duplicati
     start:
       - /opt/%i/duplicati/duplicati-server
       - --webservice-port=${DUPLICATI_PORT}
