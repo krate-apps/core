@@ -45,7 +45,10 @@ systemd:
         STGUIADDRESS: "127.0.0.1:{default_port}"
   exec:
     pre:
-      - /bin/mkdir -p /home/%i/.tmp/syncthing/index-v2 /home/%i/.config/syncthing/index-v2
+      - /bin/mkdir
+      - -p
+      - /home/%i/.tmp/syncthing/index-v2
+      - /home/%i/.config/syncthing/index-v2
     start:
       - /opt/%i/syncthing/syncthing
       - serve
