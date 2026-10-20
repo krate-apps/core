@@ -28,10 +28,10 @@ if ($krateRuUser !== '' && preg_match('/^[a-z_][a-z0-9_-]*$/i', $krateRuUser)) {
 	$krateLogsDir = '/home/' . $krateRuUser . '/medias/rtorrent/logs';
 	$log_file = $krateLogsDir . '/rutorrent.log';
 
-	$rpcLogCalls = true;
+	$rpcLogCalls = false;
 	$rpcLogFaults = true;
 	$rpcTimeOut = 10;
-	$do_diagnostic = true;
+	$do_diagnostic = false;
 
 	$scgi_port = 0;
 	$scgi_host = 'unix:///run/krate/user/' . $krateRuUser . '.rtorrent.sock';
@@ -55,6 +55,22 @@ if ($krateRuUser !== '' && preg_match('/^[a-z_][a-z0-9_-]*$/i', $krateRuUser)) {
 			'unrar' => '/usr/bin/unrar',
 		)
 	);
+	// Explicit paths skip ruTorrent's executable lookup.
+	$krateSystemTools = array(
+		'php' => array('/usr/bin/php8.5', '/usr/bin/php'),
+		'curl' => array('/usr/bin/curl'),
+		'gzip' => array('/usr/bin/gzip', '/bin/gzip'),
+		'id' => array('/usr/bin/id'),
+		'stat' => array('/usr/bin/stat'),
+	);
+	foreach ($krateSystemTools as $krateTool => $krateCandidates) {
+		foreach ($krateCandidates as $krateCandidate) {
+			if (is_executable($krateCandidate)) {
+				$pathToExternals[$krateTool] = $krateCandidate;
+				break;
+			}
+		}
+	}
 	if (is_executable('/usr/bin/rar')) {
 		$pathToExternals['rar'] = '/usr/bin/rar';
 	} elseif (is_executable('/usr/bin/unrar')) {
