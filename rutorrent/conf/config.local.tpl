@@ -2,6 +2,8 @@
 // Krate shared multi-user overrides (loaded from conf/config.php before util.php caches profilePath).
 // forbidUserSettings: Novik must not append /users/{login}/ — profile is /var/lib/krate/rutorrent/{user}/.
 
+// With proxy.portal_auth, Caddy sets REMOTE_USER to the path owner (not the
+// portal login id) so profile/SCGI stay tied to /{user}/rutorrent.
 $krateRuUser = $_SERVER['REMOTE_USER']
 	?? $_ENV['REMOTE_USER']
 	?? $_SERVER['REDIRECT_REMOTE_USER']

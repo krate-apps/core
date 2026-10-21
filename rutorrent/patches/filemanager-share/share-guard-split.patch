@@ -1,0 +1,16 @@
+--- a/js/share.js
++++ b/js/share.js
+@@ -65,8 +65,11 @@
+     this.deleteEntries = () => {
+ 
+         const selectedEntries = $.map(self.table.get().getSelected(), function (value) {
+-            return self.entriesList[value.split('_fsh_')[1]].hash;
+-        });
++            if (value == null || value === "")
++                return;
++            const entry = self.entriesList[String(value).split('_fsh_')[1]];
++            return entry ? entry.hash : undefined;
++        }).filter(Boolean);
+         askYesNo(theUILang.FSdel, theUILang.FSdelmsg, function () {
+             // unbinding call and add flm start btn class to bind on
+             $("#yesnoOK").addClass('flm-diag-start').off();

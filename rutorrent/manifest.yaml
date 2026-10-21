@@ -22,6 +22,7 @@ install:
     backup_dir: /home/%i/.krate/backups/rutorrent
 proxy:
   mode: php_subpath
+  portal_auth: true
   document_root: /srv/rutorrent/app
 systemd: {}
 files:

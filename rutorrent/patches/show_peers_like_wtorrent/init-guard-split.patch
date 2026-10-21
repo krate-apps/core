@@ -1,0 +1,20 @@
+--- a/init.js
++++ b/init.js
+@@ -10,7 +10,7 @@
+ 		','+theRequestManager.map('cat=')+'{#}"',
+ 		function(hash,torrent,value)
+ 		{
+-		        var arr = value.split('#');
++		        var arr = String(value == null ? "" : value).split("#");
+ 			torrent.seeds_all = 0;
+ 			for(var i=0; i<arr.length; i++)
+ 				torrent.seeds_all += iv(arr[i]);
+@@ -25,7 +25,7 @@
+ 		','+theRequestManager.map('cat=')+'{#}"',
+ 		function(hash,torrent,value)
+ 		{
+-		        var arr = value.split('#');
++		        var arr = String(value == null ? "" : value).split("#");
+ 			torrent.peers_all = 0;
+ 			for(var i=0; i<arr.length; i++)
+ 				torrent.peers_all += iv(arr[i]);
