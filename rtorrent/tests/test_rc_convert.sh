@@ -197,6 +197,14 @@ test_patch_reverse_success() {
 		_fail "max_open_sockets default missing"
 		return
 	}
+	grep -qF "${_RC_FDATASYNC_MARKER}" "${rc}" || {
+		_fail "fdatasync marker missing"
+		return
+	}
+	grep -qE '^system\.files\.session\.fdatasync\.set = 0$' "${rc}" || {
+		_fail "fdatasync=0 missing on 0.15 dialect"
+		return
+	}
 	_ok "patch_reverse success"
 }
 
@@ -281,6 +289,91 @@ test_dialect_changed() {
 	_ok "dialect_changed"
 }
 
+test_fdatasync_inject_on_reverse() {
+	local rc="${TMP}/fda.rc"
+	printf 'session.path.set = /s\nsession.use_lock.set = yes\n' >"${rc}"
+	_rc_ensure_session_fdatasync "${rc}"
+	grep -qF "${_RC_FDATASYNC_MARKER}" "${rc}" || {
+		_fail "marker not injected"
+		return
+	}
+	grep -qE '^system\.files\.session\.fdatasync\.set = 0$' "${rc}" || {
+		_fail "fdatasync line not injected"
+		return
+	}
+	# After session.path.set
+	awk '
+		/session\.path\.set/ { saw=1; next }
+		saw && /fdatasync\.set/ { ok=1 }
+		END { exit ok ? 0 : 1 }
+	' "${rc}" || {
+		_fail "fdatasync not after session.path.set"
+		return
+	}
+	_rc_ensure_session_fdatasync "${rc}"
+	local n
+	n="$(grep -cE '^[[:space:]]*system\.files\.session\.fdatasync\.set' "${rc}" || true)"
+	[[ "${n}" -eq 1 ]] || {
+		_fail "ensure duplicated fdatasync (n=${n})"
+		return
+	}
+	_ok "fdatasync inject on reverse"
+}
+
+test_fdatasync_preserves_user_value() {
+	local rc="${TMP}/fda_user.rc"
+	printf 'session.path.set = /s\nsystem.files.session.fdatasync.set = 1\n' >"${rc}"
+	_rc_ensure_session_fdatasync "${rc}"
+	grep -qE '^system\.files\.session\.fdatasync\.set = 1$' "${rc}" || {
+		_fail "user fdatasync=1 was overwritten"
+		return
+	}
+	! grep -qF "${_RC_FDATASYNC_MARKER}" "${rc}" || {
+		_fail "marker should not be added when user already set fdatasync"
+		return
+	}
+	_ok "fdatasync preserves user value"
+}
+
+test_fdatasync_drop_on_forward() {
+	local rc="${TMP}/fda_fwd.rc"
+	printf 'session.path.set = /s\n%s\n%s\nsystem.daemon.set = false\n' \
+		"${_RC_FDATASYNC_MARKER}" "${_RC_FDATASYNC_LINE}" >"${rc}"
+	_rc_drop_managed_fdatasync "${rc}"
+	! grep -qF "${_RC_FDATASYNC_MARKER}" "${rc}" || {
+		_fail "marker still present after drop"
+		return
+	}
+	! grep -q 'fdatasync' "${rc}" || {
+		_fail "managed fdatasync still present after drop"
+		return
+	}
+	grep -q 'system.daemon.set = false' "${rc}" || {
+		_fail "unrelated line removed"
+		return
+	}
+	_ok "fdatasync drop on forward"
+}
+
+test_fdatasync_roundtrip() {
+	local rc="${TMP}/fda_rt.rc"
+	cp "${APP_DIR}/.rtorrent.rc.tpl" "${rc}"
+	sed -i -e 's|{{USERNAME}}|alice|g' -e 's|{{PORT_RANGE}}|1-1|g' \
+		-e 's|{{DATA_DIR}}|/d|g' -e 's|{{DOWNLOADS_DIR}}|/dl|g' \
+		-e 's|{{LOGS_DIR}}|/l|g' -e 's|{{SESSION_DIR}}|/s|g' -e 's|{{WATCH_DIR}}|/w|g' "${rc}"
+	_rc_patch_reverse "${rc}"
+	grep -qE '^system\.files\.session\.fdatasync\.set = 0$' "${rc}" || {
+		_fail "reverse did not inject fdatasync"
+		return
+	}
+	_rc_patch_forward "${rc}"
+	! grep -q 'fdatasync' "${rc}" || {
+		_fail "forward left managed fdatasync behind"
+		return
+	}
+	_ok "fdatasync roundtrip"
+}
+
 test_rc_is_modern_success
 test_rc_is_modern_failure
 test_patch_forward_success
@@ -293,6 +386,10 @@ test_floor_max_open_failure_leaves_http
 test_sync_port_range_success
 test_sync_port_range_failure_empty
 test_dialect_changed
+test_fdatasync_inject_on_reverse
+test_fdatasync_preserves_user_value
+test_fdatasync_drop_on_forward
+test_fdatasync_roundtrip
 
 if [[ "${FAILS}" -ne 0 ]]; then
 	echo "${FAILS} test(s) failed" >&2

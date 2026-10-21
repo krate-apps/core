@@ -12,6 +12,10 @@ _RC_LEGACY_MAX_OPEN_SOCKETS="4096"
 _RC_SOCKET_MAX_SIZE="16384"
 _RC_SOCKET_FILES_MIN_ALLOC="2048"
 _RC_SOCKET_HTTP_MIN_ALLOC="250"
+# 0.15.x session save can stall when fdatasync is left on; KRATE injects = 0 with
+# a marker so 0.16.x can drop only the managed line and preserve a user override.
+_RC_FDATASYNC_MARKER="# krate:managed-session-fdatasync"
+_RC_FDATASYNC_LINE="system.files.session.fdatasync.set = 0"
 
 # True (exit 0) when version uses modern rc dialect (no schedule2 / encoding.add).
 _rc_is_modern() {
@@ -64,6 +68,63 @@ _rc_sync_port_range() {
 		"${rc_path}"
 }
 
+# Drop the KRATE-managed fdatasync pair (marker + following set line). Keep user overrides.
+_rc_drop_managed_fdatasync() {
+	local rc_path="${1:?}" out
+	[[ -f "${rc_path}" ]] || return 0
+	out="$(mktemp)"
+	awk -v marker="${_RC_FDATASYNC_MARKER}" '
+		BEGIN { hold = 0 }
+		{
+			if ($0 == marker) { hold = 1; next }
+			if (hold) {
+				hold = 0
+				if ($0 ~ /^[[:space:]]*system\.files\.session\.fdatasync\.set[[:space:]]*=/) next
+				print marker
+			}
+			print
+		}
+		END { if (hold) { /* orphan marker dropped */ } }
+	' "${rc_path}" >"${out}"
+	mv -f "${out}" "${rc_path}"
+}
+
+# Ensure 0.15.x gets fdatasync=0 after session.path.set unless the user already set it.
+_rc_ensure_session_fdatasync() {
+	local rc_path="${1:?}" out
+	[[ -f "${rc_path}" ]] || return 0
+	# Active user/custom line: leave alone (including = 1).
+	if grep -qE '^[[:space:]]*system\.files\.session\.fdatasync\.set[[:space:]]*=' "${rc_path}"; then
+		return 0
+	fi
+	# Restore a previously commented managed/user line (marker form).
+	if grep -qE "^[[:space:]]*#[[:space:]]*system\.files\.session\.fdatasync\.set[[:space:]]*=" "${rc_path}" \
+		&& grep -qF "${_RC_FDATASYNC_MARKER}" "${rc_path}"; then
+		sed -i -E "s|^([[:space:]]*)#[[:space:]]*(system\\.files\\.session\\.fdatasync\\.set[[:space:]]*=.*)|\1\2|" "${rc_path}"
+		return 0
+	fi
+	out="$(mktemp)"
+	awk -v marker="${_RC_FDATASYNC_MARKER}" -v line="${_RC_FDATASYNC_LINE}" '
+		BEGIN { done = 0 }
+		{
+			print
+			if (!done && $0 ~ /^[[:space:]]*session\.path\.set[[:space:]]*=/) {
+				print marker
+				print line
+				done = 1
+			}
+		}
+		END {
+			if (!done) {
+				print ""
+				print marker
+				print line
+			}
+		}
+	' "${rc_path}" >"${out}"
+	mv -f "${out}" "${rc_path}"
+}
+
 # Legacy (pre-0.16.14) → canonical 0.16.14+ syntax. Idempotent.
 _rc_patch_forward() {
 	local rc_path="${1:?}"
@@ -88,6 +149,7 @@ _rc_patch_forward() {
 		-e '/^[[:space:]]*network\.max_open_sockets\.set[[:space:]]*=/d' \
 		-e '/^[[:space:]]*system\.sockets\.adjust_alloc[[:space:]]*=/d' \
 		"${rc_path}"
+	_rc_drop_managed_fdatasync "${rc_path}"
 	_rc_ensure_socket_budget "${rc_path}"
 	_rc_floor_max_open "${rc_path}"
 }
@@ -154,6 +216,7 @@ _rc_patch_reverse() {
 			printf 'network.max_open_sockets.set = %s\n' "${_RC_LEGACY_MAX_OPEN_SOCKETS}" >>"${rc_path}"
 		fi
 	fi
+	_rc_ensure_session_fdatasync "${rc_path}"
 	_rc_floor_max_open "${rc_path}"
 }
 
