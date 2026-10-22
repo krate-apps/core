@@ -59,7 +59,7 @@ if ($krateRuUser !== '' && preg_match('/^[a-z_][a-z0-9_-]*$/i', $krateRuUser)) {
 	);
 	// Explicit paths skip ruTorrent's executable lookup.
 	$krateSystemTools = array(
-		'php' => array('/usr/bin/php8.5', '/usr/bin/php'),
+		'php' => array('/usr/bin/php', '/usr/bin/php8.5'),
 		'curl' => array('/usr/bin/curl'),
 		'gzip' => array('/usr/bin/gzip', '/bin/gzip'),
 		'id' => array('/usr/bin/id'),
