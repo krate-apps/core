@@ -41,12 +41,32 @@ _update() {
 	zenfw::software::backup::create "${app_name}" "user" "${data_dir}" "${username}"
 }
 
+# WAN listen port for customConnections / ManualPortMapping / vpn DNAT (never 0).
+_wan_port() {
+	local p="${service_default_port:-${PORT:-}}"
+	p="${p//[^0-9]/}"
+	# "0" is set-but-invalid (: "${p:=x}" would keep it); require 1–65535.
+	if [[ "${p}" =~ ^[1-9][0-9]{0,4}$ ]] && ((p <= 65535)); then
+		printf '%s' "${p}"
+		return 0
+	fi
+	printf '%s' "${_plex_bind_port}"
+}
+
 _public_url() {
-	local host="" public_port="${service_default_port//[^0-9]/}"
-	: "${public_port:=${_plex_bind_port}}"
+	local host="" public_port ph="${proxy_host:-${ZEN_PROXY_HOST:-}}"
+	local ub="${url_base:-${ZEN_URL_BASE:-}}"
+	public_port="$(_wan_port)"
+	# Dedicated UI host only when url_base is explicitly "/" (real DNS apex).
+	if [[ -n "${ph}" && "${ub}" == "/" ]]; then
+		ph="${ph#https://}"
+		ph="${ph#http://}"
+		ph="${ph%%/*}"
+		[[ -n "${ph}" ]] && printf 'https://%s' "${ph}" && return 0
+	fi
 	[[ -r /etc/caddy/environment ]] &&
 		host="$(sed -n 's/^[[:space:]]*DOMAIN=//p' /etc/caddy/environment | tail -n1 || true)"
-	host="${proxy_host:-${host//[\"\']/}}"
+	host="${host//[\"\']/}"
 	[[ -n "${host}" ]] || host="$(curl -4 -fsS --connect-timeout 2 https://api.ipify.org 2>/dev/null || true)"
 	[[ -n "${host}" ]] || return 0
 	printf 'http://%s:%s' "${host}" "${public_port}"
@@ -55,8 +75,7 @@ _public_url() {
 # mode: all | prefs_only | proxy_only — channel 8 = Plex Pass (-b beta / is_prerelease).
 _config() {
 	local mode="${1:-all}" public_port prefs_dir backup plex_user custom channel=16 tpl friendly
-	public_port="${service_default_port//[^0-9]/}"
-	: "${public_port:=${_plex_bind_port}}"
+	public_port="$(_wan_port)"
 	: "${config_xml:?plex: missing Preferences path (files.config → config_xml)}"
 	prefs_dir="$(dirname "${config_xml}")"
 	backup="${prefs_dir}/Plug-in Support/Databases/backup"
@@ -98,7 +117,13 @@ _config() {
 		zenfw::vault::save "${username}.${app_name}" "${user_password}" application 2>/dev/null || true
 	fi
 	[[ "${mode}" == "prefs_only" ]] && return 0
-	zenfw::proxy::generate "${app_name}" "${_plex_bind_port}" "${url_base}" true "${username}"
+	# Empty url_base = no dedicated host (IP-only): drop path UI proxy; clients use WAN port.
+	local ub="${url_base:-${ZEN_URL_BASE:-}}" ph="${proxy_host:-${ZEN_PROXY_HOST:-}}"
+	if [[ -z "${ub}" ]]; then
+		zenfw::proxy::remove "${app_name}" "${username}" || true
+	else
+		zenfw::proxy::generate "${app_name}" "${_plex_bind_port}" "${ub}" true "${username}" "${ph}"
+	fi
 	zenfw::vpn::route get plex "${username}" >/dev/null 2>&1 && return 0
 	zenfw::service::manage restart "${service_unit}" 600 || true
 }
@@ -116,8 +141,7 @@ _prompt_claim() {
 # Claim on /dev/tty; VPN ensure before plex.tv exchange.
 _secure() {
 	local public_port response="" auth plex_user plex_mail machine anon custom ip args out rc attempt=0 had_cli=0 msg
-	public_port="${service_default_port//[^0-9]/}"
-	: "${public_port:=${_plex_bind_port}}"
+	public_port="$(_wan_port)"
 	: "${config_xml:?plex: missing Preferences path (files.config → config_xml)}"
 	[[ -n "${license_key:-}" ]] && had_cli=1
 

@@ -1,5 +1,8 @@
 id: plex
 multi_user: true
+# UI is not path-based (PMS has no BaseUrl). zenfw writes a dedicated site
+# https://plex-{user}.{apex}/ when DOMAIN is a real DNS name; otherwise Access URL
+# is http://IP:{default_port}/web/ via customConnections / ManualPortMapping.
 proxy:
   mode: strip_prefix
   rewrite_location: true
