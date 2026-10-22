@@ -1,10 +1,11 @@
 id: nextcloud
 multi_user: true
+# Served by a per-user PHP-FPM pool (krate-nextcloud-{user}.sock) via Caddy php_subpath.
+# No php -S unit — HTTP is FPM + Caddy; occ remains CLI. Cron uses AJAX background mode.
 proxy:
-  mode: strip_prefix
-runtime:
-  kind: systemd
-  service_template: nextcloud@.service
+  mode: php_subpath
+  app_auth: true
+  document_root: /opt/%i/nextcloud
 dependencies:
   apt:
     common:
@@ -27,39 +28,9 @@ install:
     install_dir: /opt/%i/nextcloud
     temp_dir: /home/%i/.tmp/nextcloud
   executable:
-    - /usr/bin/php8.5
-systemd:
-  unit:
-    TimeoutStopSec: 40
-    Type: simple
-    Restart: on-failure
-    RestartSec: "10"
-    WorkingDirectory: /opt/%i/nextcloud
-  environment:
-    file:
-      path: /home/%i/.krate/applications/nextcloud.env
-      mode: "0600"
-      variables:
-        TMPDIR: /home/%i/.tmp/nextcloud
-        HOME: /home/%i
-        PORT: "{default_port}"
-        NEXTCLOUD_DATA: /home/%i/.config/nextcloud/data
-  exec:
-    pre:
-      - /bin/mkdir
-      - -p
-      - /home/%i/.tmp/nextcloud
-      - /home/%i/.config/nextcloud/data
-      - /home/%i/.config/nextcloud/config
-      - /opt/%i/nextcloud
-    start:
-      - /usr/bin/php8.5
-      - -S
-      - 127.0.0.1:${PORT}
-      - -t
-      - /opt/%i/nextcloud
+    - /usr/bin/php
+systemd: {}
 files:
-  service: /etc/systemd/system/nextcloud@.service
   config:
     - /home/%i/.config/nextcloud/config/config.php
     - /home/%i/.krate/applications/nextcloud.env
@@ -69,8 +40,7 @@ files:
     - /etc/caddy/softwares/%i.nextcloud.caddy
   binary:
     - /opt/%i/nextcloud/occ
-autogen:
-  - default_port
+autogen: []
 security:
   network: true
   filesystem:
