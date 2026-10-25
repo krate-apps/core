@@ -112,10 +112,10 @@
  
 --- a/frontend/src/store/auth.jsx	2026-06-05 20:38:49.000000000 +0200
 +++ b/frontend/src/store/auth.jsx	2026-06-06 13:50:24.684994266 +0200
-@@ -215,12 +215,15 @@
+@@ -249,12 +249,15 @@
+       set({ proxyAuthOptOut: true });
+     }
  
-   // Action to logout
-   logout: async () => {
 -    // Call backend logout endpoint to log the event
 -    try {
 -      await API.logout();
