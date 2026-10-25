@@ -14,7 +14,7 @@ sync_repos:
 dependencies:
   apt:
     common:
-      packages: php8.5-curl php8.5-mbstring php8.5-xml php8.5-zip geoip-database p7zip-full unrar ffmpeg mediainfo sox
+      packages: php8.5-curl php8.5-mbstring php8.5-xml php8.5-zip geoip-database p7zip-full unrar ffmpeg mediainfo sox rar
 install:
   layout:
     install_dir: /srv/rutorrent/app
@@ -47,4 +47,4 @@ version:
   probes:
     - type: vendor_symlink
       path: "/home/{username}/.krate/active/rtorrent"
-      pattern: "_([0-9][^_]*)$" 
+      pattern: "_([0-9][^_]*)$"
