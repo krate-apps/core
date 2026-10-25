@@ -41,6 +41,27 @@ _update() {
 	zenfw::software::backup::create "${app_name}" "user" "${data_dir}" "${username}"
 }
 
+# HTTP readiness: host loopback, or inside the VPN netns when the route is enabled.
+_wait_http_ready() {
+	local port="$1" path="${2:-/}" timeout_sec="${3:-120}" start now code
+	path="${path:-/}"
+	[[ "${path}" == /* ]] || path="/${path}"
+	if zenfw::vpn::route get plex "${username}" >/dev/null 2>&1; then
+		zenfw::vpn::route wait-listen plex "${username}" "${port}" "${timeout_sec}" >/dev/null 2>&1 || true
+		start=$(date +%s)
+		while :; do
+			now=$(date +%s)
+			(( now - start < timeout_sec )) || return 1
+			code="$(zenfw::vpn::route exec plex "${username}" -- \
+				curl -4 -fsS -o /dev/null -w '%{http_code}' --connect-timeout 2 --max-time 5 \
+				"http://127.0.0.1:${port}${path}" 2>/dev/null || printf '000')"
+			[[ "${code}" =~ ^[23][0-9][0-9]$ ]] && return 0
+			sleep 1
+		done
+	fi
+	zenfw::request::wait::ping "http://127.0.0.1:${port}${path}" "${timeout_sec}" 1000 false
+}
+
 # WAN listen port for customConnections / ManualPortMapping / vpn DNAT (never 0).
 _wan_port() {
 	local p="${service_default_port:-${PORT:-}}"
@@ -168,7 +189,7 @@ _secure() {
 			[[ "${action:-add}" != "update" ]] &&
 				printf '%s\n' "$(zenfw::intl::trans "lifecycle.hint.plex.claim_deferred" "${app_name}" 2>/dev/null | awk 'NR==1{print; exit}')"
 			zenfw::service::manage restart "${service_unit}" 600 || true
-			zenfw::request::wait::ping "http://127.0.0.1:${_plex_bind_port}/" 120 1000 false || true
+			_wait_http_ready "${_plex_bind_port}" "/" 120 || true
 			return 0
 		fi
 		printf '%s\n' "$(zenfw::intl::trans "lifecycle.info.plex.claim_prompt" "${app_name}" 2>/dev/null | awk 'NR==1{print; exit}')" >/dev/tty
@@ -245,5 +266,5 @@ _secure() {
 	zenfw::permission::read_exec::set "${config_xml}" "${username}" "${username}"
 	printf '%s\n' "$(zenfw::intl::trans "lifecycle.success.plex.claimed" "${app_name}" 2>/dev/null | awk 'NR==1{print; exit}')"
 	zenfw::service::manage restart "${service_unit}" 600
-	zenfw::request::wait::ping "http://127.0.0.1:${_plex_bind_port}/" 120 1000 false || true
+	_wait_http_ready "${_plex_bind_port}" "/" 120 || true
 }
