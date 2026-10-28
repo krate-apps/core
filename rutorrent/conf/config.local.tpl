@@ -13,6 +13,18 @@ $krateRuUser = $_SERVER['REMOTE_USER']
 
 // Caddy / php-fpm may pass SCGI target via $_SERVER before $_ENV is populated.
 $krateScgiHost = $_SERVER['RU_SCGI_HOST'] ?? $_ENV['RU_SCGI_HOST'] ?? '';
+$krateProfilePath = $_SERVER['RU_PROFILE_PATH'] ?? $_ENV['RU_PROFILE_PATH'] ?? '';
+
+// Recover username when FPM wiped REMOTE_USER but left RU_* (or only the socket path).
+if ($krateRuUser === '' && $krateScgiHost !== ''
+	&& preg_match('#/run/krate/user/([a-z_][a-z0-9_-]*)\.rtorrent\.sock#i', $krateScgiHost, $krateM)) {
+	$krateRuUser = $krateM[1];
+}
+if ($krateRuUser === '' && $krateProfilePath !== ''
+	&& preg_match('#/rutorrent/([a-z_][a-z0-9_-]*)/?$#i', $krateProfilePath, $krateM)) {
+	$krateRuUser = $krateM[1];
+}
+
 if ($krateScgiHost !== '') {
 	$scgi_port = (int) ($_SERVER['RU_SCGI_PORT'] ?? $_ENV['RU_SCGI_PORT'] ?? 0);
 	$scgi_host = $krateScgiHost;
