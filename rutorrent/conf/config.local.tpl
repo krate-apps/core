@@ -44,7 +44,7 @@ if ($krateRuUser !== '' && preg_match('/^[a-z_][a-z0-9_-]*$/i', $krateRuUser)) {
 
 	$rpcLogCalls = false;
 	$rpcLogFaults = true;
-	$rpcTimeOut = 10;
+	$rpcTimeOut = 60;
 	$do_diagnostic = false;
 
 	$scgi_port = 0;
