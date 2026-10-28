@@ -23,7 +23,8 @@ SEND_TORRENT_NEW = (
     "\t\t\t// KRATE: accept load if listed (void tinyxml2 / timeout-after-load)\n"
     "\t\t\t$req->run();\n"
     "\t\t\t$__h = $torrent->hash_info();\n"
-    "\t\t\tif($__h && (!$req->fault || isset(self::loadedHashes()[strtoupper($__h)])))\n"
+    "\t\t\t$__loaded = self::loadedHashes();\n"
+    "\t\t\tif($__h && (!$req->fault || isset($__loaded[strtoupper($__h)])))\n"
     "\t\t\t\t$hash = $__h;"
 )
 
@@ -31,7 +32,8 @@ SEND_MAGNET_NEW = (
     "\t\t\t\t$req->addCommand( $cmd );\n"
     "\t\t\t\t// KRATE: accept load if listed (void tinyxml2 / timeout-after-load)\n"
     "\t\t\t\t$req->run();\n"
-    "\t\t\t\tif(!$req->fault || isset(self::loadedHashes()[strtoupper($hash)]))\n"
+    "\t\t\t\t$__loaded = self::loadedHashes();\n"
+    "\t\t\t\tif(!$req->fault || isset($__loaded[strtoupper($hash)]))\n"
     "\t\t\t\t\treturn($hash);"
 )
 
@@ -42,10 +44,16 @@ MKDIR_NEW = (
     "\t\t\treturn(!$mkdir->fault ? true : self::directoryFailed());"
 )
 
-# Match stock Novik and the earlier weaker KRATE !fault-only patch.
+# Match stock Novik and earlier KRATE variants ( !fault-only / isset(loadedHashes()[]) ).
 SEND_TORRENT_RE = re.compile(
     r"\t\t\t\$req->addCommand\(\s*\$cmd\s*\);\n"
     r"(?:"
+    r"\t\t\t// KRATE: accept load if listed[^\n]*\n"
+    r"\t\t\t\$req->run\(\);\n"
+    r"\t\t\t\$__h = \$torrent->hash_info\(\);\n"
+    r"\t\t\tif\(\$__h && \(!\$req->fault \|\| isset\(self::loadedHashes\(\)\[strtoupper\(\$__h\)\]\)\)\)\n"
+    r"\t\t\t\t\$hash = \$__h;"
+    r"|"
     r"\t\t\t// KRATE: judge load success by !fault[^\n]*\n"
     r"\t\t\t\$req->run\(\);\n"
     r"\t\t\tif\(!\$req->fault\)\n"
@@ -59,6 +67,11 @@ SEND_TORRENT_RE = re.compile(
 SEND_MAGNET_RE = re.compile(
     r"\t\t\t\t\$req->addCommand\(\s*\$cmd\s*\);\n"
     r"(?:"
+    r"\t\t\t\t// KRATE: accept load if listed[^\n]*\n"
+    r"\t\t\t\t\$req->run\(\);\n"
+    r"\t\t\t\tif\(!\$req->fault \|\| isset\(self::loadedHashes\(\)\[strtoupper\(\$hash\)\]\)\)\n"
+    r"\t\t\t\t\treturn\(\$hash\);"
+    r"|"
     r"\t\t\t\t// KRATE: judge load success by !fault[^\n]*\n"
     r"\t\t\t\t\$req->run\(\);\n"
     r"\t\t\t\tif\(!\$req->fault\)\n"
