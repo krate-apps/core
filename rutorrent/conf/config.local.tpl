@@ -99,7 +99,10 @@ if ($krateRuUser !== '' && preg_match('/^[a-z_][a-z0-9_-]*$/i', $krateRuUser)) {
 }
 
 // Caddy php_fastcgi may inject these when basic-auth user is mapped per vhost.
+// RU_PUBLIC_URL (env) should be https://{host}/{user}/rutorrent when using handle_path;
+// otherwise Novik publicBaseURL becomes https://{host}/ and addtorrent iframe redirects break.
 if (!empty($_SERVER['RU_PROFILE_PATH'])) {
+
 	$profilePath = $_SERVER['RU_PROFILE_PATH'];
 } elseif (!empty($_ENV['RU_PROFILE_PATH'])) {
 	$profilePath = $_ENV['RU_PROFILE_PATH'];
