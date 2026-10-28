@@ -33,6 +33,14 @@ trap stop INT TERM
 dump_failure() {
 	echo "rtorrent-run: ${1}" >&2
 	echo "rtorrent-run: id=$(id 2>/dev/null || true)" >&2
+	if [ -f "${rc}" ]; then
+		echo "rtorrent-run: rc $(stat -c 'owner=%U:%G mode=%a' "${rc}" 2>/dev/null || ls -la "${rc}")" >&2
+		if [ ! -r "${rc}" ]; then
+			echo "rtorrent-run: rc not readable by $(id -un 2>/dev/null || echo '?') — cannot import" >&2
+		fi
+	else
+		echo "rtorrent-run: rc missing at ${rc}" >&2
+	fi
 	if [ -f "${log}" ]; then
 		echo "rtorrent-run: --- ${log} (tail) ---" >&2
 		tail -n 40 "${log}" >&2 || true
@@ -55,6 +63,11 @@ if ! touch "${rt_dir}/.${user}.writetest" 2>/dev/null; then
 	exit 1
 fi
 rm -f "${rt_dir}/.${user}.writetest"
+
+if [ ! -r "${rc}" ]; then
+	dump_failure "rc not readable: ${rc}"
+	exit 1
+fi
 
 tmux_cmd new-session -d -s "${session}" -- \
 	"${bin}" -n -o "import=${rc}"

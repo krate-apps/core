@@ -44,8 +44,14 @@ printf '\n=== service unit ===\n'
 systemctl is-active "rtorrent@${username}.service" 2>/dev/null || true
 systemctl cat "rtorrent@${username}.service" 2>/dev/null | grep -E '^User=|^Group=|^UMask=|^ExecStart=' || true
 
-printf '\n=== rtorrent rc (scgi + daemon) ===\n'
-grep -E 'scgi|daemon\.set' "${rt_rc}" 2>/dev/null || echo "missing ${rt_rc}"
+printf '\n=== rtorrent rc (must be readable by %s) ===\n' "${username}"
+if [[ -f "${rt_rc}" ]]; then
+	stat -c 'path=%n owner=%U:%G mode=%a' "${rt_rc}" 2>/dev/null || ls -la "${rt_rc}"
+	sudo -u "${username}" test -r "${rt_rc}" && echo "read as ${username}: OK" || echo "read as ${username}: FAIL (root:root 0600 kills startup before SCGI)"
+	grep -E 'scgi|daemon\.set|sockets\.(max_size|adjust_alloc)|min_alloc' "${rt_rc}" 2>/dev/null || true
+else
+	echo "missing ${rt_rc}"
+fi
 
 printf '\n=== process ===\n'
 pgrep -u "${username}" -a rtorrent 2>/dev/null || echo 'no rtorrent process'

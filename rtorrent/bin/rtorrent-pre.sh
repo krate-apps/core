@@ -7,6 +7,8 @@ user="${1:?usage: rtorrent-pre.sh USER}"
 rt_dir="/run/krate/user"
 tmux_sock="${rt_dir}/${user}.rtorrent.tmux"
 tmpfiles="/usr/lib/tmpfiles.d/krate-run.conf"
+rc="/home/${user}/.config/rtorrent/.rtorrent.rc"
+rc_dir="/home/${user}/.config/rtorrent"
 
 if [ -f "${tmpfiles}" ]; then
 	systemd-tmpfiles --create "${tmpfiles}"
@@ -17,6 +19,17 @@ install -d -m 2770 -o root -g krate "${rt_dir}"
 actual="$(stat -c '%U:%G %a' "${rt_dir}")"
 if [ "${actual}" != "root:krate 2770" ]; then
 	echo "rtorrent-pre: ${rt_dir} must be root:krate 2770, got ${actual}" >&2
+	exit 1
+fi
+
+# Template/copy as root can leave .rtorrent.rc root:root 0600 (e.g. umask 077);
+# User=%i then cannot import and exits before SCGI. Fix ownership every start.
+install -d -m 0750 -o "${user}" -g "${user}" "${rc_dir}"
+if [ -f "${rc}" ]; then
+	chown "${user}:${user}" "${rc}"
+	chmod 644 "${rc}"
+else
+	echo "rtorrent-pre: missing ${rc}" >&2
 	exit 1
 fi
 
