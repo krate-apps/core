@@ -73,6 +73,7 @@ _rc_drop_managed_fdatasync() {
 	local rc_path="${1:?}" out
 	[[ -f "${rc_path}" ]] || return 0
 	out="$(mktemp)"
+	# mawk treats /*...*/ as a regex, not a comment — never use C-style comments in awk.
 	awk -v marker="${_RC_FDATASYNC_MARKER}" '
 		BEGIN { hold = 0 }
 		{
@@ -84,7 +85,7 @@ _rc_drop_managed_fdatasync() {
 			}
 			print
 		}
-		END { if (hold) { /* orphan marker dropped */ } }
+		# Trailing managed marker with no set line: already skipped via next.
 	' "${rc_path}" >"${out}"
 	mv -f "${out}" "${rc_path}"
 }
