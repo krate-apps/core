@@ -374,6 +374,53 @@ test_fdatasync_roundtrip() {
 	_ok "fdatasync roundtrip"
 }
 
+test_harden_scgi_downgrades_preload_and_drops_noisy_logs() {
+	local rc="${TMP}/harden.rc"
+	cat >"${rc}" <<'EOF'
+pieces.preload.type.set = 2
+log.add_output = "info", "log"
+log.add_output = "debug", "log"
+log.add_output = "warn", "log"
+log.add_output = "connection", "log"
+pieces.preload.type.set = 1
+EOF
+	_rc_harden_scgi_responsiveness "${rc}"
+	grep -qE '^pieces\.preload\.type\.set = 0$' "${rc}" || {
+		_fail "preload 2 was not downgraded to 0"
+		return
+	}
+	grep -qE '^pieces\.preload\.type\.set = 1$' "${rc}" || {
+		_fail "preload 1 should be left alone"
+		return
+	}
+	grep -qE 'log\.add_output = "debug"' "${rc}" && {
+		_fail "debug log channel should be removed"
+		return
+	}
+	grep -qE 'log\.add_output = "connection"' "${rc}" && {
+		_fail "connection log channel should be removed"
+		return
+	}
+	grep -qE 'log\.add_output = "info"' "${rc}" || {
+		_fail "info log channel should remain"
+		return
+	}
+	_ok "harden scgi responsiveness"
+}
+
+test_template_scgi_safe_defaults() {
+	grep -qE '^pieces\.preload\.type\.set = 0$' "${APP_DIR}/.rtorrent.rc.tpl" || {
+		_fail "template preload must be 0"
+		return
+	}
+	grep -qE '^[[:space:]]*log\.add_output[[:space:]]*=[[:space:]]*"(debug|connection)"' \
+		"${APP_DIR}/.rtorrent.rc.tpl" && {
+		_fail "template must not enable debug/connection logs"
+		return
+	}
+	_ok "template scgi-safe defaults"
+}
+
 test_rc_is_modern_success
 test_rc_is_modern_failure
 test_patch_forward_success
@@ -390,6 +437,8 @@ test_fdatasync_inject_on_reverse
 test_fdatasync_preserves_user_value
 test_fdatasync_drop_on_forward
 test_fdatasync_roundtrip
+test_harden_scgi_downgrades_preload_and_drops_noisy_logs
+test_template_scgi_safe_defaults
 
 if [[ "${FAILS}" -ne 0 ]]; then
 	echo "${FAILS} test(s) failed" >&2

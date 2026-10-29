@@ -126,6 +126,19 @@ _rc_ensure_session_fdatasync() {
 	mv -f "${out}" "${rc_path}"
 }
 
+# Production defaults that keep SCGI responsive (idempotent; safe on user rcs).
+# - preload type 2 blocks the event loop while touching piece data
+# - debug/connection log channels flood disk under peer churn
+_rc_harden_scgi_responsiveness() {
+	local rc_path="${1:?}"
+	[[ -f "${rc_path}" ]] || return 0
+	sed -i -E \
+		-e 's/^([[:space:]]*pieces\.preload\.type\.set[[:space:]]*=[[:space:]]*)2([[:space:]]*(#.*)?)?$/\10\2/' \
+		-e '/^[[:space:]]*log\.add_output[[:space:]]*=[[:space:]]*"debug"[[:space:]]*,/d' \
+		-e '/^[[:space:]]*log\.add_output[[:space:]]*=[[:space:]]*"connection"[[:space:]]*,/d' \
+		"${rc_path}"
+}
+
 # Legacy (pre-0.16.14) → canonical 0.16.14+ syntax. Idempotent.
 _rc_patch_forward() {
 	local rc_path="${1:?}"
@@ -153,6 +166,7 @@ _rc_patch_forward() {
 	_rc_drop_managed_fdatasync "${rc_path}"
 	_rc_ensure_socket_budget "${rc_path}"
 	_rc_floor_max_open "${rc_path}"
+	_rc_harden_scgi_responsiveness "${rc_path}"
 }
 
 # Ensure max_size + category mins fit without adjust_alloc (default max_open is 1024).
@@ -219,6 +233,7 @@ _rc_patch_reverse() {
 	fi
 	_rc_ensure_session_fdatasync "${rc_path}"
 	_rc_floor_max_open "${rc_path}"
+	_rc_harden_scgi_responsiveness "${rc_path}"
 }
 
 _rc_patch() {

@@ -32,15 +32,15 @@ system.daemon.set = false
 # =============================================================================
 # 3. File logging (before SCGI so startup failures are captured)
 # =============================================================================
+# Keep info/warn/error only. debug + connection flood the disk and stall the
+# single-threaded event loop (SCGI / ruTorrent timeouts under load).
 log.execute = (cat, (cfg.logs), "/execute.log")
 print = (cat, "Logging to ", (cfg.logfile))
 log.open_file = "log", (cfg.logfile)
 log.add_output = "info", "log"
-log.add_output = "debug", "log"
 log.add_output = "warn", "log"
 log.add_output = "error", "log"
 log.add_output = "critical", "log"
-log.add_output = "connection", "log"
 
 # =============================================================================
 # 4. BitTorrent networking — ports, DHT/PEX, encryption
@@ -90,8 +90,11 @@ pieces.sync.always_safe.set = no
 # =============================================================================
 # 7. Memory and XML-RPC request size limit
 # =============================================================================
+# preload 0 = off (default for end users). Type 2 (touched) reads piece data into
+# RAM and blocks the event loop — SCGI stops answering (ruTorrent / panel timeouts).
+# Type 1 (madvise) is an optional middle ground on fast local disks.
 pieces.memory.max.set = 512M
-pieces.preload.type.set = 2
+pieces.preload.type.set = 0
 network.xmlrpc.size_limit.set = 16M
 
 # =============================================================================
