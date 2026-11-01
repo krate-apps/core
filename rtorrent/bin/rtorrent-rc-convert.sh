@@ -61,9 +61,8 @@ fi
 	exit 1
 }
 
-port_range=""
 # Best-effort: read peer range from existing rc if present (dry-run/apply keep it unless sync later).
-port_range="$(sed -nE 's/^[[:space:]]*network\.(listen\.)?port\.range\.set[[:space:]]*=[[:space:]]*//p' "${rc_path}" | head -n1 || true)"
+port_range="$(_port_range_from_rc "${rc_path}")"
 
 from_hint="existing"
 if _rc_is_modern "${target_slot}"; then

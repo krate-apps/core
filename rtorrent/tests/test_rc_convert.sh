@@ -251,6 +251,28 @@ test_floor_max_open_failure_leaves_http() {
 	_ok "floor_max_open leaves http alone"
 }
 
+test_port_range_from_rc_success() {
+	local rc="${TMP}/from_rc.rc" got
+	printf 'network.port_range.set = 22000-22010\n' >"${rc}"
+	got="$(_port_range_from_rc "${rc}")"
+	[[ "${got}" == "22000-22010" ]] || {
+		_fail "expected 22000-22010 got '${got}'"
+		return
+	}
+	_ok "port_range_from_rc success"
+}
+
+test_port_range_from_rc_failure_missing() {
+	local rc="${TMP}/from_rc_missing.rc" got
+	printf '# no port line\n' >"${rc}"
+	got="$(_port_range_from_rc "${rc}")"
+	[[ -z "${got}" ]] || {
+		_fail "expected empty got '${got}'"
+		return
+	}
+	_ok "port_range_from_rc missing empty"
+}
+
 test_sync_port_range_success() {
 	local rc="${TMP}/port.rc"
 	printf 'network.listen.port.range.set = 1000-1001\n' >"${rc}"
@@ -430,6 +452,8 @@ test_patch_reverse_success
 test_patch_reverse_idempotent
 test_floor_max_open_success
 test_floor_max_open_failure_leaves_http
+test_port_range_from_rc_success
+test_port_range_from_rc_failure_missing
 test_sync_port_range_success
 test_sync_port_range_failure_empty
 test_dialect_changed

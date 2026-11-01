@@ -1,6 +1,6 @@
 id: rtorrent
 name: rTorrent
-description: "rTorrent vendor binary and rtorrent@<user> service. Config ~/.config/rtorrent/.rtorrent.rc (0.16.23 dialect; migrate via update or bin/rtorrent-rc-convert.sh). tmux session rtorrent-<user>, SCGI /run/krate/user/<user>.rtorrent.sock. autogen port_range. Slots: 0.15.7, 0.16.23 (0.16.11 archived)."
+description: "rTorrent vendor binary and rtorrent@<user> service. Config ~/.config/rtorrent/.rtorrent.rc (0.16.23 dialect; migrate via update or bin/rtorrent-rc-convert.sh). tmux session rtorrent-<user>, SCGI /run/krate/user/<user>.rtorrent.sock. autogen port_range. Default slot: newest (0.16.23). Selectable via -B: 0.16.23, 0.16.11 (archived), 0.15.7."
 links:
   homepage: http://rakshasa.github.io/rtorrent/
   documentation: http://rakshasa.github.io/rtorrent/
@@ -9,4 +9,12 @@ links:
 tier: pro
 category: download
 install_mode: local
-ui_options: {}
+autocomplete_options:
+  - -B
+ui_options:
+  versions:
+    options:
+      - "0.16.23"
+      - "0.16.11"
+      - "0.15.7"
+    label: app.versions

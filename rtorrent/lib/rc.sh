@@ -58,6 +58,14 @@ _rc_floor_max_open() {
 	mv -f "${out}" "${rc_path}"
 }
 
+# Read peer listen range from an existing rc (both dialects). Empty if missing.
+_port_range_from_rc() {
+	local rc_path="${1:?}"
+	[[ -f "${rc_path}" ]] || return 0
+	# Modern: network.listen.port.range.set — legacy: network.port_range.set
+	sed -nE 's/^[[:space:]]*network\.(listen\.port\.range|port_range)\.set[[:space:]]*=[[:space:]]*//p' "${rc_path}" | head -n1 || true
+}
+
 # Resync listen port range from autogen (both dialects).
 _rc_sync_port_range() {
 	local rc_path="${1:?}" port_range="${2:-}"
