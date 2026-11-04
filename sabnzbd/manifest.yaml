@@ -70,7 +70,18 @@ security:
       - /etc/caddy/auth/local/users.json
 version:
   probes:
+    # Offline first: register runs right after restart, before the API is ready.
+    - type: file
+      path: "{data_dir}/VERSION"
+    - type: executable
+      cmd: grep
+      args: __version__ {install_dir}/sabnzbd/version.py
+      regex: '__version__\s*=\s*"([^"]+)"'
     - type: http_json
       url: "http://127.0.0.1:{default_port}{root_url}/api?mode=version&output=json"
+      field: version
+      requires: active
+    - type: http_json
+      url: "http://127.0.0.1:{default_port}/api?mode=version&output=json"
       field: version
       requires: active
