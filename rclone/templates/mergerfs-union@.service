@@ -1,7 +1,8 @@
 [Unit]
-Description=mergerfs union of rclone remotes for %i
+Description=mergerfs union of rclone remotes for %i under /run/krate-rclone
 Documentation=https://github.com/trapexit/mergerfs
-After=network-online.target
+After=network-online.target rclone-mount@%i.service
+Wants=rclone-mount@%i.service
 
 [Service]
 Type=forking

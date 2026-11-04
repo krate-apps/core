@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Shared helpers for rclone cloud mount / mergerfs / move stack.
-# Layout: ~/mounts/remote/<branch> (primary feeds ~/mounts/media via RCLONE_PRIMARY_BRANCH).
+# Real FUSE/mergerfs live under /run/krate-rclone/<user>/ (root-owned).
+# ~/mounts/{remote,media,union} are stable symlinks for apps and docs.
 # shellcheck disable=SC2034
 set -euo pipefail
 
@@ -21,10 +22,15 @@ rclone_cloud::parse_instance() {
 	RCLONE_PROFILE="${RCLONE_STATE_DIR}/profile.env"
 	RCLONE_LOG_DIR="${RCLONE_HOME}/.krate/logs/rclone"
 	RCLONE_CACHE="${RCLONE_HOME}/mounts/cache"
+	# User-visible symlink paths (stable for apps).
 	RCLONE_MEDIA="${RCLONE_HOME}/mounts/media"
 	RCLONE_UNION="${RCLONE_HOME}/mounts/union"
-	# Every cloud FUSE lives under mounts/remote/<branch> (main → remote/main).
-	RCLONE_REMOTE_MOUNT="${RCLONE_HOME}/mounts/remote/${RCLONE_BRANCH}"
+	RCLONE_REMOTE_LINK="${RCLONE_HOME}/mounts/remote/${RCLONE_BRANCH}"
+	# Real mount roots outside the home (root-owned; web server cannot enter).
+	RCLONE_RUN_ROOT="/run/krate-rclone/${RCLONE_USER}"
+	RCLONE_RUN_MEDIA="${RCLONE_RUN_ROOT}/media"
+	RCLONE_RUN_UNION="${RCLONE_RUN_ROOT}/union"
+	RCLONE_REMOTE_MOUNT="${RCLONE_RUN_ROOT}/remote/${RCLONE_BRANCH}"
 }
 
 rclone_cloud::load_profile() {
@@ -63,22 +69,88 @@ rclone_cloud::primary_branch() {
 	printf '%s\n' "${b}"
 }
 
+# Real FUSE path under /run (second arg is username when called as (user, branch)).
 rclone_cloud::remote_mount_path() {
+	local user_or_home="${1:?}" branch="${2:?}"
+	local user="${user_or_home}"
+	[[ "${user_or_home}" == /home/* ]] && user="$(basename "${user_or_home}")"
+	printf '%s\n' "/run/krate-rclone/${user}/remote/${branch}"
+}
+
+rclone_cloud::remote_link_path() {
 	local home="${1:?}" branch="${2:?}"
 	printf '%s\n' "${home}/mounts/remote/${branch}"
 }
 
-# Cloud leg for mergerfs-media (primary branch path, or union).
+# Cloud leg for mergerfs-media (primary branch path, or union) — real /run paths.
 rclone_cloud::media_cloud_path() {
-	local home="${RCLONE_HOME:?}"
 	local branch cloud
-	if [[ "${RCLONE_MEDIA_CLOUD_BRANCH:-}" == "union" ]] || mountpoint -q "${RCLONE_UNION}" 2>/dev/null; then
-		printf '%s\n' "${RCLONE_UNION}"
+	if [[ "${RCLONE_MEDIA_CLOUD_BRANCH:-}" == "union" ]] || mountpoint -q "${RCLONE_RUN_UNION:-${RCLONE_UNION}}" 2>/dev/null; then
+		printf '%s\n' "${RCLONE_RUN_UNION:-${RCLONE_UNION}}"
 		return 0
 	fi
 	branch="$(rclone_cloud::primary_branch)"
-	cloud="$(rclone_cloud::remote_mount_path "${home}" "${branch}")"
+	cloud="$(rclone_cloud::remote_mount_path "${RCLONE_USER:?}" "${branch}")"
 	printf '%s\n' "${cloud}"
+}
+
+# Ensure /run/krate-rclone/<user> tree is root-owned, account can traverse, others cannot.
+rclone_cloud::ensure_run_root() {
+	local user="${1:?}"
+	local root="/run/krate-rclone/${user}"
+	install -d -m 0755 -o root -g root /run/krate-rclone
+	install -d -m 0750 -o root -g "${user}" "${root}" \
+		"${root}/remote" "${root}/media" "${root}/union" "${root}/views"
+}
+
+# Point ~/mounts/<name> at /run/... (replace a leftover directory if empty / unmounted).
+rclone_cloud::link_mount_path() {
+	local link="${1:?}" target="${2:?}" user="${3:?}"
+	if [[ -L "${link}" ]]; then
+		local cur
+		cur="$(readlink -f "${link}" 2>/dev/null || readlink "${link}" || true)"
+		[[ "${cur}" == "${target}" ]] && return 0
+		rm -f "${link}"
+	elif [[ -d "${link}" ]]; then
+		if mountpoint -q "${link}" 2>/dev/null; then
+			rclone_cloud::fusermount_uz "${link}"
+		fi
+		# Only remove if empty (no pending local files).
+		rmdir "${link}" 2>/dev/null || {
+			echo "rclone: leave ${link} in place (not empty); expected symlink to ${target}" >&2
+			return 0
+		}
+	elif [[ -e "${link}" ]]; then
+		rm -f "${link}"
+	fi
+	install -d -m 0755 -o "${user}" -g "${user}" "$(dirname "${link}")"
+	ln -sfn "${target}" "${link}"
+	chown -h "${user}:${user}" "${link}" 2>/dev/null || true
+}
+
+# Comment out user_allow_other so non-root accounts cannot make web-readable FUSE mounts.
+# Root can still pass --allow-other for managed mounts.
+rclone_cloud::retire_user_allow_other() {
+	local conf="/etc/fuse.conf"
+	[[ -f "${conf}" ]] || return 0
+	if grep -qE '^[[:space:]]*user_allow_other' "${conf}"; then
+		sed -i -E 's/^([[:space:]]*user_allow_other)/# \1 # retired by krate rclone isolation/' "${conf}"
+	fi
+}
+
+# Strip setuid from FUSE helpers that ignore fuse.conf (e.g. ntfs-3g).
+rclone_cloud::strip_setuid_fuse_mounters() {
+	local path
+	for path in /bin/ntfs-3g /usr/bin/ntfs-3g /sbin/ntfs-3g /usr/sbin/ntfs-3g; do
+		[[ -e "${path}" ]] || continue
+		dpkg-statoverride --update --add root root 0755 "${path}" 2>/dev/null \
+			|| chmod 0755 "${path}" 2>/dev/null \
+			|| true
+	done
+	# Pre-register so a later package install unpacks at 755.
+	if ! dpkg-statoverride --list /usr/bin/ntfs-3g >/dev/null 2>&1; then
+		dpkg-statoverride --add root root 0755 /usr/bin/ntfs-3g 2>/dev/null || true
+	fi
 }
 
 rclone_cloud::rclone_bin() {
@@ -97,6 +169,66 @@ rclone_cloud::run_as_user() {
 	else
 		runuser -u "${u}" -- "$@"
 	fi
+}
+
+# Obscure a secret via rclone stdin ("obscure -") so the plaintext never hits argv.
+rclone_cloud::obscure_stdin() {
+	local plain="${1:?}"
+	local bin obscured
+	bin="$(rclone_cloud::rclone_bin)"
+	obscured="$(
+		rclone_cloud::run_as_user "${bin}" obscure - <<EOF
+${plain}
+EOF
+	)" || return 1
+	# rclone obscure prints a trailing newline
+	printf '%s' "${obscured%%$'\n'}"
+}
+
+# Upsert an rclone.conf section. Keys/values arrive as JSON object on stdin
+# ({"type":"crypt","remote":"Media:","password":"<obscured>",...}) so secrets stay
+# off process arguments. Writes as the account when possible.
+rclone_cloud::conf_upsert_section() {
+	local conf="${1:?}" section="${2:?}"
+	local u="${RCLONE_USER:-}"
+	local tmp
+	tmp="$(mktemp)"
+	cat >"${tmp}"
+	python3 - "${conf}" "${section}" "${tmp}" <<'PY'
+import pathlib, sys
+conf_path, section, payload_path = sys.argv[1], sys.argv[2], sys.argv[3]
+raw = pathlib.Path(payload_path).read_text(encoding="utf-8")
+import json
+kv = json.loads(raw)
+path = pathlib.Path(conf_path)
+text = path.read_text(encoding="utf-8") if path.is_file() else ""
+lines = text.splitlines()
+out = []
+i = 0
+header = f"[{section}]"
+while i < len(lines):
+    line = lines[i]
+    if line.strip() == header:
+        i += 1
+        while i < len(lines) and not lines[i].startswith("["):
+            i += 1
+        continue
+    out.append(line)
+    i += 1
+if out and out[-1] != "":
+    out.append("")
+out.append(header)
+for key, val in kv.items():
+    out.append(f"{key} = {val}")
+out.append("")
+path.parent.mkdir(parents=True, exist_ok=True)
+path.write_text("\n".join(out), encoding="utf-8")
+PY
+	rm -f "${tmp}"
+	if [[ -n "${u}" ]]; then
+		chown "${u}:${u}" "${conf}" 2>/dev/null || true
+	fi
+	chmod 0600 "${conf}" 2>/dev/null || true
 }
 
 rclone_cloud::fusermount_uz() {
@@ -256,7 +388,7 @@ rclone_cloud::rebuild_union_branches() {
 	local branches_file="${state}/union.branches"
 	local f b
 	{
-		echo "$(rclone_cloud::remote_mount_path "${home}" "main")"
+		echo "$(rclone_cloud::remote_mount_path "${user}" "main")"
 		for f in "${state}/mounts"/*.env; do
 			[[ -f "${f}" ]] || continue
 			b="$(basename "${f}" .env)"
@@ -265,7 +397,7 @@ rclone_cloud::rebuild_union_branches() {
 			if grep -q '^RCLONE_VIEW_MODE=1' "${f}" 2>/dev/null; then
 				continue
 			fi
-			echo "$(rclone_cloud::remote_mount_path "${home}" "${b}")"
+			echo "$(rclone_cloud::remote_mount_path "${user}" "${b}")"
 		done
 	} >"${branches_file}"
 	chown "${user}:${user}" "${branches_file}" 2>/dev/null || true
@@ -274,19 +406,83 @@ rclone_cloud::rebuild_union_branches() {
 rclone_cloud::ensure_dirs() {
 	local primary
 	primary="$(rclone_cloud::primary_branch 2>/dev/null || echo main)"
-	local -a dirs=(
-		"${RCLONE_HOME}/mounts"
-		"${RCLONE_HOME}/.cache/rclone"
-		"${RCLONE_CACHE}"
-		"${RCLONE_MEDIA}"
-		"${RCLONE_HOME}/mounts/remote"
-		"${RCLONE_REMOTE_MOUNT}"
-		"$(rclone_cloud::remote_mount_path "${RCLONE_HOME}" "${primary}")"
-		"${RCLONE_STATE_DIR}"
-		"${RCLONE_STATE_DIR}/mounts"
+	rclone_cloud::ensure_run_root "${RCLONE_USER}"
+	install -d -m 0750 -o root -g "${RCLONE_USER}" \
+		"${RCLONE_REMOTE_MOUNT}" \
+		"$(rclone_cloud::remote_mount_path "${RCLONE_USER}" "${primary}")" \
+		"${RCLONE_RUN_MEDIA}" \
+		"${RCLONE_RUN_UNION}"
+	install -d -m 0755 -o "${RCLONE_USER}" -g "${RCLONE_USER}" \
+		"${RCLONE_HOME}/mounts" \
+		"${RCLONE_HOME}/.cache/rclone" \
+		"${RCLONE_CACHE}" \
+		"${RCLONE_HOME}/mounts/remote" \
+		"${RCLONE_STATE_DIR}" \
+		"${RCLONE_STATE_DIR}/mounts" \
 		"${RCLONE_LOG_DIR}"
-	)
-	install -d -m 0755 -o "${RCLONE_USER}" -g "${RCLONE_USER}" "${dirs[@]}"
+	rclone_cloud::link_mount_path "${RCLONE_REMOTE_LINK}" "${RCLONE_REMOTE_MOUNT}" "${RCLONE_USER}"
+	rclone_cloud::link_mount_path \
+		"$(rclone_cloud::remote_link_path "${RCLONE_HOME}" "${primary}")" \
+		"$(rclone_cloud::remote_mount_path "${RCLONE_USER}" "${primary}")" \
+		"${RCLONE_USER}"
+	rclone_cloud::link_mount_path "${RCLONE_MEDIA}" "${RCLONE_RUN_MEDIA}" "${RCLONE_USER}"
+	rclone_cloud::link_mount_path "${RCLONE_UNION}" "${RCLONE_RUN_UNION}" "${RCLONE_USER}"
+}
+
+# Lazy-unmount any FUSE that masks /opt/<user> (program trees must stay local).
+rclone_cloud::refuse_fuse_over_opt() {
+	local user="${1:?}"
+	local opt="/opt/${user}"
+	local tgt fstype
+	[[ -d "${opt}" ]] || return 0
+	while IFS= read -r tgt; do
+		[[ -n "${tgt}" ]] || continue
+		fstype="$(findmnt -n -o FSTYPE "${tgt}" 2>/dev/null || true)"
+		case "${fstype}" in
+		fuse | fuse.* | fuseblk)
+			echo "rclone: refusing FUSE over program path ${tgt} (${fstype}) — unmounting" >&2
+			rclone_cloud::fusermount_uz "${tgt}"
+			;;
+		esac
+	done < <(findmnt -n -o TARGET -R "${opt}" 2>/dev/null || true)
+}
+
+# Move legacy in-home FUSE/mergerfs mounts to /run and leave ~/mounts as symlinks.
+rclone_cloud::secure_mounts() {
+	local user="${1:?}"
+	rclone_cloud::parse_instance "${user}"
+	rclone_cloud::ensure_run_root "${user}"
+	rclone_cloud::retire_user_allow_other
+	rclone_cloud::strip_setuid_fuse_mounters
+	rclone_cloud::refuse_fuse_over_opt "${user}"
+
+	local home="${RCLONE_HOME}"
+	local path
+	for path in \
+		"${home}/mounts/media" \
+		"${home}/mounts/union" \
+		"${home}/mounts/remote" \
+		"${home}/mounts/remote"/* \
+		"${home}/mounts/remotes"/* \
+		"${home}/mounts/views"/*; do
+		[[ -e "${path}" || -L "${path}" ]] || continue
+		if [[ -d "${path}" ]] && ! [[ -L "${path}" ]] && mountpoint -q "${path}" 2>/dev/null; then
+			rclone_cloud::fusermount_uz "${path}"
+		fi
+	done
+
+	rclone_cloud::ensure_dirs
+	# Re-link every known branch env.
+	local f b
+	shopt -s nullglob
+	for f in "${RCLONE_STATE_DIR}/mounts"/*.env; do
+		b="$(basename "${f}" .env)"
+		rclone_cloud::link_mount_path \
+			"$(rclone_cloud::remote_link_path "${home}" "${b}")" \
+			"$(rclone_cloud::remote_mount_path "${user}" "${b}")" \
+			"${user}"
+	done
+	shopt -u nullglob
 }
 
 # Append shell-quoted flag string into a nameref array (safe tokenization).

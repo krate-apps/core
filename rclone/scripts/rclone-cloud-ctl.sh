@@ -714,50 +714,39 @@ rclone_ctl::oauth_complete() {
 	[[ -f "${pending}" ]] || rclone_ctl::fail "no oauth pending; run oauth-begin first"
 	[[ -n "${token}" ]] || rclone_ctl::fail "missing --token (paste output of: rclone authorize …)"
 
-	local state rtype
-	state="$(python3 -c 'import json; print(json.load(open("'"${pending}"'")).get("State") or "")')"
+	local rtype
 	rtype="$(python3 -c 'import json; print(json.load(open("'"${pending}"'")).get("provider") or "drive")')"
 	remote="${remote:-$(python3 -c 'import json; print(json.load(open("'"${pending}"'")).get("remote") or "Media")')}"
 
-	local bin conf out
-	bin="$(rclone_cloud::rclone_bin)"
-	conf="${RCLONE_CONF}"
-	set +e
-	out="$(rclone_cloud::run_as_user "${bin}" config create "${remote}" "${rtype}" --non-interactive \
-		--continue --state "${state}" --result "${token}" --config="${conf}" 2>&1)"
-	local rc=$?
-	set -e
+	# Persist token into rclone.conf without putting it on rclone's argv.
+	local token_file
+	token_file="$(mktemp "${RCLONE_STATE_DIR}/oauth-token.XXXXXX")"
+	chmod 0600 "${token_file}"
+	cat >"${token_file}" <<EOF
+${token}
+EOF
+	chown "${user}:${user}" "${token_file}" 2>/dev/null || true
 
-	# May need further default answers
-	local guard=0
-	local cur_state cur_result parsed opt_name
-	while [[ "${guard}" -lt 16 ]]; do
-		guard=$((guard + 1))
-		parsed="$(echo "${out}" | python3 -c '
-import json,sys
-raw=sys.stdin.read()
-start=raw.find("{")
-if start<0:
-    print(""); raise SystemExit
-print(json.dumps(json.loads(raw[start:])))
-' 2>/dev/null || true)"
-		if [[ -z "${parsed}" ]]; then
-			break
-		fi
-		cur_state="$(echo "${parsed}" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("State") or "")')"
-		if [[ -z "${cur_state}" ]]; then
-			break
-		fi
-		opt_name="$(echo "${parsed}" | python3 -c 'import json,sys; d=json.load(sys.stdin); o=d.get("Option") or {}; print(o.get("Name") or "")')"
-		if [[ "${opt_name}" == "config_token" || "${opt_name}" == "token" ]]; then
-			rclone_ctl::fail "token rejected or still required"
-		fi
-		cur_result="$(echo "${parsed}" | python3 -c 'import json,sys; d=json.load(sys.stdin); o=d.get("Option") or {}; v=o.get("Default"); print("" if v is None else v)')"
-		set +e
-		out="$(rclone_cloud::run_as_user "${bin}" config create "${remote}" "${rtype}" --non-interactive \
-			--continue --state "${cur_state}" --result "${cur_result}" --config="${conf}" 2>&1)"
-		set -e
-	done
+	local conf="${RCLONE_CONF}"
+	install -d -m 0755 -o "${user}" -g "${user}" "$(dirname "${conf}")"
+	[[ -f "${conf}" ]] || install -m 0600 -o "${user}" -g "${user}" /dev/null "${conf}"
+
+	RCLONE_TMP_TYPE="${rtype}" RCLONE_TMP_TOKEN_FILE="${token_file}" \
+		python3 - <<'PY' | rclone_cloud::conf_upsert_section "${conf}" "${remote}" \
+		|| { rm -f "${token_file}"; rclone_ctl::fail "oauth-complete: failed to write token into rclone.conf"; }
+import json, os, pathlib
+token = pathlib.Path(os.environ["RCLONE_TMP_TOKEN_FILE"]).read_text(encoding="utf-8").strip()
+rtype = os.environ["RCLONE_TMP_TYPE"]
+kv = {"type": rtype, "token": token}
+if rtype == "drive":
+    kv["scope"] = "drive"
+print(json.dumps(kv))
+PY
+	rm -f "${token_file}"
+	unset RCLONE_TMP_TYPE RCLONE_TMP_TOKEN_FILE
+
+	[[ "$(rclone_ctl::remote_has_token "${conf}" "${remote}")" == "1" ]] \
+		|| rclone_ctl::fail "oauth-complete: token missing after conf write"
 
 	rm -f "${pending}"
 	# Restart mounts if profile exists
@@ -770,7 +759,7 @@ print(json.dumps(json.loads(raw[start:])))
 	fi
 	python3 - <<PY
 import json
-print(json.dumps({"ok": True, "remote": "${remote}", "oauth_ready": True, "rc": ${rc}}))
+print(json.dumps({"ok": True, "remote": "${remote}", "oauth_ready": True, "rc": 0}))
 PY
 }
 
@@ -850,24 +839,29 @@ rclone_ctl::crypt_create() {
 		|| rclone_ctl::fail "crypt-create requires --crypt-name --remote --password"
 	: "${password2:=${password}}"
 	rclone_cloud::parse_instance "${user}"
-	local bin
-	bin="$(rclone_cloud::rclone_bin)"
 	local remote_path="${underlying}"
 	[[ "${remote_path}" == *: ]] || [[ "${remote_path}" == *:* ]] || remote_path="${underlying}:"
 
-	set +e
-	local out
-	out="$(rclone_cloud::run_as_user "${bin}" config create "${crypt_name}" crypt \
-		"remote=${remote_path}" \
-		"password=${password}" \
-		"password2=${password2}" \
-		--non-interactive \
-		--obscure \
-		--config="${RCLONE_CONF}" 2>&1)"
-	local rc=$?
-	set -e
-	[[ "${rc}" -eq 0 ]] || grep -q "^\[${crypt_name}\]" "${RCLONE_CONF}" 2>/dev/null \
-		|| rclone_ctl::fail "crypt create failed: ${out:0:400}"
+	local pw_obs pw2_obs
+	pw_obs="$(rclone_cloud::obscure_stdin "${password}")" \
+		|| rclone_ctl::fail "crypt create: rclone obscure failed"
+	pw2_obs="$(rclone_cloud::obscure_stdin "${password2}")" \
+		|| rclone_ctl::fail "crypt create: rclone obscure (salt) failed"
+	# Write conf via stdin JSON — secrets stay off process argv (env → python stdin payload).
+	RCLONE_TMP_REMOTE="${remote_path}" RCLONE_TMP_PW="${pw_obs}" RCLONE_TMP_PW2="${pw2_obs}" \
+		python3 - <<'PY' | rclone_cloud::conf_upsert_section "${RCLONE_CONF}" "${crypt_name}" \
+		|| rclone_ctl::fail "crypt create: failed to write ${crypt_name} into rclone.conf"
+import json, os
+print(json.dumps({
+    "type": "crypt",
+    "remote": os.environ["RCLONE_TMP_REMOTE"],
+    "password": os.environ["RCLONE_TMP_PW"],
+    "password2": os.environ["RCLONE_TMP_PW2"],
+}))
+PY
+	unset RCLONE_TMP_REMOTE RCLONE_TMP_PW RCLONE_TMP_PW2
+	grep -q "^\[${crypt_name}\]" "${RCLONE_CONF}" 2>/dev/null \
+		|| rclone_ctl::fail "crypt create failed: section missing after write"
 
 	if [[ "${set_primary}" == "1" ]]; then
 		local preset="media" mode="import"
@@ -1287,22 +1281,24 @@ rclone_ctl::remote_create() {
 		[[ "${vendor}" == "other" || "${vendor}" == "rclone" ]] || vendor="other"
 		install -d -m 0755 -o "${user}" -g "${user}" "$(dirname "${RCLONE_CONF}")"
 		[[ -f "${RCLONE_CONF}" ]] || install -m 0600 -o "${user}" -g "${user}" /dev/null "${RCLONE_CONF}"
-		local bin
-		bin="$(rclone_cloud::rclone_bin)"
-		# rclone config create obscures pass= itself
-		set +e
-		rclone_cloud::run_as_user "${bin}" config create "${remote}" webdav \
-			"url=${url}" \
-			"vendor=${vendor}" \
-			"user=${webdav_user}" \
-			"pass=${pass}" \
-			--non-interactive --config="${RCLONE_CONF}" >/dev/null 2>&1
-		local rc=$?
-		set -e
-		[[ "${rc}" -eq 0 ]] || grep -q "^\[${remote}\]" "${RCLONE_CONF}" 2>/dev/null \
+		local pass_obs
+		pass_obs="$(rclone_cloud::obscure_stdin "${pass}")" \
+			|| rclone_ctl::fail "failed to obscure webdav/kdrive password"
+		RCLONE_TMP_URL="${url}" RCLONE_TMP_VENDOR="${vendor}" RCLONE_TMP_USER="${webdav_user}" RCLONE_TMP_PASS="${pass_obs}" \
+			python3 - <<'PY' | rclone_cloud::conf_upsert_section "${RCLONE_CONF}" "${remote}" \
 			|| rclone_ctl::fail "failed to create webdav/kdrive remote ${remote}"
-		chown "${user}:${user}" "${RCLONE_CONF}" 2>/dev/null || true
-		chmod 0600 "${RCLONE_CONF}" 2>/dev/null || true
+import json, os
+print(json.dumps({
+    "type": "webdav",
+    "url": os.environ["RCLONE_TMP_URL"],
+    "vendor": os.environ["RCLONE_TMP_VENDOR"],
+    "user": os.environ["RCLONE_TMP_USER"],
+    "pass": os.environ["RCLONE_TMP_PASS"],
+}))
+PY
+		unset RCLONE_TMP_URL RCLONE_TMP_VENDOR RCLONE_TMP_USER RCLONE_TMP_PASS
+		grep -q "^\[${remote}\]" "${RCLONE_CONF}" 2>/dev/null \
+			|| rclone_ctl::fail "failed to create webdav/kdrive remote ${remote}"
 		rclone_cloud_setup::apply_user "${user}" "media" "wizard" "${provider}" "${remote}" "" "mydrive"
 		python3 - <<PY
 import json

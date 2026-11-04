@@ -1,8 +1,8 @@
 [Unit]
-Description=mergerfs media union for %i (cache + cloud)
+Description=mergerfs media union for %i (cache + cloud under /run/krate-rclone)
 Documentation=https://github.com/trapexit/mergerfs
-After=network-online.target
-Wants=network-online.target
+After=network-online.target rclone-mount@%i.service
+Wants=network-online.target rclone-mount@%i.service
 
 [Service]
 Type=forking

@@ -77,10 +77,9 @@ rclone_cloud_setup::install_files() {
 		return 1
 	fi
 
-	# FUSE allow_other required for mergerfs/rclone multi-user mounts
-	if [[ -f /etc/fuse.conf ]] && ! grep -qE '^[[:space:]]*user_allow_other' /etc/fuse.conf; then
-		echo 'user_allow_other' >>/etc/fuse.conf
-	fi
+	# Isolation: root mounts with --allow-other; accounts must not get user_allow_other.
+	rclone_cloud::retire_user_allow_other
+	rclone_cloud::strip_setuid_fuse_mounters
 	systemctl daemon-reload
 }
 
@@ -104,12 +103,12 @@ rclone_cloud_setup::apply_user() {
 	local remote_spec="${remote}:"
 
 	install -d -m 0755 -o "${user}" -g "${user}" \
-		"${home}/mounts" "${home}/mounts/cache" "${home}/mounts/media" \
-		"${home}/mounts/remote" "${home}/mounts/remote/main" \
+		"${home}/mounts" "${home}/mounts/cache" \
 		"${state}" "${state}/mounts" "${home}/.krate/logs/rclone" \
 		"${home}/.config/rclone"
 
 	rclone_cloud::migrate_layout "${user}" 2>/dev/null || true
+	rclone_cloud::secure_mounts "${user}" 2>/dev/null || true
 
 	[[ -f "${conf}" ]] || install -m 0600 -o "${user}" -g "${user}" /dev/null "${conf}"
 
