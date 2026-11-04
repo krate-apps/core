@@ -24,10 +24,11 @@ fi
 
 # Template/copy as root can leave .rtorrent.rc root:root 0600 (e.g. umask 077);
 # User=%i then cannot import and exits before SCGI. Fix ownership every start.
+# 0660: account + group only — never world-readable (isolation).
 install -d -m 0750 -o "${user}" -g "${user}" "${rc_dir}"
 if [ -f "${rc}" ]; then
 	chown "${user}:${user}" "${rc}"
-	chmod 644 "${rc}"
+	chmod 0660 "${rc}"
 else
 	echo "rtorrent-pre: missing ${rc}" >&2
 	exit 1
