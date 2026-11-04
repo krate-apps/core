@@ -77,6 +77,11 @@ security:
       - /opt/%i/radarr4k
 version:
   probes:
+    # Offline first: register runs right after backup restart, before the API is ready.
+    - type: file
+      path: "{data_dir}/VERSION"
+    - type: file
+      path: "{install_dir}/package_info"
     - type: http_json
       url: "http://127.0.0.1:{default_port}{root_url}/api/v3/system/status"
       field: version
