@@ -12,7 +12,9 @@ install:
     install_dir: /opt/%i/rtorrent
     backup_dir: /home/%i/.krate/backups/rtorrent
     config_dir: /home/%i/.config/rtorrent
-    data_dir: /home/%i/medias/rtorrent
+    # data_dir is wiped on uninstall — keep config here, never ~/medias (downloads survive).
+    data_dir: /home/%i/.config/rtorrent
+    medias_dir: /home/%i/medias/rtorrent
     downloads_dir: /home/%i/medias/rtorrent/downloads
     torrents_dir: /home/%i/medias/rtorrent/torrents
     incomplete_dir: /home/%i/medias/rtorrent/incomplete

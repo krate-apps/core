@@ -2,6 +2,7 @@
 # rTorrent configuration (KRATE template — 0.16.23 canonical syntax)
 # Canonical paths (do not change without updating manifest + ruTorrent/Flood):
 #   Config:  /home/{{USERNAME}}/.config/rtorrent/.rtorrent.rc
+#   Medias:  /home/{{USERNAME}}/medias/rtorrent  ({{DATA_DIR}} — survives uninstall)
 #   SCGI:    /run/krate/user/{{USERNAME}}.rtorrent.sock
 # ───────────────────────────────────────
 #
