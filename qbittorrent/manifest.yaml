@@ -44,7 +44,7 @@ files:
   config:
     - /home/%i/.krate/applications/qbittorrent.env
   proxy:
-    - /etc/caddy/softwares/%i.qbittorrent.caddy
+    - /etc/caddy/softwares/path/%i.qbittorrent.caddy
   binary:
     - /home/%i/.krate/active/qbittorrent-nox/usr/bin/qbittorrent-nox
 autogen:
@@ -60,6 +60,7 @@ security:
       - /home/%i/.krate/applications
     read_only:
       - /home/%i/.krate/active/qbittorrent-nox
+      - /opt/%i/qbittorrent
       - /etc/caddy/auth/local/users.json
 version:
   probes:
