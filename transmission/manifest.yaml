@@ -62,6 +62,7 @@ security:
       - /home/%i/.krate/applications
     read_only:
       - /home/%i/.krate/active/transmission-daemon
+      - /opt/%i/transmission
       - /etc/caddy/auth/local/users.json
 version:
   probes:
