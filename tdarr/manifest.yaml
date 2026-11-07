@@ -10,7 +10,7 @@ runtime:
 dependencies:
   apt:
     common:
-      packages: curl ca-certificates unzip ffmpeg libatomic1 libtesseract5 handbrake-cli
+      packages: curl ca-certificates ffmpeg libatomic1 libtesseract5 handbrake-cli
 install:
   layout:
     backup_dir: /home/%i/.krate/backups/tdarr
