@@ -22,7 +22,7 @@ _add() {
 	modprobe wireguard 2>/dev/null || true
 	mkdir -p "${install_dir}" "${data_dir}" "$(dirname "${env_file}")" \
 		"${_STASH}/peers" "${_STASH}/gateway" "${_STASH}/users" "${_STASH}/routes"
-	chmod 750 "${_STASH}" 2>/dev/null || true
+	zenfw::permission::set "${_STASH}" "640" "750" "root" "root" 2>/dev/null || true
 
 	if [[ -n "${_ENDPOINT}" ]]; then
 		zenfw::vpn::install --mode "${_MODE}" --port "${_PORT}" --cidr "${_CIDR}" --dns "${_DNS}" --endpoint "${_ENDPOINT}" || true
