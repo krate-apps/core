@@ -6,7 +6,7 @@ runtime:
 dependencies:
   apt:
     common:
-      packages: git curl ca-certificates build-essential python3 ffmpeg unzip
+      packages: git curl ca-certificates build-essential python3 ffmpeg
 install:
   release:
     branches:
